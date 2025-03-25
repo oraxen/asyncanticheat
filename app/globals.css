@@ -1,0 +1,189 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 
+ * AsyncAnticheat Dashboard
+ * Design System: Quiet Luxury + Liquid Glass
+ * 
+ * Inspired by:
+ * - Vercel/shadcn UI (precision, square corners)
+ * - Apple Liquid Glass (subtle materials, depth via color)
+ * - iOS App Style Guide (quiet confidence, density without clutter)
+ */
+
+:root {
+  /* Deep charcoal palette - avoid pure black */
+  --background: 18 18 20;        /* #121214 */
+  --background-elevated: 28 28 30; /* #1C1C1E */
+  --background-tertiary: 44 44 46; /* #2C2C2E */
+  
+  /* Text hierarchy */
+  --foreground: 255 255 255;
+  --foreground-secondary: 160 160 165;
+  --foreground-tertiary: 110 110 115;
+  --foreground-muted: 72 72 77;
+  
+  /* Borders - subtle, almost invisible */
+  --border: 255 255 255 / 0.06;
+  --border-elevated: 255 255 255 / 0.08;
+  
+  /* Single accent - refined indigo/violet */
+  --accent: 99 102 241;          /* Indigo-500 */
+  --accent-foreground: 255 255 255;
+  
+  /* Semantic colors - muted, functional */
+  --success: 34 197 94;
+  --warning: 234 179 8;
+  --error: 239 68 68;
+  --info: 59 130 246;
+  
+  /* Ring for focus states */
+  --ring: 99 102 241 / 0.4;
+}
+
+/* Light mode adaptation */
+.light {
+  --background: 250 250 250;
+  --background-elevated: 255 255 255;
+  --background-tertiary: 245 245 245;
+  --foreground: 9 9 11;
+  --foreground-secondary: 82 82 91;
+  --foreground-tertiary: 113 113 122;
+  --foreground-muted: 161 161 170;
+  --border: 0 0 0 / 0.06;
+  --border-elevated: 0 0 0 / 0.08;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--foreground-muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--foreground-tertiary));
+}
+
+/* Glass effect - use sparingly */
+.glass {
+  background: rgb(var(--background-elevated) / 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.glass-subtle {
+  background: rgb(var(--background-elevated) / 0.5);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Elevation via background color, not shadows */
+.surface-0 {
+  background: rgb(var(--background));
+}
+
+.surface-1 {
+  background: rgb(var(--background-elevated));
+}
+
+.surface-2 {
+  background: rgb(var(--background-tertiary));
+}
+
+/* Global focus styles - subtle and consistent */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: none;
+}
+
+/* Subtle focus indicator for interactive elements */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Input focus */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+}
+
+/* Legacy focus ring class */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--background)), 0 0 0 4px rgb(var(--accent));
+}
+
+/* Monospace for numbers */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selection */
+::selection {
+  background: rgb(var(--accent) / 0.3);
+}
+
+/* Animation - short, responsive, no bounce */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 150ms ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 200ms ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 200ms ease-out;
+}

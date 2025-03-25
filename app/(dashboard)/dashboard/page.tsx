@@ -1,0 +1,710 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import {
+  RiCloseLine,
+  RiAlertLine,
+  RiTimeLine,
+  RiMapPinLine,
+} from "@remixicon/react";
+import { cn } from "@/lib/utils";
+
+// Mock data
+const mockStats = {
+  totalFindings: 1247,
+  activeModules: 8,
+  playersMonitored: 342,
+  avgResponseTime: 23,
+};
+
+const mockPlayers = [
+  {
+    id: "1",
+    name: "xX_Hacker_Xx",
+    lat: 0.4,
+    lng: 0.8,
+    severity: "high",
+    detector: "fight_speed",
+    findings: 23,
+    lastSeen: "2 min ago",
+    region: "EU West",
+  },
+  {
+    id: "2",
+    name: "SuspiciousPlayer",
+    lat: -0.3,
+    lng: 2.5,
+    severity: "medium",
+    detector: "moving_speed",
+    findings: 8,
+    lastSeen: "5 min ago",
+    region: "US East",
+  },
+  {
+    id: "3",
+    name: "TestUser123",
+    lat: 0.6,
+    lng: 4.2,
+    severity: "high",
+    detector: "fight_reach",
+    findings: 15,
+    lastSeen: "1 min ago",
+    region: "Asia",
+  },
+  {
+    id: "4",
+    name: "CoolGamer",
+    lat: -0.5,
+    lng: 5.5,
+    severity: "low",
+    detector: "nofall",
+    findings: 3,
+    lastSeen: "8 min ago",
+    region: "EU Central",
+  },
+];
+
+type Player = (typeof mockPlayers)[0];
+
+const severityColors = {
+  low: "#3b82f6",
+  medium: "#f59e0b",
+  high: "#ef4444",
+  critical: "#dc2626",
+};
+
+// Player Detail Panel
+function PlayerDetailPanel({
+  player,
+  onClose,
+}: {
+  player: Player;
+  onClose: () => void;
+}) {
+  const color = severityColors[player.severity as keyof typeof severityColors];
+
+  return (
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-96 animate-fade-in">
+      <div className="glass-panel rounded-xl shadow-2xl overflow-hidden backdrop-blur-2xl bg-[#0a0a0f]/80">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: color }}
+              />
+              <div
+                className="absolute inset-0 rounded-full animate-ping opacity-50"
+                style={{ backgroundColor: color }}
+              />
+            </div>
+            <span className="text-base font-medium text-white">
+              {player.name}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md hover:bg-white/10 transition-colors group"
+          >
+            <RiCloseLine className="w-5 h-5 text-white/40 group-hover:text-white/80 transition-colors" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-5 space-y-5">
+          {/* Severity Badge */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-white/40">
+              Threat Level
+            </span>
+            <span
+              className="px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide"
+              style={{
+                color,
+                backgroundColor: `${color}15`,
+              }}
+            >
+              {player.severity}
+            </span>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white/[0.02] rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <RiAlertLine className="w-3.5 h-3.5 text-white/40" />
+                <span className="text-[10px] uppercase tracking-wider text-white/40">
+                  Findings
+                </span>
+              </div>
+              <p className="text-2xl font-light text-white tabular-nums">
+                {player.findings}
+              </p>
+            </div>
+            <div className="bg-white/[0.02] rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <RiTimeLine className="w-3.5 h-3.5 text-white/40" />
+                <span className="text-[10px] uppercase tracking-wider text-white/40">
+                  Seen
+                </span>
+              </div>
+              <p className="text-sm font-medium text-white/90">
+                {player.lastSeen}
+              </p>
+            </div>
+          </div>
+
+          {/* Details */}
+          <div className="space-y-3 pt-3 border-t border-white/[0.06]">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-white/40">Latest Check</span>
+              <span className="text-white/80 font-mono bg-white/[0.03] px-2 py-1 rounded-md">
+                {player.detector}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-white/40">Region</span>
+              <span className="text-white/80 flex items-center gap-1.5">
+                <RiMapPinLine className="w-3.5 h-3.5 text-white/40" />
+                {player.region}
+              </span>
+            </div>
+          </div>
+
+          {/* Action */}
+          <Link
+            href={`/dashboard/findings?player=${player.name}`}
+            className="group flex items-center justify-center gap-2 w-full py-2.5 mt-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] text-white/80 hover:text-white text-xs font-medium transition-all"
+          >
+            <span>View All Findings</span>
+            <span className="text-white/40 group-hover:text-white/60 group-hover:translate-x-0.5 transition-all">
+              →
+            </span>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Animated Globe Component
+function AnimatedGlobe({
+  players,
+  onPlayerClick,
+}: {
+  players: typeof mockPlayers;
+  onPlayerClick: (player: Player) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const playerPositionsRef = useRef<
+    { id: string; x: number; y: number; radius: number; isText?: boolean }[]
+  >([]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationId: number;
+    let rotation = 0;
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    // Grid points
+    const gridPoints: { lat: number; lng: number }[] = [];
+    for (let i = 0; i < 100; i++) {
+      gridPoints.push({
+        lat: (Math.random() - 0.5) * Math.PI * 0.9,
+        lng: Math.random() * Math.PI * 2,
+      });
+    }
+
+    const draw = () => {
+      const rect = canvas.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const radius = Math.min(centerX, centerY) * 0.85;
+      const time = Date.now() / 1000;
+
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Blueprint grid background
+      ctx.strokeStyle = "rgba(99, 102, 241, 0.03)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < rect.width; i += 20) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, rect.height);
+        ctx.stroke();
+      }
+      for (let i = 0; i < rect.height; i += 20) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(rect.width, i);
+        ctx.stroke();
+      }
+
+      // Globe glow
+      const gradient = ctx.createRadialGradient(
+        centerX,
+        centerY,
+        0,
+        centerX,
+        centerY,
+        radius * 1.2
+      );
+      gradient.addColorStop(0, "rgba(99, 102, 241, 0.1)");
+      gradient.addColorStop(0.5, "rgba(99, 102, 241, 0.05)");
+      gradient.addColorStop(1, "rgba(99, 102, 241, 0)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, rect.width, rect.height);
+
+      // Globe outline
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(99, 102, 241, 0.3)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Inner circle
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius * 0.3, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(99, 102, 241, 0.15)";
+      ctx.stroke();
+
+      // Latitude lines
+      for (let i = -2; i <= 2; i++) {
+        const lat = (i / 3) * Math.PI * 0.45;
+        const y = centerY + Math.sin(lat) * radius;
+        const r = Math.cos(lat) * radius;
+
+        ctx.beginPath();
+        ctx.ellipse(centerX, y, r, r * 0.25, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(99, 102, 241, 0.1)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Longitude lines
+      for (let i = 0; i < 8; i++) {
+        const lng = (i / 8) * Math.PI + rotation;
+        ctx.beginPath();
+        for (let j = 0; j <= 60; j++) {
+          const lat = (j / 60 - 0.5) * Math.PI;
+          const x = centerX + Math.cos(lat) * Math.sin(lng) * radius;
+          const y = centerY + Math.sin(lat) * radius;
+          const z = Math.cos(lat) * Math.cos(lng);
+
+          if (z > -0.1) {
+            if (j === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+        }
+        ctx.strokeStyle = `rgba(99, 102, 241, ${0.05 + Math.abs(Math.cos(lng)) * 0.1})`;
+        ctx.stroke();
+      }
+
+      // Draw grid points
+      gridPoints.forEach((point) => {
+        const x =
+          centerX +
+          Math.cos(point.lat) * Math.sin(point.lng + rotation) * radius;
+        const y = centerY + Math.sin(point.lat) * radius;
+        const z = Math.cos(point.lat) * Math.cos(point.lng + rotation);
+
+        if (z > 0) {
+          ctx.beginPath();
+          ctx.arc(x, y, 1, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(99, 102, 241, ${0.1 + z * 0.2})`;
+          ctx.fill();
+        }
+      });
+
+      // Draw player points with labels
+      const newPlayerPositions: {
+        id: string;
+        x: number;
+        y: number;
+        radius: number;
+        isText?: boolean;
+      }[] = [];
+
+      players.forEach((player) => {
+        const x =
+          centerX +
+          Math.cos(player.lat) * Math.sin(player.lng + rotation) * radius;
+        const y = centerY + Math.sin(player.lat) * radius;
+        const z = Math.cos(player.lat) * Math.cos(player.lng + rotation);
+
+        if (z > 0) {
+          const color =
+            severityColors[player.severity as keyof typeof severityColors];
+          const pulseSize = 4 + Math.sin(time * 3 + parseFloat(player.id)) * 2;
+
+          // Outer pulse ring
+          ctx.beginPath();
+          ctx.arc(x, y, pulseSize + 8, 0, Math.PI * 2);
+          ctx.strokeStyle = color.replace(")", ", 0.2)").replace("rgb", "rgba");
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          // Inner pulse ring
+          ctx.beginPath();
+          ctx.arc(x, y, pulseSize + 4, 0, Math.PI * 2);
+          ctx.strokeStyle = color.replace(")", ", 0.4)").replace("rgb", "rgba");
+          ctx.stroke();
+
+          // Core dot
+          ctx.beginPath();
+          ctx.arc(x, y, pulseSize, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+
+          // Label line and text
+          const labelOffset = 60 + (parseFloat(player.id) % 3) * 20;
+          const angle = Math.atan2(y - centerY, x - centerX);
+          const labelX = x + Math.cos(angle) * labelOffset;
+          const labelY = y + Math.sin(angle) * labelOffset;
+
+          // Line from dot to label
+          ctx.beginPath();
+          ctx.moveTo(
+            x + Math.cos(angle) * (pulseSize + 10),
+            y + Math.sin(angle) * (pulseSize + 10)
+          );
+          ctx.lineTo(
+            labelX - Math.cos(angle) * 5,
+            labelY - Math.sin(angle) * 5
+          );
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 + z * 0.3})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          // Small connector dot
+          ctx.beginPath();
+          ctx.arc(labelX, labelY, 2, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + z * 0.4})`;
+          ctx.fill();
+
+          // Player name
+          ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
+          ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + z * 0.4})`;
+          ctx.textAlign = x > centerX ? "left" : "right";
+
+          const textX = labelX + (x > centerX ? 8 : -8);
+          const textY = labelY + 4;
+          const textMetrics = ctx.measureText(player.name);
+          const textWidth = textMetrics.width;
+
+          ctx.fillText(player.name, textX, textY);
+
+          // Detector tag
+          ctx.font = "9px monospace";
+          ctx.fillStyle = color.replace(")", ", 0.7)").replace("rgb", "rgba");
+          ctx.fillText(player.detector, textX, labelY + 16);
+
+          // Store position for click detection (both dot and text)
+          newPlayerPositions.push({
+            id: player.id,
+            x,
+            y,
+            radius: pulseSize + 15, // Hitbox for dot
+          });
+
+          // Add hitbox for text area
+          const textHitboxX = x > centerX ? textX : textX - textWidth;
+          const textHitboxY = textY - 10;
+          newPlayerPositions.push({
+            id: player.id,
+            x: textHitboxX + textWidth / 2,
+            y: textHitboxY + 10,
+            radius: Math.max(textWidth / 2 + 10, 20), // Approximate hitbox for text
+            isText: true,
+          });
+        }
+      });
+
+      playerPositionsRef.current = newPlayerPositions;
+
+      rotation += 0.002;
+      animationId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(animationId);
+    };
+  }, [players]);
+
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Check if click is on any player dot
+    for (const pos of playerPositionsRef.current) {
+      const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
+      if (dist <= pos.radius) {
+        const player = players.find((p) => p.id === pos.id);
+        if (player) {
+          onPlayerClick(player);
+        }
+        break;
+      }
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Check if hovering over any player dot
+    let isHovering = false;
+    for (const pos of playerPositionsRef.current) {
+      const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
+      if (dist <= pos.radius) {
+        isHovering = true;
+        break;
+      }
+    }
+    canvas.style.cursor = isHovering ? "pointer" : "default";
+  };
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="w-full h-full"
+      style={{ width: "100%", height: "100%" }}
+      onClick={handleClick}
+      onMouseMove={handleMouseMove}
+    />
+  );
+}
+
+// Stat panel with glass effect
+function StatPanel({
+  label,
+  value,
+  suffix,
+  trend,
+}: {
+  label: string;
+  value: string | number;
+  suffix?: string;
+  trend?: string;
+}) {
+  return (
+    <div className="relative p-4 rounded-xl overflow-hidden backdrop-blur-xl bg-white/[0.03] border border-white/[0.08]">
+      <div className="relative z-10">
+        <p className="text-[10px] uppercase tracking-wider text-indigo-400 mb-1">
+          {label}
+        </p>
+        <p className="text-2xl font-light text-white tabular-nums">
+          {value}
+          {suffix && (
+            <span className="text-sm text-white/50 ml-0.5">{suffix}</span>
+          )}
+        </p>
+        {trend && <p className="text-[10px] text-emerald-400 mt-1">{trend}</p>}
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return (
+    <div className="h-screen flex gap-6 -m-6 overflow-hidden">
+      {/* Globe Section - Left */}
+      <div className="flex-1 relative">
+        <AnimatedGlobe
+          players={mockPlayers}
+          onPlayerClick={setSelectedPlayer}
+        />
+
+        {/* Player Detail Panel */}
+        {selectedPlayer && (
+          <PlayerDetailPanel
+            player={selectedPlayer}
+            onClose={() => setSelectedPlayer(null)}
+          />
+        )}
+
+        {/* Overlay HUD elements */}
+        <div className="absolute top-6 left-6 right-6 z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-medium text-white/90">
+                Global Monitor
+              </h1>
+              <p className="text-xs text-white/40">
+                Real-time threat detection
+              </p>
+            </div>
+            <div className="glass-panel px-3 py-1.5 rounded-full">
+              <span className="text-[10px] text-emerald-400 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                LIVE
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom stats bar */}
+        <div className="absolute bottom-6 left-6 right-6">
+          <div className="grid grid-cols-4 gap-4">
+            <StatPanel
+              label="Detections"
+              value={mockStats.totalFindings.toLocaleString()}
+              trend="+12% today"
+            />
+            <StatPanel
+              label="Modules"
+              value={mockStats.activeModules}
+              suffix="active"
+            />
+            <StatPanel
+              label="Players"
+              value={mockStats.playersMonitored}
+              trend="online now"
+            />
+            <StatPanel
+              label="Latency"
+              value={mockStats.avgResponseTime}
+              suffix="ms"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel */}
+      <div className="w-72 flex flex-col gap-3 pt-[52px] pb-6 pr-6">
+        {/* Recent Findings - 50% */}
+        <div className="glass-panel rounded-xl flex-1 flex flex-col">
+          <div className="px-4 py-3 border-b border-white/[0.06]">
+            <h2 className="text-sm font-medium text-white/90">
+              Recent Findings
+            </h2>
+          </div>
+          <div className="flex-1 overflow-auto divide-y divide-white/[0.04]">
+            {mockPlayers.map((player) => (
+              <button
+                key={player.id}
+                onClick={() => setSelectedPlayer(player)}
+                className="w-full px-4 py-3 hover:bg-white/[0.03] transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{
+                      backgroundColor:
+                        severityColors[
+                          player.severity as keyof typeof severityColors
+                        ],
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white/90 truncate">
+                      {player.name}
+                    </p>
+                    <p className="text-[10px] text-white/40 font-mono">
+                      {player.detector}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-white/30 uppercase">
+                    {player.severity}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="px-4 py-2.5 border-t border-white/[0.06]">
+            <Link
+              href="/dashboard/findings"
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              View all →
+            </Link>
+          </div>
+        </div>
+
+        {/* System Status - 50% */}
+        <div className="glass-panel rounded-xl flex-1 flex flex-col p-4">
+          <h2 className="text-sm font-medium text-white/90 mb-3">
+            Connection Status
+          </h2>
+
+          <div className="flex-1 space-y-3">
+            {/* Latency metrics */}
+            {[
+              { label: "Plugin → API", ping: 12, status: "excellent" },
+              { label: "API → Dashboard", ping: 8, status: "excellent" },
+              { label: "Dashboard → Plugin", ping: 23, status: "good" },
+            ].map((conn, i) => (
+              <div key={i} className="bg-white/[0.02] rounded-lg p-3 relative">
+                {/* Connector line removal */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-white/70">{conn.label}</span>
+                  <span
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full",
+                      conn.status === "excellent"
+                        ? "bg-emerald-400"
+                        : conn.status === "good"
+                          ? "bg-amber-400"
+                          : "bg-red-400"
+                    )}
+                  />
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg font-medium text-white tabular-nums">
+                    {conn.ping}
+                  </span>
+                  <span className="text-[10px] text-white/40">ms</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Overall Status */}
+          <div className="pt-3 mt-auto border-t border-white/[0.06]">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-white/40">All Systems</span>
+              <span className="text-xs text-emerald-400">Operational</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

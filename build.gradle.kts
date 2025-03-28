@@ -60,7 +60,7 @@ project(":asyncanticheat-bukkit") {
     dependencies {
         compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
         compileOnly("org.jetbrains:annotations:24.0.1")
-        compileOnly(project(path = ":asyncanticheat-core", configuration = "shadow"))
+        implementation(project(path = ":asyncanticheat-core", configuration = "shadow"))
 
         // PacketEvents (Spigot/Paper)
         implementation("com.github.retrooper:packetevents-spigot:2.11.0")

@@ -14,6 +14,7 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
     private AsyncAnticheatService service;
     private BukkitDevModeManager devMode;
     private BukkitPlayerExemptionTracker exemptionTracker;
+    private boolean packetEventsInitialized = false;
 
     @Override
     public void onEnable() {
@@ -29,14 +30,17 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
             PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
             PacketEvents.getAPI().load();
             PacketEvents.getAPI().init();
+            packetEventsInitialized = true;
         } catch (Throwable t) {
             logger.error("[AsyncAnticheat] Failed to initialize PacketEvents (Bukkit).", t);
         }
 
-        PacketEvents.getAPI().getEventManager().registerListener(
-                new BukkitPacketCaptureListener(service, exemptionTracker),
-                PacketListenerPriority.LOW
-        );
+        if (packetEventsInitialized) {
+            PacketEvents.getAPI().getEventManager().registerListener(
+                    new BukkitPacketCaptureListener(service, exemptionTracker),
+                    PacketListenerPriority.LOW
+            );
+        }
 
         devMode = new BukkitDevModeManager(this, service);
         final PluginCommand cmd = getCommand("aacdev");
@@ -52,9 +56,11 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        try {
-            PacketEvents.getAPI().terminate();
-        } catch (Throwable ignored) {}
+        if (packetEventsInitialized) {
+            try {
+                PacketEvents.getAPI().terminate();
+            } catch (Throwable ignored) {}
+        }
         if (exemptionTracker != null) {
             exemptionTracker.cleanup();
             exemptionTracker = null;

@@ -15,7 +15,7 @@ import java.util.Map;
 
 public final class AsyncAnticheatConfig {
 
-    private static final String DEFAULT_API_URL = "http://127.0.0.1:3002";
+    private static final String DEFAULT_API_URL = "https://aac-api.thomas.md";
     private static final int DEFAULT_TIMEOUT_SECONDS = 10;
     private static final int DEFAULT_FLUSH_INTERVAL_MS = 1_000;
     private static final int DEFAULT_SPOOL_MAX_MB = 256;

@@ -82,6 +82,31 @@ async fn main() -> anyhow::Result<()> {
             "/callbacks/player-states/batch-set",
             axum::routing::post(routes::callbacks::batch_set_player_states),
         )
+        // Dashboard API endpoints
+        .route(
+            "/dashboard/servers",
+            get(routes::dashboard::get_servers),
+        )
+        .route(
+            "/dashboard/:server_id/stats",
+            get(routes::dashboard::get_stats),
+        )
+        .route(
+            "/dashboard/:server_id/findings",
+            get(routes::dashboard::get_findings),
+        )
+        .route(
+            "/dashboard/:server_id/players",
+            get(routes::dashboard::get_players),
+        )
+        .route(
+            "/dashboard/:server_id/modules",
+            get(routes::dashboard::get_modules),
+        )
+        .route(
+            "/dashboard/:server_id/modules/:module_id/toggle",
+            axum::routing::post(routes::dashboard::toggle_module),
+        )
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());

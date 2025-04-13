@@ -34,7 +34,12 @@ export default function DashboardLayout({
       setSelectedWorkspaceId(defaultServer.id);
     }
     setServers(list);
-    setSelectedServerId(getSelectedWorkspaceId() ?? list[0]?.id ?? null);
+    // Verify stored selection exists in list, fallback to first server
+    const storedId = getSelectedWorkspaceId();
+    const validId = storedId && list.some((s) => s.id === storedId) 
+      ? storedId 
+      : list[0]?.id ?? null;
+    setSelectedServerId(validId);
     setMounted(true);
   }, []);
 

@@ -9,63 +9,20 @@ import {
   RiMapPinLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
+import { api, type Player as ApiPlayer, type DashboardStats } from "@/lib/api";
 
-// Mock data
-const mockStats = {
-  totalFindings: 1247,
-  activeModules: 8,
-  playersMonitored: 342,
-  avgResponseTime: 23,
-};
-
-const mockPlayers = [
-  {
-    id: "1",
-    name: "xX_Hacker_Xx",
-    lat: 0.4,
-    lng: 0.8,
-    severity: "high",
-    detector: "fight_speed",
-    findings: 23,
-    lastSeen: "2 min ago",
-    region: "EU West",
-  },
-  {
-    id: "2",
-    name: "SuspiciousPlayer",
-    lat: -0.3,
-    lng: 2.5,
-    severity: "medium",
-    detector: "moving_speed",
-    findings: 8,
-    lastSeen: "5 min ago",
-    region: "US East",
-  },
-  {
-    id: "3",
-    name: "TestUser123",
-    lat: 0.6,
-    lng: 4.2,
-    severity: "high",
-    detector: "fight_reach",
-    findings: 15,
-    lastSeen: "1 min ago",
-    region: "Asia",
-  },
-  {
-    id: "4",
-    name: "CoolGamer",
-    lat: -0.5,
-    lng: 5.5,
-    severity: "low",
-    detector: "nofall",
-    findings: 3,
-    lastSeen: "8 min ago",
-    region: "EU Central",
-  },
-];
-
-type Player = (typeof mockPlayers)[0];
+// Transform API player to dashboard player format
+interface DashboardPlayer {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  severity: string;
+  detector: string;
+  findings: number;
+  lastSeen: string;
+  region: string;
+}
 
 const severityColors = {
   low: "#3b82f6",
@@ -74,15 +31,54 @@ const severityColors = {
   critical: "#dc2626",
 };
 
+// Helper to convert hex color to rgba string
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// Helper to format relative time
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins} min ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+}
+
+// Generate pseudo-random position for globe visualization
+function generateGlobePosition(uuid: string): { lat: number; lng: number } {
+  // Use uuid to generate deterministic but varied positions
+  const hash = uuid.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+
+  return {
+    lat: ((hash % 100) / 100 - 0.5) * Math.PI * 0.9,
+    lng: ((hash >> 8) % 628) / 100,
+  };
+}
+
 // Player Detail Panel
 function PlayerDetailPanel({
   player,
   onClose,
 }: {
-  player: Player;
+  player: DashboardPlayer;
   onClose: () => void;
 }) {
-  const color = severityColors[player.severity as keyof typeof severityColors];
+  const color =
+    severityColors[player.severity as keyof typeof severityColors] ||
+    severityColors.low;
 
   return (
     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-96 animate-fade-in">
@@ -194,8 +190,8 @@ function AnimatedGlobe({
   players,
   onPlayerClick,
 }: {
-  players: typeof mockPlayers;
-  onPlayerClick: (player: Player) => void;
+  players: DashboardPlayer[];
+  onPlayerClick: (player: DashboardPlayer) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const playerPositionsRef = useRef<
@@ -217,6 +213,8 @@ function AnimatedGlobe({
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
+      // Reset transform before scaling to prevent compounding on resize
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
     };
 
@@ -351,20 +349,21 @@ function AnimatedGlobe({
 
         if (z > 0) {
           const color =
-            severityColors[player.severity as keyof typeof severityColors];
+            severityColors[player.severity as keyof typeof severityColors] ||
+            severityColors.low;
           const pulseSize = 4 + Math.sin(time * 3 + parseFloat(player.id)) * 2;
 
           // Outer pulse ring
           ctx.beginPath();
           ctx.arc(x, y, pulseSize + 8, 0, Math.PI * 2);
-          ctx.strokeStyle = color.replace(")", ", 0.2)").replace("rgb", "rgba");
+          ctx.strokeStyle = hexToRgba(color, 0.2);
           ctx.lineWidth = 1;
           ctx.stroke();
 
           // Inner pulse ring
           ctx.beginPath();
           ctx.arc(x, y, pulseSize + 4, 0, Math.PI * 2);
-          ctx.strokeStyle = color.replace(")", ", 0.4)").replace("rgb", "rgba");
+          ctx.strokeStyle = hexToRgba(color, 0.4);
           ctx.stroke();
 
           // Core dot
@@ -413,7 +412,7 @@ function AnimatedGlobe({
 
           // Detector tag
           ctx.font = "9px monospace";
-          ctx.fillStyle = color.replace(")", ", 0.7)").replace("rgb", "rgba");
+          ctx.fillStyle = hexToRgba(color, 0.7);
           ctx.fillText(player.detector, textX, labelY + 16);
 
           // Store position for click detection (both dot and text)
@@ -533,12 +532,66 @@ function StatPanel({
   );
 }
 
+// Default server ID for demo
+const DEFAULT_SERVER_ID = "demo-server";
+
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<DashboardPlayer | null>(
+    null
+  );
+  const [players, setPlayers] = useState<DashboardPlayer[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
+
+    // Fetch data from API
+    async function fetchData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [playersData, statsData] = await Promise.all([
+          api.getPlayers(DEFAULT_SERVER_ID),
+          api.getStats(DEFAULT_SERVER_ID),
+        ]);
+
+        // Transform API players to dashboard format
+        const dashboardPlayers: DashboardPlayer[] = playersData.map(
+          (p, index) => {
+            const pos = generateGlobePosition(p.uuid);
+            return {
+              id: String(index + 1),
+              name: p.username,
+              lat: pos.lat,
+              lng: pos.lng,
+              severity: p.highest_severity,
+              detector: p.detectors[0] || "unknown",
+              findings: p.findings_count,
+              lastSeen: formatRelativeTime(p.last_seen),
+              region: "Global", // Could be enhanced with GeoIP
+            };
+          }
+        );
+
+        setPlayers(dashboardPlayers);
+        setStats(statsData);
+      } catch (err) {
+        console.error("Failed to fetch dashboard data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+
+    // Refresh data every 30 seconds
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   if (!mounted) return null;
@@ -547,10 +600,7 @@ export default function DashboardPage() {
     <div className="h-screen flex gap-6 -m-6 overflow-hidden">
       {/* Globe Section - Left */}
       <div className="flex-1 relative">
-        <AnimatedGlobe
-          players={mockPlayers}
-          onPlayerClick={setSelectedPlayer}
-        />
+        <AnimatedGlobe players={players} onPlayerClick={setSelectedPlayer} />
 
         {/* Player Detail Panel */}
         {selectedPlayer && (
@@ -580,29 +630,44 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Loading / Error states */}
+        {loading && !stats && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+            <div className="text-white/60 text-sm">Loading...</div>
+          </div>
+        )}
+
+        {error && (
+          <div className="absolute bottom-20 left-6 right-6 z-20">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
+              {error}
+            </div>
+          </div>
+        )}
+
         {/* Bottom stats bar */}
         <div className="absolute bottom-6 left-6 right-6">
           <div className="grid grid-cols-4 gap-4">
             <StatPanel
               label="Detections"
-              value={mockStats.totalFindings.toLocaleString()}
-              trend="+12% today"
+              value={stats?.total_findings?.toLocaleString() ?? "—"}
+              trend={
+                stats?.findings_today
+                  ? `+${stats.findings_today} today`
+                  : undefined
+              }
             />
             <StatPanel
               label="Modules"
-              value={mockStats.activeModules}
+              value={stats?.active_modules ?? "—"}
               suffix="active"
             />
             <StatPanel
               label="Players"
-              value={mockStats.playersMonitored}
-              trend="online now"
+              value={stats?.players_monitored ?? "—"}
+              trend="monitored"
             />
-            <StatPanel
-              label="Latency"
-              value={mockStats.avgResponseTime}
-              suffix="ms"
-            />
+            <StatPanel label="Latency" value={23} suffix="ms" />
           </div>
         </div>
       </div>
@@ -617,7 +682,12 @@ export default function DashboardPage() {
             </h2>
           </div>
           <div className="flex-1 overflow-auto divide-y divide-white/[0.04]">
-            {mockPlayers.map((player) => (
+            {players.length === 0 && !loading && (
+              <div className="px-4 py-8 text-center text-white/40 text-sm">
+                No findings yet
+              </div>
+            )}
+            {players.map((player) => (
               <button
                 key={player.id}
                 onClick={() => setSelectedPlayer(player)}
@@ -630,7 +700,7 @@ export default function DashboardPage() {
                       backgroundColor:
                         severityColors[
                           player.severity as keyof typeof severityColors
-                        ],
+                        ] || severityColors.low,
                     }}
                   />
                   <div className="flex-1 min-w-0">

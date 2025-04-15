@@ -17,6 +17,18 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
     private boolean packetEventsInitialized = false;
 
     @Override
+    public void onLoad() {
+        // PacketEvents must be loaded in onLoad() to ensure proper injection timing
+        try {
+            PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
+            PacketEvents.getAPI().load();
+            packetEventsInitialized = true;
+        } catch (Throwable t) {
+            getLogger().severe("[AsyncAnticheat] Failed to load PacketEvents (Bukkit): " + t.getMessage());
+        }
+    }
+
+    @Override
     public void onEnable() {
         final AcLogger logger = new BukkitLogger(getLogger());
         service = new AsyncAnticheatService(getDataFolder(), logger);
@@ -26,20 +38,18 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
         exemptionTracker = new BukkitPlayerExemptionTracker(service.getConfig().getExemptionConfig());
         getServer().getPluginManager().registerEvents(exemptionTracker, this);
         
-        try {
-            PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
-            PacketEvents.getAPI().load();
-            PacketEvents.getAPI().init();
-            packetEventsInitialized = true;
-        } catch (Throwable t) {
-            logger.error("[AsyncAnticheat] Failed to initialize PacketEvents (Bukkit).", t);
-        }
-
+        // Initialize PacketEvents (load was called in onLoad)
         if (packetEventsInitialized) {
-            PacketEvents.getAPI().getEventManager().registerListener(
-                    new BukkitPacketCaptureListener(service, exemptionTracker),
-                    PacketListenerPriority.LOW
-            );
+            try {
+                PacketEvents.getAPI().init();
+                PacketEvents.getAPI().getEventManager().registerListener(
+                        new BukkitPacketCaptureListener(service, exemptionTracker),
+                        PacketListenerPriority.LOW
+                );
+            } catch (Throwable t) {
+                logger.error("[AsyncAnticheat] Failed to initialize PacketEvents (Bukkit).", t);
+                packetEventsInitialized = false;
+            }
         }
 
         devMode = new BukkitDevModeManager(this, service);

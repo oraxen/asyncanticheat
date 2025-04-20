@@ -4,23 +4,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { RiSearchLine, RiCloseLine, RiTimeLine, RiAlertLine, RiArrowLeftLine } from "@remixicon/react";
 import { cn } from "@/lib/utils";
+import { api, type Finding } from "@/lib/api";
 
-// Extended mock data with timestamps and more findings per player
-const mockFindings = [
-  { id: "1", player: "xX_Hacker_Xx", detector: "fight_speed", severity: "high" as const, message: "18.5 APS", time: "10:30", date: "Today" },
-  { id: "2", player: "SuspiciousPlayer", detector: "moving_speed", severity: "medium" as const, message: "15.2 b/s", time: "10:25", date: "Today" },
-  { id: "3", player: "TestUser123", detector: "fight_reach", severity: "high" as const, message: "4.8 blocks", time: "10:22", date: "Today" },
-  { id: "4", player: "CoolGamer", detector: "moving_nofall", severity: "low" as const, message: "No fall damage", time: "10:18", date: "Today" },
-  { id: "5", player: "AnotherPlayer", detector: "fight_angle", severity: "medium" as const, message: "45° snap", time: "10:15", date: "Today" },
-  { id: "6", player: "xX_Hacker_Xx", detector: "fight_reach", severity: "critical" as const, message: "6.2 blocks", time: "10:12", date: "Today" },
-  { id: "7", player: "xX_Hacker_Xx", detector: "fight_angle", severity: "high" as const, message: "87° rotation", time: "09:45", date: "Today" },
-  { id: "8", player: "xX_Hacker_Xx", detector: "moving_speed", severity: "medium" as const, message: "12.3 b/s", time: "09:30", date: "Today" },
-  { id: "9", player: "SuspiciousPlayer", detector: "fight_speed", severity: "high" as const, message: "16.2 APS", time: "09:15", date: "Today" },
-  { id: "10", player: "TestUser123", detector: "moving_nofall", severity: "low" as const, message: "No fall damage", time: "08:50", date: "Today" },
-  { id: "11", player: "xX_Hacker_Xx", detector: "fight_speed", severity: "critical" as const, message: "22.1 APS", time: "16:30", date: "Yesterday" },
-  { id: "12", player: "xX_Hacker_Xx", detector: "moving_fly", severity: "high" as const, message: "Flight detected", time: "14:20", date: "Yesterday" },
-  { id: "13", player: "SuspiciousPlayer", detector: "fight_reach", severity: "medium" as const, message: "4.2 blocks", time: "12:45", date: "Yesterday" },
-];
+const DEFAULT_SERVER_ID = "demo-server";
 
 const severityColors = {
   low: "text-blue-400",
@@ -43,8 +29,24 @@ const severityDots = {
   critical: "bg-red-400",
 };
 
-// Get unique players with their stats
-function getPlayerStats(findings: typeof mockFindings) {
+// Helper to format date
+function formatDate(dateStr: string): { date: string; time: string } {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  
+  const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+  
+  if (isToday) return { date: "Today", time };
+  if (isYesterday) return { date: "Yesterday", time };
+  return { date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }), time };
+}
+
+// Get unique players with their stats from findings
+function getPlayerStats(findings: Finding[]) {
   const playerMap = new Map<string, { 
     name: string; 
     totalFindings: number; 
@@ -56,20 +58,21 @@ function getPlayerStats(findings: typeof mockFindings) {
   const severityRank = { low: 1, medium: 2, high: 3, critical: 4 };
   
   findings.forEach(f => {
-    const existing = playerMap.get(f.player);
+    const playerName = f.player_name || "Unknown";
+    const existing = playerMap.get(playerName);
     if (existing) {
       existing.totalFindings++;
       if (severityRank[f.severity] > severityRank[existing.highestSeverity as keyof typeof severityRank]) {
         existing.highestSeverity = f.severity;
       }
-      existing.detectors.add(f.detector);
+      existing.detectors.add(f.detector_name);
     } else {
-      playerMap.set(f.player, {
-        name: f.player,
+      playerMap.set(playerName, {
+        name: playerName,
         totalFindings: 1,
         highestSeverity: f.severity,
-        lastSeen: `${f.date} ${f.time}`,
-        detectors: new Set([f.detector]),
+        lastSeen: f.created_at,
+        detectors: new Set([f.detector_name]),
       });
     }
   });
@@ -84,19 +87,19 @@ function PlayerHistoryPanel({
   onClose 
 }: { 
   playerName: string; 
-  findings: typeof mockFindings;
+  findings: Finding[];
   onClose: () => void;
 }) {
-  const playerFindings = findings.filter(f => f.player === playerName);
+  const playerFindings = findings.filter(f => f.player_name === playerName);
   const stats = getPlayerStats(findings).find(p => p.name === playerName);
   
   // Group findings by date
   const groupedFindings = playerFindings.reduce((acc, finding) => {
-    const date = finding.date;
+    const { date } = formatDate(finding.created_at);
     if (!acc[date]) acc[date] = [];
     acc[date].push(finding);
     return acc;
-  }, {} as Record<string, typeof mockFindings>);
+  }, {} as Record<string, Finding[]>);
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
@@ -178,40 +181,43 @@ function PlayerHistoryPanel({
                 <div className="absolute left-[5px] top-2 bottom-2 w-px bg-gradient-to-b from-white/10 via-white/[0.06] to-transparent" />
                 
                 <div className="space-y-3">
-                  {items.map((finding, idx) => (
-                    <div
-                      key={finding.id}
-                      className="relative flex items-start gap-4 group"
-                    >
-                      {/* Timeline Dot */}
-                      <div className="absolute -left-4 top-1.5">
-                        <div className={cn(
-                          "w-2.5 h-2.5 rounded-full ring-2 ring-[#0a0a0f]",
-                          severityDots[finding.severity]
-                        )} />
-                      </div>
-                      
-                      {/* Content */}
-                      <div className="flex-1 ml-2 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-transparent hover:border-white/[0.06]">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-mono text-white/80">{finding.detector}</span>
-                          <span className="text-[10px] text-white/30 tabular-nums">{finding.time}</span>
+                  {items.map((finding) => {
+                    const { time } = formatDate(finding.created_at);
+                    return (
+                      <div
+                        key={finding.id}
+                        className="relative flex items-start gap-4 group"
+                      >
+                        {/* Timeline Dot */}
+                        <div className="absolute -left-4 top-1.5">
+                          <div className={cn(
+                            "w-2.5 h-2.5 rounded-full ring-2 ring-[#0a0a0f]",
+                            severityDots[finding.severity]
+                          )} />
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className={cn("text-sm font-medium", severityColors[finding.severity])}>
-                            {finding.message}
-                          </span>
-                          <span className={cn(
-                            "px-2 py-0.5 rounded text-[9px] uppercase font-medium tracking-wide",
-                            severityBgs[finding.severity],
-                            severityColors[finding.severity]
-                          )}>
-                            {finding.severity}
-                          </span>
+                        
+                        {/* Content */}
+                        <div className="flex-1 ml-2 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-transparent hover:border-white/[0.06]">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-mono text-white/80">{finding.detector_name}</span>
+                            <span className="text-[10px] text-white/30 tabular-nums">{time}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className={cn("text-sm font-medium", severityColors[finding.severity])}>
+                              {finding.title}
+                            </span>
+                            <span className={cn(
+                              "px-2 py-0.5 rounded text-[9px] uppercase font-medium tracking-wide",
+                              severityBgs[finding.severity],
+                              severityColors[finding.severity]
+                            )}>
+                              {finding.severity}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -227,6 +233,32 @@ export default function FindingsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch findings from API
+  useEffect(() => {
+    async function fetchFindings() {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const params: { severity?: string; limit?: number } = { limit: 100 };
+        if (filter) params.severity = filter;
+        
+        const { findings: data } = await api.getFindings(DEFAULT_SERVER_ID, params);
+        setFindings(data);
+      } catch (err) {
+        console.error("Failed to fetch findings:", err);
+        setError(err instanceof Error ? err.message : "Failed to load findings");
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchFindings();
+  }, [filter]);
 
   // Check for player query param on mount
   useEffect(() => {
@@ -237,20 +269,22 @@ export default function FindingsPage() {
     }
   }, [searchParams]);
 
-  const filtered = mockFindings.filter((f) => {
-    if (filter && f.severity !== filter) return false;
-    if (search && !f.player.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filtered = useMemo(() => {
+    return findings.filter((f) => {
+      if (search && !f.player_name?.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [findings, search]);
 
   // Get unique players from filtered findings for keyboard navigation
   const uniquePlayers = useMemo(() => {
     const seen = new Set<string>();
     return filtered.filter(f => {
-      if (seen.has(f.player)) return false;
-      seen.add(f.player);
+      const name = f.player_name || "Unknown";
+      if (seen.has(name)) return false;
+      seen.add(name);
       return true;
-    }).map(f => f.player);
+    }).map(f => f.player_name || "Unknown");
   }, [filtered]);
 
   // Navigate to next/previous player
@@ -341,38 +375,63 @@ export default function FindingsPage() {
         </div>
       </div>
 
-      {/* Content - All Findings */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="divide-y divide-white/[0.04]">
-          {filtered.map((finding) => (
-            <button
-              key={finding.id}
-              onClick={() => setSelectedPlayer(finding.player)}
-              className={cn(
-                "w-full flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors text-left",
-                selectedPlayer === finding.player && "bg-white/[0.04]"
-              )}
-            >
-              <div className={cn("w-2 h-2 rounded-full flex-shrink-0", severityDots[finding.severity])} />
-              <div className="w-32 flex-shrink-0">
-                <p className="text-sm text-white truncate">{finding.player}</p>
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-xs text-white/50 font-mono">{finding.detector}</span>
-              </div>
-              <div className="w-24 text-right flex-shrink-0">
-                <span className={cn("text-xs", severityColors[finding.severity])}>{finding.message}</span>
-              </div>
-              <div className="w-20 text-right flex-shrink-0">
-                <span className="text-[10px] text-white/30">{finding.date}</span>
-              </div>
-              <div className="w-14 text-right flex-shrink-0">
-                <span className="text-[10px] text-white/30 tabular-nums">{finding.time}</span>
-              </div>
-            </button>
-          ))}
+      {/* Loading / Error states */}
+      {loading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-white/60 text-sm">Loading findings...</div>
         </div>
-      </div>
+      )}
+      
+      {error && (
+        <div className="m-5">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
+            {error}
+          </div>
+        </div>
+      )}
+
+      {/* Content - All Findings */}
+      {!loading && !error && (
+        <div className="flex-1 overflow-y-auto">
+          {filtered.length === 0 && (
+            <div className="flex items-center justify-center h-full text-white/40 text-sm">
+              No findings found
+            </div>
+          )}
+          <div className="divide-y divide-white/[0.04]">
+            {filtered.map((finding) => {
+              const { date, time } = formatDate(finding.created_at);
+              return (
+                <button
+                  key={finding.id}
+                  onClick={() => setSelectedPlayer(finding.player_name || "Unknown")}
+                  className={cn(
+                    "w-full flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors text-left",
+                    selectedPlayer === finding.player_name && "bg-white/[0.04]"
+                  )}
+                >
+                  <div className={cn("w-2 h-2 rounded-full flex-shrink-0", severityDots[finding.severity])} />
+                  <div className="w-32 flex-shrink-0">
+                    <p className="text-sm text-white truncate">{finding.player_name || "Unknown"}</p>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs text-white/50 font-mono">{finding.detector_name}</span>
+                  </div>
+                  <div className="w-24 text-right flex-shrink-0">
+                    <span className={cn("text-xs", severityColors[finding.severity])}>{finding.title}</span>
+                  </div>
+                  <div className="w-20 text-right flex-shrink-0">
+                    <span className="text-[10px] text-white/30">{date}</span>
+                  </div>
+                  <div className="w-14 text-right flex-shrink-0">
+                    <span className="text-[10px] text-white/30 tabular-nums">{time}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Overlay Panel - Player History */}
       {selectedPlayer && (
@@ -389,7 +448,7 @@ export default function FindingsPage() {
           <div className="absolute top-4 right-4 bottom-4 w-[480px] z-50 bg-[#0c0c10] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden animate-slide-in-right">
             <PlayerHistoryPanel
               playerName={selectedPlayer}
-              findings={mockFindings}
+              findings={findings}
               onClose={() => {
                 setSelectedPlayer(null);
                 setSearch("");

@@ -36,9 +36,10 @@ export default function DashboardLayout({
     setServers(list);
     // Verify stored selection exists in list, fallback to first server
     const storedId = getSelectedWorkspaceId();
-    const validId = storedId && list.some((s) => s.id === storedId) 
-      ? storedId 
-      : list[0]?.id ?? null;
+    const validId =
+      storedId && list.some((s) => s.id === storedId)
+        ? storedId
+        : (list[0]?.id ?? null);
     setSelectedServerId(validId);
     setMounted(true);
   }, []);
@@ -70,9 +71,7 @@ export default function DashboardLayout({
         onServersChange={handleServersChange}
         onServerSelect={handleServerSelect}
       />
-      <main className="flex-1 ml-56 p-6">
-        {children}
-      </main>
+      <main className="flex-1 ml-56 p-6">{children}</main>
     </div>
   );
 }

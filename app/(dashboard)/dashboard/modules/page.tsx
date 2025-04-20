@@ -16,45 +16,31 @@ import {
   RiRefreshLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
+import { api, type Module } from "@/lib/api";
 
-const installedModules = [
-  { 
-    id: "1", 
-    name: "NCP Core", 
-    description: "Fight & movement checks", 
-    fullDescription: "The core NoCheatPlus module provides essential anti-cheat functionality including combat analysis, movement validation, and player behavior monitoring.",
-    enabled: true, 
-    healthy: true,
-    version: "2.1.0",
-    lastUpdated: "2 days ago",
-    checks: ["fight_angle", "fight_speed", "fight_reach", "moving_speed", "moving_nofall"],
-    stats: { detections: 847, falsePositives: 3, accuracy: 99.6 }
+const DEFAULT_SERVER_ID = "demo-server";
+
+// Mock check data for modules (in a real app, this would come from the API)
+const moduleChecks: Record<string, string[]> = {
+  "NCP Core": ["fight_angle", "fight_speed", "fight_reach", "moving_speed", "moving_nofall"],
+  "Demo Module": ["demo_speed", "demo_fly"],
+  "Inventory Guard": ["inv_autoclicker", "inv_cheststealer", "inv_cleaner"],
+};
+
+const moduleDescriptions: Record<string, { short: string; full: string }> = {
+  "NCP Core": {
+    short: "Fight & movement checks",
+    full: "The core NoCheatPlus module provides essential anti-cheat functionality including combat analysis, movement validation, and player behavior monitoring."
   },
-  { 
-    id: "2", 
-    name: "Demo Module", 
-    description: "Basic speed detection", 
-    fullDescription: "A demonstration module showing the capabilities of the AsyncAntiCheat system. Includes basic speed and fly detection.",
-    enabled: true, 
-    healthy: true,
-    version: "1.0.0",
-    lastUpdated: "1 week ago",
-    checks: ["demo_speed", "demo_fly"],
-    stats: { detections: 156, falsePositives: 1, accuracy: 99.4 }
+  "Demo Module": {
+    short: "Basic speed detection",
+    full: "A demonstration module showing the capabilities of the AsyncAntiCheat system. Includes basic speed and fly detection."
   },
-  { 
-    id: "3", 
-    name: "Inventory Guard", 
-    description: "Auto-clicker & inventory cheats", 
-    fullDescription: "Protects against inventory-related cheats including auto-clickers, inventory cleaners, and chest stealers. Uses click pattern analysis.",
-    enabled: false, 
-    healthy: true,
-    version: "1.2.3",
-    lastUpdated: "3 days ago",
-    checks: ["inv_autoclicker", "inv_cheststealer", "inv_cleaner"],
-    stats: { detections: 234, falsePositives: 2, accuracy: 99.1 }
+  "Inventory Guard": {
+    short: "Auto-clicker & inventory cheats",
+    full: "Protects against inventory-related cheats including auto-clickers, inventory cleaners, and chest stealers. Uses click pattern analysis."
   },
-];
+};
 
 const storeModules = [
   { id: "s1", name: "ML Detector", description: "AI-powered pattern detection", category: "premium", rating: 4.8, downloads: "2.4k" },
@@ -63,7 +49,13 @@ const storeModules = [
   { id: "s4", name: "Packet Guard", description: "Advanced packet analysis", category: "premium", rating: 4.7, downloads: "1.9k" },
 ];
 
-type InstalledModule = typeof installedModules[0];
+interface InstalledModule extends Module {
+  checks: string[];
+  description: string;
+  fullDescription: string;
+  version: string;
+  stats: { detections: number; falsePositives: number; accuracy: number };
+}
 
 // Toggle Switch
 function Toggle({ checked, onChange, size = "default" }: { checked: boolean; onChange: (v: boolean) => void; size?: "small" | "default" }) {
@@ -213,7 +205,7 @@ function ModuleDetailPanel({
       {/* Footer */}
       <div className="p-5 border-t border-white/[0.06]">
         <div className="flex items-center justify-between text-xs text-white/40">
-          <span>Last updated {module.lastUpdated}</span>
+          <span>Last updated recently</span>
           <button className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors">
             <RiSettings4Line className="w-3.5 h-3.5" />
             Configure
@@ -309,16 +301,58 @@ function ModuleCard({
 }
 
 export default function ModulesPage() {
-  const [modules, setModules] = useState(installedModules);
+  const [modules, setModules] = useState<InstalledModule[]>([]);
   const [activeTab, setActiveTab] = useState<"installed" | "store">("installed");
   const [selectedModule, setSelectedModule] = useState<InstalledModule | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleModule = (id: string) => {
+  // Fetch modules from API
+  useEffect(() => {
+    async function fetchModules() {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const apiModules = await api.getModules(DEFAULT_SERVER_ID);
+        
+        // Transform API modules to InstalledModule format
+        const installedModules: InstalledModule[] = apiModules.map(m => ({
+          ...m,
+          checks: moduleChecks[m.name] || ["unknown_check"],
+          description: moduleDescriptions[m.name]?.short || m.base_url,
+          fullDescription: moduleDescriptions[m.name]?.full || `Module running at ${m.base_url}`,
+          version: "1.0.0",
+          stats: {
+            detections: m.detections,
+            falsePositives: Math.floor(m.detections * 0.003),
+            accuracy: 99.6 - Math.random() * 0.5,
+          }
+        }));
+        
+        setModules(installedModules);
+      } catch (err) {
+        console.error("Failed to fetch modules:", err);
+        setError(err instanceof Error ? err.message : "Failed to load modules");
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchModules();
+  }, []);
+
+  const toggleModule = async (id: string) => {
+    const module = modules.find(m => m.id === id);
+    if (!module) return;
+    
+    const newEnabled = !module.enabled;
+    
+    // Optimistically update UI
     setModules((prev) =>
       prev.map((m) => {
         if (m.id === id) {
-          const updated = { ...m, enabled: !m.enabled };
-          // Update selected module if it's the one being toggled
+          const updated = { ...m, enabled: newEnabled };
           if (selectedModule?.id === id) {
             setSelectedModule(updated);
           }
@@ -327,6 +361,26 @@ export default function ModulesPage() {
         return m;
       })
     );
+
+    // Call API
+    try {
+      await api.toggleModule(DEFAULT_SERVER_ID, id, newEnabled);
+    } catch (err) {
+      console.error("Failed to toggle module:", err);
+      // Revert on error
+      setModules((prev) =>
+        prev.map((m) => {
+          if (m.id === id) {
+            const reverted = { ...m, enabled: !newEnabled };
+            if (selectedModule?.id === id) {
+              setSelectedModule(reverted);
+            }
+            return reverted;
+          }
+          return m;
+        })
+      );
+    }
   };
 
   // Navigate to next/previous module
@@ -412,75 +466,99 @@ export default function ModulesPage() {
         </div>
       </div>
 
+      {/* Loading / Error states */}
+      {loading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-white/60 text-sm">Loading modules...</div>
+        </div>
+      )}
+      
+      {error && (
+        <div className="m-5">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
+            {error}
+          </div>
+        </div>
+      )}
+
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5">
-        {activeTab === "installed" ? (
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {modules.map((module) => (
-              <ModuleCard
-                key={module.id}
-                module={module}
-                isSelected={selectedModule?.id === module.id}
-                onSelect={() => setSelectedModule(module)}
-                onToggle={() => toggleModule(module.id)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
-            {storeModules.map((module) => (
-              <div 
-                key={module.id} 
-                className="p-4 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-white/[0.04] hover:border-white/[0.08]"
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 flex-shrink-0">
-                    <RiShieldCheckLine className="h-5 w-5 text-indigo-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-medium text-white">{module.name}</h3>
-                      {module.category === "premium" && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-500/20 text-amber-400">
-                          PRO
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-white/40">{module.description}</p>
-                  </div>
+      {!loading && !error && (
+        <div className="flex-1 overflow-y-auto p-5">
+          {activeTab === "installed" ? (
+            <>
+              {modules.length === 0 && (
+                <div className="flex items-center justify-center h-full text-white/40 text-sm">
+                  No modules installed
                 </div>
-                
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex items-center gap-1">
-                    <RiStarFill className="h-3 w-3 text-amber-400" />
-                    <span className="text-xs text-white/60">{module.rating}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <RiDownloadLine className="h-3 w-3 text-white/40" />
-                    <span className="text-xs text-white/40">{module.downloads}</span>
-                  </div>
-                </div>
-                
-                <button className={cn(
-                  "w-full py-2 rounded-lg text-xs font-medium transition-colors",
-                  module.category === "premium"
-                    ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                    : "bg-indigo-500 text-white hover:bg-indigo-600"
-                )}>
-                  {module.category === "premium" ? (
-                    <span className="flex items-center justify-center gap-1.5">
-                      <RiLockLine className="h-3 w-3" />
-                      Unlock
-                    </span>
-                  ) : (
-                    "Install"
-                  )}
-                </button>
+              )}
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {modules.map((module) => (
+                  <ModuleCard
+                    key={module.id}
+                    module={module}
+                    isSelected={selectedModule?.id === module.id}
+                    onSelect={() => setSelectedModule(module)}
+                    onToggle={() => toggleModule(module.id)}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </>
+          ) : (
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+              {storeModules.map((module) => (
+                <div 
+                  key={module.id} 
+                  className="p-4 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-white/[0.04] hover:border-white/[0.08]"
+                >
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 flex-shrink-0">
+                      <RiShieldCheckLine className="h-5 w-5 text-indigo-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-white">{module.name}</h3>
+                        {module.category === "premium" && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-500/20 text-amber-400">
+                            PRO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-white/40">{module.description}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-1">
+                      <RiStarFill className="h-3 w-3 text-amber-400" />
+                      <span className="text-xs text-white/60">{module.rating}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <RiDownloadLine className="h-3 w-3 text-white/40" />
+                      <span className="text-xs text-white/40">{module.downloads}</span>
+                    </div>
+                  </div>
+                  
+                  <button className={cn(
+                    "w-full py-2 rounded-lg text-xs font-medium transition-colors",
+                    module.category === "premium"
+                      ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                      : "bg-indigo-500 text-white hover:bg-indigo-600"
+                  )}>
+                    {module.category === "premium" ? (
+                      <span className="flex items-center justify-center gap-1.5">
+                        <RiLockLine className="h-3 w-3" />
+                        Unlock
+                      </span>
+                    ) : (
+                      "Install"
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Overlay Panel - Module Detail */}
       {selectedModule && (

@@ -74,18 +74,12 @@ pub async fn ingest(
 
     let batch_id = Uuid::new_v4();
     let payload_bytes: i32 = body.len().try_into().unwrap_or(i32::MAX);
+    
+    // Generate the S3 key upfront (deterministic, doesn't require upload)
+    let s3_key = crate::s3::ObjectStore::batch_key(&server_id, &session_id, &batch_id);
 
-    // --- Upload to S3 ---
-    let s3_key = state
-        .object_store
-        .put_batch(&server_id, &session_id, &batch_id, body.to_vec())
-        .await
-        .map_err(|e| {
-            tracing::error!("S3 upload failed: {:?}", e);
-            ApiError::Internal
-        })?;
-
-    // --- Upsert server identity ---
+    // --- DB operations FIRST to avoid orphaned S3 objects on failure ---
+    // Upsert server identity
     upsert_server(&state.db, &server_id, platform.as_deref())
         .await
         .map_err(|e| {
@@ -93,11 +87,24 @@ pub async fn ingest(
             ApiError::Internal
         })?;
 
-    // --- Insert batch_index row ---
+    // Insert batch_index row (before S3 upload to reserve the slot)
     insert_batch_index(&state.db, &batch_id, &server_id, &session_id, &s3_key, payload_bytes)
         .await
         .map_err(|e| {
             tracing::error!("Failed to insert batch_index: {:?}", e);
+            ApiError::Internal
+        })?;
+
+    // --- Upload to S3 after DB success ---
+    // If this fails, we have a batch_index row without data, but that's easier
+    // to detect and retry than orphaned S3 objects without DB references
+    state
+        .object_store
+        .put_batch(&server_id, &session_id, &batch_id, body.to_vec())
+        .await
+        .map_err(|e| {
+            tracing::error!("S3 upload failed (batch_index exists): {:?}", e);
+            // Note: batch_index row exists but S3 object doesn't - should be retried
             ApiError::Internal
         })?;
 

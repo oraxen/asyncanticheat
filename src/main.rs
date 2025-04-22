@@ -107,6 +107,10 @@ async fn main() -> anyhow::Result<()> {
             "/dashboard/:server_id/modules/:module_id/toggle",
             axum::routing::post(routes::dashboard::toggle_module),
         )
+        .route(
+            "/dashboard/:server_id/status",
+            get(routes::dashboard::get_status),
+        )
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());

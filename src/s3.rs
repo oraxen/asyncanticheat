@@ -32,6 +32,8 @@ impl ObjectStore {
             });
         }
 
+        let use_path_style = cfg.s3_endpoint.is_some(); // Only use path-style for custom endpoints (MinIO, etc.)
+        
         let region = if let Some(ref endpoint) = cfg.s3_endpoint {
             Region::Custom {
                 region: cfg.s3_region.clone(),
@@ -50,7 +52,14 @@ impl ObjectStore {
             Credentials::default()?
         };
 
-        let bucket = Bucket::new(&cfg.s3_bucket, region, credentials)?.with_path_style();
+        let bucket = Bucket::new(&cfg.s3_bucket, region, credentials)?;
+        // Only use path-style addressing for custom endpoints (like MinIO)
+        // AWS S3 prefers virtual-hosted style
+        let bucket = if use_path_style {
+            bucket.with_path_style()
+        } else {
+            bucket
+        };
         Ok(Self::S3 { bucket })
     }
 

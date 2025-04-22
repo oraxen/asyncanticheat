@@ -3,6 +3,9 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use std::time::{Duration, Instant};
+use tokio::net::TcpStream;
+use tokio::time::timeout;
 use uuid::Uuid;
 
 use crate::{error::ApiError, AppState};
@@ -510,4 +513,116 @@ pub async fn get_servers(State(state): State<AppState>) -> Result<Json<ServersRe
         .collect();
 
     Ok(Json(ServersResponse { ok: true, servers }))
+}
+
+// ============================================================================
+// Connection Status Endpoint
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+pub struct ConnectionStatus {
+    /// Milliseconds since the plugin last sent data
+    pub plugin_last_seen_ms: i64,
+    /// Whether the plugin is considered online (seen within last 30s)
+    pub plugin_online: bool,
+    /// TCP ping to the Minecraft server in ms (if reachable)
+    pub server_ping_ms: Option<i64>,
+    /// Whether the server responded to TCP ping
+    pub server_reachable: bool,
+    /// The server address that was pinged
+    pub server_address: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StatusResponse {
+    pub ok: bool,
+    pub status: ConnectionStatus,
+}
+
+/// Perform a TCP ping to the Minecraft server
+async fn tcp_ping(address: &str, port: u16) -> Option<i64> {
+    let addr = format!("{}:{}", address, port);
+    let start = Instant::now();
+
+    match timeout(Duration::from_secs(3), TcpStream::connect(&addr)).await {
+        Ok(Ok(_stream)) => {
+            let elapsed = start.elapsed().as_millis() as i64;
+            Some(elapsed)
+        }
+        _ => None,
+    }
+}
+
+/// GET /dashboard/:server_id/status
+///
+/// Returns connection status including plugin heartbeat and server ping.
+pub async fn get_status(
+    State(state): State<AppState>,
+    Path(server_id): Path<String>,
+) -> Result<Json<StatusResponse>, ApiError> {
+    // Get server info including last_seen_at and callback_url
+    let server: Option<(chrono::DateTime<chrono::Utc>, Option<String>)> =
+        sqlx::query_as("SELECT last_seen_at, callback_url FROM public.servers WHERE id = $1")
+            .bind(&server_id)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("get server status failed: {:?}", e);
+                ApiError::Internal
+            })?;
+
+    let (last_seen_at, callback_url) = match server {
+        Some(s) => s,
+        None => {
+            return Ok(Json(StatusResponse {
+                ok: true,
+                status: ConnectionStatus {
+                    plugin_last_seen_ms: -1,
+                    plugin_online: false,
+                    server_ping_ms: None,
+                    server_reachable: false,
+                    server_address: None,
+                },
+            }));
+        }
+    };
+
+    let now = chrono::Utc::now();
+    let plugin_last_seen_ms = (now - last_seen_at).num_milliseconds();
+    let plugin_online = plugin_last_seen_ms < 30_000; // Online if seen within 30s
+
+    // Try to ping the server if we have an address
+    // The callback_url might be like "http://ip:port" or just "ip:port"
+    // Or we might need to extract from server_id if it contains IP info
+    let (server_ping_ms, server_reachable, server_address) = if let Some(ref url) = callback_url {
+        // Extract host from URL
+        let host = url
+            .replace("http://", "")
+            .replace("https://", "")
+            .split(':')
+            .next()
+            .unwrap_or("")
+            .to_string();
+
+        if !host.is_empty() && host != "127.0.0.1" && host != "localhost" {
+            // Ping Minecraft default port (25565)
+            let ping = tcp_ping(&host, 25565).await;
+            (ping, ping.is_some(), Some(format!("{}:25565", host)))
+        } else {
+            (None, false, None)
+        }
+    } else {
+        (None, false, None)
+    };
+
+    Ok(Json(StatusResponse {
+        ok: true,
+        status: ConnectionStatus {
+            plugin_last_seen_ms,
+            plugin_online,
+            server_ping_ms,
+            server_reachable,
+            server_address,
+        },
+    }))
 }

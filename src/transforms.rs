@@ -443,20 +443,36 @@ fn ncp_fight_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
                 .and_then(|s| Uuid::parse_str(s).ok());
             let Some(uuid) = uuid else { continue };
 
-            // Use last known and update partials.
-            let prev = player_pose.get(&uuid).copied().unwrap_or(PlayerPose {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-                yaw: 0.0,
-                pitch: 0.0,
-            });
-            let x = fields.get("x").and_then(|x| x.as_f64()).unwrap_or(prev.x);
-            let y = fields.get("y").and_then(|x| x.as_f64()).unwrap_or(prev.y);
-            let z = fields.get("z").and_then(|x| x.as_f64()).unwrap_or(prev.z);
-            let yaw = fields.get("yaw").and_then(|x| x.as_f64()).unwrap_or(prev.yaw);
-            let pitch = fields.get("pitch").and_then(|x| x.as_f64()).unwrap_or(prev.pitch);
-            player_pose.insert(uuid, PlayerPose { x, y, z, yaw, pitch });
+            // Get position/rotation fields from packet
+            let x = fields.get("x").and_then(|x| x.as_f64());
+            let y = fields.get("y").and_then(|x| x.as_f64());
+            let z = fields.get("z").and_then(|x| x.as_f64());
+            let yaw = fields.get("yaw").and_then(|x| x.as_f64());
+            let pitch = fields.get("pitch").and_then(|x| x.as_f64());
+
+            // Update pose, but only if we have real position data
+            // Avoid seeding bogus (0,0,0) positions from rotation-only packets
+            if let Some(prev) = player_pose.get(&uuid).copied() {
+                // Update with new values, keeping old ones for missing fields
+                player_pose.insert(uuid, PlayerPose {
+                    x: x.unwrap_or(prev.x),
+                    y: y.unwrap_or(prev.y),
+                    z: z.unwrap_or(prev.z),
+                    yaw: yaw.unwrap_or(prev.yaw),
+                    pitch: pitch.unwrap_or(prev.pitch),
+                });
+            } else if let (Some(x), Some(y), Some(z)) = (x, y, z) {
+                // First pose - only create if we have actual position coordinates
+                // This prevents seeding (0,0,0) from rotation-only packets
+                player_pose.insert(uuid, PlayerPose {
+                    x,
+                    y,
+                    z,
+                    yaw: yaw.unwrap_or(0.0),
+                    pitch: pitch.unwrap_or(0.0),
+                });
+            }
+            // If no previous pose and no position coords, skip - don't seed bogus values
             continue;
         }
 

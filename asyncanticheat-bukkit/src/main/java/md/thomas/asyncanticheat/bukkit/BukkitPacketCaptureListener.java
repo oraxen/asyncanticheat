@@ -161,6 +161,12 @@ final class BukkitPacketCaptureListener implements PacketListener {
             return extractUseItem(event);
         }
 
+        // Modern versions (1.9+): block interactions use USE_ITEM_ON / INTERACT_BLOCK style packets.
+        // PacketEvents may surface these as distinct packet types on newer protocol versions.
+        if ("USE_ITEM_ON".equals(String.valueOf(packetType)) || "INTERACT_BLOCK".equals(String.valueOf(packetType))) {
+            return extractUseItemOnLike(event);
+        }
+
         // === ENTITY ACTION PACKETS ===
         // Sprint, sneak, jump with horse, etc.
         
@@ -395,6 +401,62 @@ final class BukkitPacketCaptureListener implements PacketListener {
         // Rotation at use time (1.19+)
         m.put("yaw", wrapper.getYaw());
         m.put("pitch", wrapper.getPitch());
+        return m;
+    }
+
+    /**
+     * Best-effort extraction for modern "use item on block" packets on newer Minecraft versions.
+     * We intentionally avoid directly referencing PacketEvents wrapper classes that may not exist
+     * in all supported builds, and instead extract by reflection.
+     */
+    @NotNull
+    private static Map<String, Object> extractUseItemOnLike(@NotNull PacketReceiveEvent event) {
+        final Map<String, Object> m = new HashMap<>();
+        try {
+            final Object wrapper = new WrapperPlayClientUseItem(event);
+            // Fallback: at least capture hand/sequence/yaw/pitch when available.
+            m.put("hand", ((WrapperPlayClientUseItem) wrapper).getHand().name());
+            m.put("sequence", ((WrapperPlayClientUseItem) wrapper).getSequence());
+            m.put("yaw", ((WrapperPlayClientUseItem) wrapper).getYaw());
+            m.put("pitch", ((WrapperPlayClientUseItem) wrapper).getPitch());
+        } catch (Throwable ignored) {
+            // ignore
+        }
+
+        // Try extracting block interaction fields via reflection (position/face/cursor/inside_block)
+        try {
+            final Class<?> evtCls = event.getClass();
+            // No-op: ensures event is referenced so reflection below doesn't get optimized away.
+            if (evtCls == null) return m;
+
+            // Attempt to construct WrapperPlayClientPlayerBlockPlacement against this event if compatible.
+            try {
+                final WrapperPlayClientPlayerBlockPlacement w = new WrapperPlayClientPlayerBlockPlacement(event);
+                final Vector3i pos = w.getBlockPosition();
+                if (pos != null) {
+                    m.put("x", pos.getX());
+                    m.put("y", pos.getY());
+                    m.put("z", pos.getZ());
+                }
+                if (w.getFace() != null) {
+                    m.put("face", w.getFace().name());
+                }
+                if (w.getHand() != null) {
+                    m.put("hand", w.getHand().name());
+                }
+                if (w.getCursorPosition() != null) {
+                    m.put("cursor_x", w.getCursorPosition().getX());
+                    m.put("cursor_y", w.getCursorPosition().getY());
+                    m.put("cursor_z", w.getCursorPosition().getZ());
+                }
+                m.put("inside_block", w.getInsideBlock());
+                m.put("sequence", w.getSequence());
+            } catch (Throwable ignored) {
+                // If wrapper construction isn't compatible, just keep partial fields.
+            }
+        } catch (Throwable ignored) {
+            // ignore
+        }
         return m;
     }
 

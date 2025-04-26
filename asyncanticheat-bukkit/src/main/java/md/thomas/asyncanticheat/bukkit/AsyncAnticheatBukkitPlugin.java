@@ -5,6 +5,9 @@ import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import md.thomas.asyncanticheat.core.AcLogger;
 import md.thomas.asyncanticheat.core.AsyncAnticheatService;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -53,6 +56,15 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
         }
 
         devMode = new BukkitDevModeManager(this, service);
+        // Ensure dev sessions are stopped immediately on logout (no orphaned repeating tasks)
+        getServer().getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onQuit(PlayerQuitEvent event) {
+                if (devMode != null) {
+                    devMode.stopSilent(event.getPlayer().getUniqueId());
+                }
+            }
+        }, this);
         final PluginCommand cmd = getCommand("aacdev");
         if (cmd != null) {
             final BukkitDevModeCommand executor = new BukkitDevModeCommand(devMode, service);

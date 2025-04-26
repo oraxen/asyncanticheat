@@ -67,12 +67,12 @@ final class VelocityDevModeManager {
     }
 
     void stopAll(@NotNull String reason) {
-        for (UUID id : sessions.keySet()) {
+        for (UUID id : sessions.keySet().toArray(new UUID[0])) {
             final Player p = server.getPlayer(id).orElse(null);
             if (p != null) {
                 stop(p, reason);
             } else {
-                sessions.remove(id);
+                stopSilent(id);
             }
         }
     }
@@ -87,7 +87,8 @@ final class VelocityDevModeManager {
         if (s == null) return;
         final Player player = server.getPlayer(playerId).orElse(null);
         if (player == null) {
-            sessions.remove(playerId);
+            // Player disconnected: cancel repeating task and remove session without emitting markers/messages.
+            stopSilent(playerId);
             return;
         }
 
@@ -147,6 +148,14 @@ final class VelocityDevModeManager {
 
     private static void send(@NotNull Player player, @NotNull String msg) {
         player.sendMessage(Component.text(msg));
+    }
+
+    void stopSilent(@NotNull UUID playerId) {
+        final Session s = sessions.remove(playerId);
+        if (s == null) return;
+        if (s.task != null) {
+            s.task.cancel();
+        }
     }
 
     static final class Session {

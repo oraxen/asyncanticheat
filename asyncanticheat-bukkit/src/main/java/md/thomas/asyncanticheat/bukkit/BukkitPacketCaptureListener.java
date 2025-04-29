@@ -378,15 +378,19 @@ final class BukkitPacketCaptureListener implements PacketListener {
         final WrapperPlayClientPlayerBlockPlacement wrapper = new WrapperPlayClientPlayerBlockPlacement(event);
         final Map<String, Object> m = new HashMap<>();
         final Vector3i pos = wrapper.getBlockPosition();
-        m.put("x", pos.getX());
-        m.put("y", pos.getY());
-        m.put("z", pos.getZ());
-        m.put("face", wrapper.getFace().name());
-        m.put("hand", wrapper.getHand().name());
+        if (pos != null) {
+            m.put("x", pos.getX());
+            m.put("y", pos.getY());
+            m.put("z", pos.getZ());
+        }
+        m.put("face", wrapper.getFace() == null ? null : wrapper.getFace().name());
+        m.put("hand", wrapper.getHand() == null ? null : wrapper.getHand().name());
         // Cursor position within the block face
-        m.put("cursor_x", wrapper.getCursorPosition().getX());
-        m.put("cursor_y", wrapper.getCursorPosition().getY());
-        m.put("cursor_z", wrapper.getCursorPosition().getZ());
+        if (wrapper.getCursorPosition() != null) {
+            m.put("cursor_x", wrapper.getCursorPosition().getX());
+            m.put("cursor_y", wrapper.getCursorPosition().getY());
+            m.put("cursor_z", wrapper.getCursorPosition().getZ());
+        }
         m.put("inside_block", wrapper.getInsideBlock());
         m.put("sequence", wrapper.getSequence());
         return m;
@@ -425,10 +429,6 @@ final class BukkitPacketCaptureListener implements PacketListener {
 
         // Try extracting block interaction fields via reflection (position/face/cursor/inside_block)
         try {
-            final Class<?> evtCls = event.getClass();
-            // No-op: ensures event is referenced so reflection below doesn't get optimized away.
-            if (evtCls == null) return m;
-
             // Attempt to construct WrapperPlayClientPlayerBlockPlacement against this event if compatible.
             try {
                 final WrapperPlayClientPlayerBlockPlacement w = new WrapperPlayClientPlayerBlockPlacement(event);

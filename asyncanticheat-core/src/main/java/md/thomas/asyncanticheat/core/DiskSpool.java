@@ -11,6 +11,7 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -46,12 +47,12 @@ final class DiskSpool {
         final String name = "batch-" + Instant.now().toEpochMilli() + "-" + UUID.randomUUID() + ".ndjson.gz";
         final File out = new File(spoolDir, name);
 
-        final Map<String, Object> meta = Map.of(
-                "server_id", serverId,
-                "session_id", sessionId,
-                "created_at_ms", System.currentTimeMillis(),
-                "event_count", records.size()
-        );
+        // NOTE: Map.of rejects null values; PacketRecord fields may be null (e.g., Bungee can enqueue nulls).
+        final Map<String, Object> meta = new HashMap<>();
+        meta.put("server_id", serverId);
+        meta.put("session_id", sessionId);
+        meta.put("created_at_ms", System.currentTimeMillis());
+        meta.put("event_count", records.size());
 
         try (FileOutputStream fos = new FileOutputStream(out);
              GZIPOutputStream gzip = new GZIPOutputStream(fos);
@@ -62,14 +63,15 @@ final class DiskSpool {
             writer.write("\n");
 
             for (PacketRecord r : records) {
-                writer.write(gson.toJson(Map.of(
-                        "ts", r.getTimestampMs(),
-                        "dir", r.getDirection(),
-                        "pkt", r.getPacketName(),
-                        "uuid", r.getPlayerUuid(),
-                        "name", r.getPlayerName(),
-                        "fields", r.getFields()
-                )));
+                final Map<String, Object> line = new HashMap<>();
+                line.put("ts", r.getTimestampMs());
+                line.put("dir", r.getDirection());
+                line.put("pkt", r.getPacketName());
+                // These can be null (and that's OK) - Gson will emit nulls.
+                line.put("uuid", r.getPlayerUuid());
+                line.put("name", r.getPlayerName());
+                line.put("fields", r.getFields());
+                writer.write(gson.toJson(line));
                 writer.write("\n");
             }
             writer.flush();

@@ -47,6 +47,26 @@ export interface Server {
   last_seen_at: string;
 }
 
+export interface ConnectionStatus {
+  plugin_last_seen_ms: number;
+  plugin_online: boolean;
+  server_ping_ms: number | null;
+  server_reachable: boolean;
+  server_address: string | null;
+}
+
+export interface ConnectionMetrics {
+  // API latency (measured from dashboard)
+  apiLatencyMs: number;
+  // Plugin heartbeat info (from API)
+  pluginLastSeenMs: number;
+  pluginOnline: boolean;
+  // Server TCP ping (from API to MC server)
+  serverPingMs: number | null;
+  serverReachable: boolean;
+  serverAddress: string | null;
+}
+
 // API Response types
 interface StatsResponse {
   ok: boolean;
@@ -72,6 +92,11 @@ interface ModulesResponse {
 interface ServersResponse {
   ok: boolean;
   servers: Server[];
+}
+
+interface StatusResponse {
+  ok: boolean;
+  status: ConnectionStatus;
 }
 
 // Mock data for demo mode
@@ -110,12 +135,14 @@ const MOCK_STATS: DashboardStats = {
 class ApiClient {
   private baseUrl: string;
   private useMockData: boolean = false;
+  private lastApiLatencyMs: number = 0;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
   }
 
   private async fetch<T>(path: string, options?: RequestInit): Promise<T> {
+    const start = performance.now();
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         ...options,
@@ -125,6 +152,8 @@ class ApiClient {
         },
       });
 
+      this.lastApiLatencyMs = Math.round(performance.now() - start);
+
       if (!response.ok) {
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
@@ -133,11 +162,17 @@ class ApiClient {
       this.useMockData = false;
       return data;
     } catch (error) {
+      this.lastApiLatencyMs = Math.round(performance.now() - start);
       // Fall back to mock data if API is unavailable
       console.warn("API unavailable, using mock data:", error);
       this.useMockData = true;
       throw error;
     }
+  }
+
+  // Get the last API request latency
+  getLastApiLatency(): number {
+    return this.lastApiLatencyMs;
   }
 
   // Get all servers
@@ -231,6 +266,33 @@ class ApiClient {
     } catch {
       // In mock mode, just log the toggle
       console.log(`Mock toggle: ${moduleId} -> ${enabled}`);
+    }
+  }
+
+  // Get connection status and metrics
+  async getConnectionStatus(serverId: string): Promise<ConnectionMetrics> {
+    try {
+      const response = await this.fetch<StatusResponse>(
+        `/dashboard/${serverId}/status`
+      );
+      return {
+        apiLatencyMs: this.lastApiLatencyMs,
+        pluginLastSeenMs: response.status.plugin_last_seen_ms,
+        pluginOnline: response.status.plugin_online,
+        serverPingMs: response.status.server_ping_ms,
+        serverReachable: response.status.server_reachable,
+        serverAddress: response.status.server_address,
+      };
+    } catch {
+      // Return mock data when API unavailable
+      return {
+        apiLatencyMs: this.lastApiLatencyMs || -1,
+        pluginLastSeenMs: -1,
+        pluginOnline: false,
+        serverPingMs: null,
+        serverReachable: false,
+        serverAddress: null,
+      };
     }
   }
 }

@@ -14,7 +14,13 @@ import {
 } from "@remixicon/react";
 
 // FAQ Item Component
-function FaqItem({ question, children }: { question: string; children: React.ReactNode }) {
+function FaqItem({
+  question,
+  children,
+}: {
+  question: string;
+  children: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="border-b border-[rgb(var(--border))]">
@@ -55,8 +61,12 @@ function FeatureCard({
       <div className="mb-3 inline-flex rounded-md bg-indigo-500/10 p-2">
         <Icon className="h-5 w-5 text-indigo-500" />
       </div>
-      <h3 className="mb-1.5 text-sm font-semibold text-[rgb(var(--foreground))]">{title}</h3>
-      <p className="text-sm text-[rgb(var(--foreground-secondary))] leading-relaxed">{description}</p>
+      <h3 className="mb-1.5 text-sm font-semibold text-[rgb(var(--foreground))]">
+        {title}
+      </h3>
+      <p className="text-sm text-[rgb(var(--foreground-secondary))] leading-relaxed">
+        {description}
+      </p>
       {link && linkText && (
         <Link
           href={link}
@@ -194,7 +204,10 @@ export default function HomePage() {
             </h2>
             <p className="mt-2 text-sm text-[rgb(var(--foreground-secondary))]">
               Can&apos;t find the answer?{" "}
-              <Link href="https://discord.gg/asyncanticheat" className="text-indigo-500 hover:text-indigo-400">
+              <Link
+                href="https://discord.gg/asyncanticheat"
+                className="text-indigo-500 hover:text-indigo-400"
+              >
                 Join our Discord
               </Link>
             </p>
@@ -202,36 +215,48 @@ export default function HomePage() {
 
           <div className="rounded-lg border border-[rgb(var(--border))] surface-1 px-4">
             <FaqItem question="What is AsyncAnticheat?">
-              AsyncAnticheat is a next-generation anticheat system that offloads detection to cloud services. 
-              Your Minecraft server captures relevant packets and sends them to external &quot;modules&quot; 
-              that analyze player behavior and report findings back to a central dashboard.
+              AsyncAnticheat is a next-generation anticheat system that offloads
+              detection to cloud services. Your Minecraft server captures
+              relevant packets and sends them to external &quot;modules&quot;
+              that analyze player behavior and report findings back to a central
+              dashboard.
             </FaqItem>
             <FaqItem question="What servers are supported?">
-              AsyncAnticheat supports Paper, Spigot, BungeeCord, and Velocity. The plugin uses PacketEvents 
-              for cross-platform packet interception.
+              AsyncAnticheat supports Paper, Spigot, BungeeCord, and Velocity.
+              The plugin uses PacketEvents for cross-platform packet
+              interception.
             </FaqItem>
             <FaqItem question="What checks are included?">
-              The NCP module includes fight checks (angle, speed, reach, direction) and movement checks 
-              (speed, more-packets, no-fall). You can also create custom modules.
+              The NCP module includes fight checks (angle, speed, reach,
+              direction) and movement checks (speed, more-packets, no-fall). You
+              can also create custom modules.
             </FaqItem>
             <FaqItem question="Does it impact server performance?">
-              Minimal impact. Packet capture runs on the network thread with efficient filtering. 
-              Heavy processing happens off-server. Most servers see less than 1% overhead.
+              Minimal impact. Packet capture runs on the network thread with
+              efficient filtering. Heavy processing happens off-server. Most
+              servers see less than 1% overhead.
             </FaqItem>
             <FaqItem question="How do I create custom modules?">
-              Modules are HTTP services that receive packet batches and return findings. You can write 
-              them in any language. See the{" "}
-              <Link href="https://docs.asyncanticheat.com" className="text-indigo-500 hover:underline">
+              Modules are HTTP services that receive packet batches and return
+              findings. You can write them in any language. See the{" "}
+              <Link
+                href="https://docs.asyncanticheat.com"
+                className="text-indigo-500 hover:underline"
+              >
                 documentation
               </Link>{" "}
               for details.
             </FaqItem>
             <FaqItem question="Is AsyncAnticheat free?">
-              Yes, AsyncAnticheat is open source under GPL-3.0. You can self-host everything.
+              Yes, AsyncAnticheat is open source under GPL-3.0. You can
+              self-host everything.
             </FaqItem>
             <FaqItem question="Where can I find documentation?">
               Full documentation is available at{" "}
-              <Link href="https://docs.asyncanticheat.com" className="text-indigo-500 hover:underline inline-flex items-center gap-0.5">
+              <Link
+                href="https://docs.asyncanticheat.com"
+                className="text-indigo-500 hover:underline inline-flex items-center gap-0.5"
+              >
                 docs.asyncanticheat.com
                 <RiExternalLinkLine className="h-3 w-3" />
               </Link>
@@ -246,7 +271,10 @@ export default function HomePage() {
           <div className="flex flex-col items-center justify-between gap-3 md:flex-row">
             <p className="text-xs text-[rgb(var(--foreground-muted))]">
               © {new Date().getFullYear()}{" "}
-              <Link href="https://thomas.md" className="text-[rgb(var(--foreground-tertiary))] hover:text-[rgb(var(--foreground-secondary))] transition-colors">
+              <Link
+                href="https://thomas.md"
+                className="text-[rgb(var(--foreground-tertiary))] hover:text-[rgb(var(--foreground-secondary))] transition-colors"
+              >
                 Thomas Marchand
               </Link>
             </p>

@@ -9,7 +9,12 @@ import {
   RiMapPinLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
-import { api, type Player as ApiPlayer, type DashboardStats, type ConnectionMetrics } from "@/lib/api";
+import {
+  api,
+  type Player as ApiPlayer,
+  type DashboardStats,
+  type ConnectionMetrics,
+} from "@/lib/api";
 
 // Transform API player to dashboard player format
 interface DashboardPlayer {
@@ -542,7 +547,8 @@ export default function DashboardPage() {
   );
   const [players, setPlayers] = useState<DashboardPlayer[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [connectionMetrics, setConnectionMetrics] = useState<ConnectionMetrics | null>(null);
+  const [connectionMetrics, setConnectionMetrics] =
+    useState<ConnectionMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -561,22 +567,20 @@ export default function DashboardPage() {
         ]);
 
         // Transform API players to dashboard format
-        const dashboardPlayers: DashboardPlayer[] = playersData.map(
-          (p) => {
-            const pos = generateGlobePosition(p.uuid);
-            return {
-              id: p.uuid,
-              name: p.username,
-              lat: pos.lat,
-              lng: pos.lng,
-              severity: p.highest_severity,
-              detector: p.detectors[0] || "unknown",
-              findings: p.findings_count,
-              lastSeen: formatRelativeTime(p.last_seen),
-              region: "Global", // Could be enhanced with GeoIP
-            };
-          }
-        );
+        const dashboardPlayers: DashboardPlayer[] = playersData.map((p) => {
+          const pos = generateGlobePosition(p.uuid);
+          return {
+            id: p.uuid,
+            name: p.username,
+            lat: pos.lat,
+            lng: pos.lng,
+            severity: p.highest_severity,
+            detector: p.detectors[0] || "unknown",
+            findings: p.findings_count,
+            lastSeen: formatRelativeTime(p.last_seen),
+            region: "Global", // Could be enhanced with GeoIP
+          };
+        });
 
         setPlayers(dashboardPlayers);
         setStats(statsData);
@@ -605,7 +609,7 @@ export default function DashboardPage() {
     const dataInterval = setInterval(fetchData, 30000);
     // Refresh connection status every 5 seconds
     const statusInterval = setInterval(fetchConnectionStatus, 5000);
-    
+
     return () => {
       clearInterval(dataInterval);
       clearInterval(statusInterval);
@@ -685,7 +689,11 @@ export default function DashboardPage() {
               value={stats?.players_monitored ?? "—"}
               trend="monitored"
             />
-            <StatPanel label="Latency" value={23} suffix="ms" />
+            <StatPanel
+              label="Latency"
+              value={connectionMetrics?.apiLatencyMs ?? "—"}
+              suffix="ms"
+            />
           </div>
         </div>
       </div>
@@ -753,42 +761,115 @@ export default function DashboardPage() {
           </h2>
 
           <div className="flex-1 space-y-3">
-            {/* Latency metrics */}
-            {[
-              { label: "Plugin → API", ping: 12, status: "excellent" },
-              { label: "API → Dashboard", ping: 8, status: "excellent" },
-              { label: "Dashboard → Plugin", ping: 23, status: "good" },
-            ].map((conn, i) => (
-              <div key={i} className="bg-white/[0.02] rounded-lg p-3 relative">
-                {/* Connector line removal */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-white/70">{conn.label}</span>
-                  <span
-                    className={cn(
-                      "w-1.5 h-1.5 rounded-full",
-                      conn.status === "excellent"
-                        ? "bg-emerald-400"
-                        : conn.status === "good"
-                          ? "bg-amber-400"
-                          : "bg-red-400"
-                    )}
-                  />
+            {/* Latency metrics - now using real data */}
+            {(() => {
+              const getStatus = (ms: number | null, online?: boolean) => {
+                if (ms === null || ms < 0)
+                  return online === false ? "offline" : "unknown";
+                if (ms < 50) return "excellent";
+                if (ms < 150) return "good";
+                return "poor";
+              };
+
+              const connections = connectionMetrics
+                ? [
+                    {
+                      label: "Dashboard → API",
+                      ping: connectionMetrics.apiLatencyMs,
+                      status: getStatus(connectionMetrics.apiLatencyMs),
+                    },
+                    {
+                      label: "API → Server",
+                      ping: connectionMetrics.serverPingMs,
+                      status: getStatus(
+                        connectionMetrics.serverPingMs,
+                        connectionMetrics.serverReachable
+                      ),
+                    },
+                    {
+                      label: "Plugin Status",
+                      ping: connectionMetrics.pluginOnline
+                        ? Math.min(connectionMetrics.pluginLastSeenMs, 9999)
+                        : null,
+                      status: connectionMetrics.pluginOnline
+                        ? "excellent"
+                        : "offline",
+                      isLastSeen: true,
+                    },
+                  ]
+                : [
+                    { label: "Dashboard → API", ping: null, status: "unknown" },
+                    { label: "API → Server", ping: null, status: "unknown" },
+                    {
+                      label: "Plugin Status",
+                      ping: null,
+                      status: "unknown",
+                      isLastSeen: true,
+                    },
+                  ];
+
+              return connections.map((conn, i) => (
+                <div
+                  key={i}
+                  className="bg-white/[0.02] rounded-lg p-3 relative"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-white/70">{conn.label}</span>
+                    <span
+                      className={cn(
+                        "w-1.5 h-1.5 rounded-full",
+                        conn.status === "excellent"
+                          ? "bg-emerald-400"
+                          : conn.status === "good"
+                            ? "bg-amber-400"
+                            : conn.status === "offline" ||
+                                conn.status === "unknown"
+                              ? "bg-red-400"
+                              : "bg-orange-400"
+                      )}
+                    />
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-lg font-medium text-white tabular-nums">
+                      {conn.ping !== null && conn.ping >= 0 ? conn.ping : "—"}
+                    </span>
+                    <span className="text-[10px] text-white/40">
+                      {conn.isLastSeen
+                        ? conn.ping !== null && conn.ping >= 0
+                          ? "ms ago"
+                          : ""
+                        : "ms"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-medium text-white tabular-nums">
-                    {conn.ping}
-                  </span>
-                  <span className="text-[10px] text-white/40">ms</span>
-                </div>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
 
           {/* Overall Status */}
           <div className="pt-3 mt-auto border-t border-white/[0.06]">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-white/40">All Systems</span>
-              <span className="text-xs text-emerald-400">Operational</span>
+              <span
+                className={cn(
+                  "text-xs",
+                  connectionMetrics?.pluginOnline &&
+                    connectionMetrics?.serverReachable
+                    ? "text-emerald-400"
+                    : connectionMetrics?.pluginOnline ||
+                        connectionMetrics?.serverReachable
+                      ? "text-amber-400"
+                      : "text-red-400"
+                )}
+              >
+                {connectionMetrics?.pluginOnline &&
+                connectionMetrics?.serverReachable
+                  ? "Operational"
+                  : connectionMetrics?.pluginOnline ||
+                      connectionMetrics?.serverReachable
+                    ? "Partial"
+                    : "Offline"}
+              </span>
             </div>
           </div>
         </div>

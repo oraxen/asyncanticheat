@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { 
-  RiShieldCheckLine, 
-  RiLockLine, 
-  RiCheckLine, 
-  RiDownloadLine, 
+import {
+  RiShieldCheckLine,
+  RiLockLine,
+  RiCheckLine,
+  RiDownloadLine,
   RiStarFill,
   RiCloseLine,
   RiSettings4Line,
@@ -22,7 +22,13 @@ const DEFAULT_SERVER_ID = "demo-server";
 
 // Mock check data for modules (in a real app, this would come from the API)
 const moduleChecks: Record<string, string[]> = {
-  "NCP Core": ["fight_angle", "fight_speed", "fight_reach", "moving_speed", "moving_nofall"],
+  "NCP Core": [
+    "fight_angle",
+    "fight_speed",
+    "fight_reach",
+    "moving_speed",
+    "moving_nofall",
+  ],
   "Demo Module": ["demo_speed", "demo_fly"],
   "Inventory Guard": ["inv_autoclicker", "inv_cheststealer", "inv_cleaner"],
 };
@@ -30,23 +36,51 @@ const moduleChecks: Record<string, string[]> = {
 const moduleDescriptions: Record<string, { short: string; full: string }> = {
   "NCP Core": {
     short: "Fight & movement checks",
-    full: "The core NoCheatPlus module provides essential anti-cheat functionality including combat analysis, movement validation, and player behavior monitoring."
+    full: "The core NoCheatPlus module provides essential anti-cheat functionality including combat analysis, movement validation, and player behavior monitoring.",
   },
   "Demo Module": {
     short: "Basic speed detection",
-    full: "A demonstration module showing the capabilities of the AsyncAntiCheat system. Includes basic speed and fly detection."
+    full: "A demonstration module showing the capabilities of the AsyncAntiCheat system. Includes basic speed and fly detection.",
   },
   "Inventory Guard": {
     short: "Auto-clicker & inventory cheats",
-    full: "Protects against inventory-related cheats including auto-clickers, inventory cleaners, and chest stealers. Uses click pattern analysis."
+    full: "Protects against inventory-related cheats including auto-clickers, inventory cleaners, and chest stealers. Uses click pattern analysis.",
   },
 };
 
 const storeModules = [
-  { id: "s1", name: "ML Detector", description: "AI-powered pattern detection", category: "premium", rating: 4.8, downloads: "2.4k" },
-  { id: "s2", name: "Combat+", description: "Advanced PvP analysis", category: "free", rating: 4.5, downloads: "5.1k" },
-  { id: "s3", name: "Movement Pro", description: "Fly, speed, phase detection", category: "premium", rating: 4.9, downloads: "3.2k" },
-  { id: "s4", name: "Packet Guard", description: "Advanced packet analysis", category: "premium", rating: 4.7, downloads: "1.9k" },
+  {
+    id: "s1",
+    name: "ML Detector",
+    description: "AI-powered pattern detection",
+    category: "premium",
+    rating: 4.8,
+    downloads: "2.4k",
+  },
+  {
+    id: "s2",
+    name: "Combat+",
+    description: "Advanced PvP analysis",
+    category: "free",
+    rating: 4.5,
+    downloads: "5.1k",
+  },
+  {
+    id: "s3",
+    name: "Movement Pro",
+    description: "Fly, speed, phase detection",
+    category: "premium",
+    rating: 4.9,
+    downloads: "3.2k",
+  },
+  {
+    id: "s4",
+    name: "Packet Guard",
+    description: "Advanced packet analysis",
+    category: "premium",
+    rating: 4.7,
+    downloads: "1.9k",
+  },
 ];
 
 interface InstalledModule extends Module {
@@ -58,16 +92,27 @@ interface InstalledModule extends Module {
 }
 
 // Toggle Switch
-function Toggle({ checked, onChange, size = "default" }: { checked: boolean; onChange: (v: boolean) => void; size?: "small" | "default" }) {
+function Toggle({
+  checked,
+  onChange,
+  size = "default",
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  size?: "small" | "default";
+}) {
   const sizes = {
     small: { track: "h-4 w-7", thumb: "h-3 w-3", translate: "left-[14px]" },
     default: { track: "h-5 w-9", thumb: "h-4 w-4", translate: "left-[18px]" },
   };
   const s = sizes[size];
-  
+
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); onChange(!checked); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(!checked);
+      }}
       className={cn(
         "relative rounded-full transition-colors",
         s.track,
@@ -86,12 +131,12 @@ function Toggle({ checked, onChange, size = "default" }: { checked: boolean; onC
 }
 
 // Module Detail Panel
-function ModuleDetailPanel({ 
-  module, 
+function ModuleDetailPanel({
+  module,
   onClose,
   onToggle,
-}: { 
-  module: InstalledModule; 
+}: {
+  module: InstalledModule;
   onClose: () => void;
   onToggle: () => void;
 }) {
@@ -126,10 +171,12 @@ function ModuleDetailPanel({
       <div className="p-5 border-b border-white/[0.06]">
         <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <div className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-xl",
-              module.enabled ? "bg-emerald-500/10" : "bg-white/[0.04]"
-            )}>
+            <div
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-xl",
+                module.enabled ? "bg-emerald-500/10" : "bg-white/[0.04]"
+              )}
+            >
               {module.enabled ? (
                 <RiPlayLine className="h-5 w-5 text-emerald-400" />
               ) : (
@@ -141,7 +188,9 @@ function ModuleDetailPanel({
                 {module.enabled ? "Module Active" : "Module Disabled"}
               </p>
               <p className="text-xs text-white/40">
-                {module.enabled ? "Running and monitoring" : "Not currently monitoring"}
+                {module.enabled
+                  ? "Running and monitoring"
+                  : "Not currently monitoring"}
               </p>
             </div>
           </div>
@@ -154,45 +203,65 @@ function ModuleDetailPanel({
         <div className="bg-white/[0.02] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <RiAlertLine className="w-4 h-4 text-white/40" />
-            <span className="text-[10px] uppercase tracking-wider text-white/40">Detections</span>
+            <span className="text-[10px] uppercase tracking-wider text-white/40">
+              Detections
+            </span>
           </div>
-          <p className="text-2xl font-light text-white tabular-nums">{module.stats.detections}</p>
+          <p className="text-2xl font-light text-white tabular-nums">
+            {module.stats.detections}
+          </p>
         </div>
         <div className="bg-white/[0.02] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <RiRefreshLine className="w-4 h-4 text-white/40" />
-            <span className="text-[10px] uppercase tracking-wider text-white/40">False +</span>
+            <span className="text-[10px] uppercase tracking-wider text-white/40">
+              False +
+            </span>
           </div>
-          <p className="text-2xl font-light text-white tabular-nums">{module.stats.falsePositives}</p>
+          <p className="text-2xl font-light text-white tabular-nums">
+            {module.stats.falsePositives}
+          </p>
         </div>
         <div className="bg-white/[0.02] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <RiCheckLine className="w-4 h-4 text-white/40" />
-            <span className="text-[10px] uppercase tracking-wider text-white/40">Accuracy</span>
+            <span className="text-[10px] uppercase tracking-wider text-white/40">
+              Accuracy
+            </span>
           </div>
-          <p className="text-2xl font-light text-emerald-400 tabular-nums">{module.stats.accuracy}%</p>
+          <p className="text-2xl font-light text-emerald-400 tabular-nums">
+            {module.stats.accuracy}%
+          </p>
         </div>
       </div>
 
       {/* Description */}
       <div className="p-5 border-b border-white/[0.06]">
-        <h3 className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">About</h3>
-        <p className="text-sm text-white/70 leading-relaxed">{module.fullDescription}</p>
+        <h3 className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">
+          About
+        </h3>
+        <p className="text-sm text-white/70 leading-relaxed">
+          {module.fullDescription}
+        </p>
       </div>
 
       {/* Checks */}
       <div className="flex-1 overflow-y-auto p-5">
-        <h3 className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">Active Checks</h3>
+        <h3 className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">
+          Active Checks
+        </h3>
         <div className="space-y-2">
-          {module.checks.map(check => (
+          {module.checks.map((check) => (
             <div
               key={check}
               className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
             >
-              <div className={cn(
-                "w-2 h-2 rounded-full",
-                module.enabled ? "bg-emerald-400" : "bg-white/20"
-              )} />
+              <div
+                className={cn(
+                  "w-2 h-2 rounded-full",
+                  module.enabled ? "bg-emerald-400" : "bg-white/20"
+                )}
+              />
               <span className="text-sm text-white/80 font-mono">{check}</span>
               <span className="ml-auto text-[10px] text-white/30">
                 {module.enabled ? "Active" : "Inactive"}
@@ -217,14 +286,14 @@ function ModuleDetailPanel({
 }
 
 // Module Card
-function ModuleCard({ 
-  module, 
-  onSelect, 
+function ModuleCard({
+  module,
+  onSelect,
   onToggle,
   isSelected,
-}: { 
-  module: InstalledModule; 
-  onSelect: () => void; 
+}: {
+  module: InstalledModule;
+  onSelect: () => void;
   onToggle: () => void;
   isSelected: boolean;
 }) {
@@ -234,47 +303,57 @@ function ModuleCard({
       className={cn(
         "group relative p-4 rounded-xl cursor-pointer transition-all",
         "bg-white/[0.02] hover:bg-white/[0.04] border",
-        isSelected 
-          ? "border-indigo-500/50 bg-indigo-500/[0.03]" 
+        isSelected
+          ? "border-indigo-500/50 bg-indigo-500/[0.03]"
           : "border-white/[0.04] hover:border-white/[0.08]"
       )}
     >
       {/* Status Badge */}
       <div className="absolute top-3 right-3">
-        <div className={cn(
-          "flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium",
-          module.healthy 
-            ? "bg-emerald-500/10 text-emerald-400"
-            : "bg-red-500/10 text-red-400"
-        )}>
-          <span className={cn(
-            "w-1.5 h-1.5 rounded-full",
-            module.healthy ? "bg-emerald-400" : "bg-red-400"
-          )} />
+        <div
+          className={cn(
+            "flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium",
+            module.healthy
+              ? "bg-emerald-500/10 text-emerald-400"
+              : "bg-red-500/10 text-red-400"
+          )}
+        >
+          <span
+            className={cn(
+              "w-1.5 h-1.5 rounded-full",
+              module.healthy ? "bg-emerald-400" : "bg-red-400"
+            )}
+          />
           {module.healthy ? "Healthy" : "Error"}
         </div>
       </div>
 
       {/* Icon & Info */}
       <div className="flex items-start gap-3 mb-4">
-        <div className={cn(
-          "flex h-10 w-10 items-center justify-center rounded-xl flex-shrink-0",
-          module.enabled ? "bg-indigo-500/10" : "bg-white/[0.04]"
-        )}>
-          <RiShieldCheckLine className={cn(
-            "h-5 w-5",
-            module.enabled ? "text-indigo-400" : "text-white/40"
-          )} />
+        <div
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-xl flex-shrink-0",
+            module.enabled ? "bg-indigo-500/10" : "bg-white/[0.04]"
+          )}
+        >
+          <RiShieldCheckLine
+            className={cn(
+              "h-5 w-5",
+              module.enabled ? "text-indigo-400" : "text-white/40"
+            )}
+          />
         </div>
         <div className="min-w-0 pr-16">
-          <h3 className="text-sm font-medium text-white truncate">{module.name}</h3>
+          <h3 className="text-sm font-medium text-white truncate">
+            {module.name}
+          </h3>
           <p className="text-xs text-white/40 truncate">{module.description}</p>
         </div>
       </div>
 
       {/* Checks Preview */}
       <div className="flex flex-wrap gap-1 mb-4">
-        {module.checks.slice(0, 3).map(check => (
+        {module.checks.slice(0, 3).map((check) => (
           <span
             key={check}
             className="px-1.5 py-0.5 rounded text-[9px] text-white/40 bg-white/[0.03] font-mono"
@@ -302,8 +381,12 @@ function ModuleCard({
 
 export default function ModulesPage() {
   const [modules, setModules] = useState<InstalledModule[]>([]);
-  const [activeTab, setActiveTab] = useState<"installed" | "store">("installed");
-  const [selectedModule, setSelectedModule] = useState<InstalledModule | null>(null);
+  const [activeTab, setActiveTab] = useState<"installed" | "store">(
+    "installed"
+  );
+  const [selectedModule, setSelectedModule] = useState<InstalledModule | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Track pending toggle operations to prevent desync on rapid clicks
@@ -315,23 +398,25 @@ export default function ModulesPage() {
       try {
         setLoading(true);
         setError(null);
-        
+
         const apiModules = await api.getModules(DEFAULT_SERVER_ID);
-        
+
         // Transform API modules to InstalledModule format
-        const installedModules: InstalledModule[] = apiModules.map(m => ({
+        const installedModules: InstalledModule[] = apiModules.map((m) => ({
           ...m,
           checks: moduleChecks[m.name] || ["unknown_check"],
           description: moduleDescriptions[m.name]?.short || m.base_url,
-          fullDescription: moduleDescriptions[m.name]?.full || `Module running at ${m.base_url}`,
+          fullDescription:
+            moduleDescriptions[m.name]?.full ||
+            `Module running at ${m.base_url}`,
           version: "1.0.0",
           stats: {
             detections: m.detections,
             falsePositives: Math.floor(m.detections * 0.003),
             accuracy: 99.6 - Math.random() * 0.5,
-          }
+          },
         }));
-        
+
         setModules(installedModules);
       } catch (err) {
         console.error("Failed to fetch modules:", err);
@@ -340,20 +425,20 @@ export default function ModulesPage() {
         setLoading(false);
       }
     }
-    
+
     fetchModules();
   }, []);
 
   const toggleModule = async (id: string) => {
-    const module = modules.find(m => m.id === id);
+    const module = modules.find((m) => m.id === id);
     if (!module) return;
-    
+
     // Prevent rapid clicks from causing desync
     if (pendingToggles.current.has(id)) return;
     pendingToggles.current.add(id);
-    
+
     const newEnabled = !module.enabled;
-    
+
     // Optimistically update UI
     setModules((prev) =>
       prev.map((m) => {
@@ -392,28 +477,35 @@ export default function ModulesPage() {
   };
 
   // Navigate to next/previous module
-  const navigateModule = useCallback((direction: "next" | "prev") => {
-    if (!selectedModule || activeTab !== "installed") return;
-    
-    const currentIndex = modules.findIndex(m => m.id === selectedModule.id);
-    if (currentIndex === -1) return;
-    
-    let newIndex: number;
-    if (direction === "next") {
-      newIndex = currentIndex < modules.length - 1 ? currentIndex + 1 : 0;
-    } else {
-      newIndex = currentIndex > 0 ? currentIndex - 1 : modules.length - 1;
-    }
-    
-    setSelectedModule(modules[newIndex]);
-  }, [selectedModule, modules, activeTab]);
+  const navigateModule = useCallback(
+    (direction: "next" | "prev") => {
+      if (!selectedModule || activeTab !== "installed") return;
+
+      const currentIndex = modules.findIndex((m) => m.id === selectedModule.id);
+      if (currentIndex === -1) return;
+
+      let newIndex: number;
+      if (direction === "next") {
+        newIndex = currentIndex < modules.length - 1 ? currentIndex + 1 : 0;
+      } else {
+        newIndex = currentIndex > 0 ? currentIndex - 1 : modules.length - 1;
+      }
+
+      setSelectedModule(modules[newIndex]);
+    },
+    [selectedModule, modules, activeTab]
+  );
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't handle if typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
+
       if (e.key === "Escape" && selectedModule) {
         e.preventDefault();
         setSelectedModule(null);
@@ -480,7 +572,7 @@ export default function ModulesPage() {
           <div className="text-white/60 text-sm">Loading modules...</div>
         </div>
       )}
-      
+
       {error && (
         <div className="m-5">
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
@@ -514,8 +606,8 @@ export default function ModulesPage() {
           ) : (
             <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
               {storeModules.map((module) => (
-                <div 
-                  key={module.id} 
+                <div
+                  key={module.id}
                   className="p-4 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-white/[0.04] hover:border-white/[0.08]"
                 >
                   <div className="flex items-start gap-3 mb-3">
@@ -524,34 +616,44 @@ export default function ModulesPage() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-medium text-white">{module.name}</h3>
+                        <h3 className="text-sm font-medium text-white">
+                          {module.name}
+                        </h3>
                         {module.category === "premium" && (
                           <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-500/20 text-amber-400">
                             PRO
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-white/40">{module.description}</p>
+                      <p className="text-xs text-white/40">
+                        {module.description}
+                      </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-4 mb-4">
                     <div className="flex items-center gap-1">
                       <RiStarFill className="h-3 w-3 text-amber-400" />
-                      <span className="text-xs text-white/60">{module.rating}</span>
+                      <span className="text-xs text-white/60">
+                        {module.rating}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1">
                       <RiDownloadLine className="h-3 w-3 text-white/40" />
-                      <span className="text-xs text-white/40">{module.downloads}</span>
+                      <span className="text-xs text-white/40">
+                        {module.downloads}
+                      </span>
                     </div>
                   </div>
-                  
-                  <button className={cn(
-                    "w-full py-2 rounded-lg text-xs font-medium transition-colors",
-                    module.category === "premium"
-                      ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                      : "bg-indigo-500 text-white hover:bg-indigo-600"
-                  )}>
+
+                  <button
+                    className={cn(
+                      "w-full py-2 rounded-lg text-xs font-medium transition-colors",
+                      module.category === "premium"
+                        ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                        : "bg-indigo-500 text-white hover:bg-indigo-600"
+                    )}
+                  >
                     {module.category === "premium" ? (
                       <span className="flex items-center justify-center gap-1.5">
                         <RiLockLine className="h-3 w-3" />
@@ -572,7 +674,7 @@ export default function ModulesPage() {
       {selectedModule && (
         <>
           {/* Backdrop */}
-          <div 
+          <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm z-40 animate-fade-in"
             onClick={() => setSelectedModule(null)}
           />

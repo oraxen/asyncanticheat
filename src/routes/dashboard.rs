@@ -553,6 +553,60 @@ async fn tcp_ping(address: &str, port: u16) -> Option<i64> {
     }
 }
 
+/// Best-effort parse of a host[:port] or URL into (host, port).
+/// - Supports `http(s)://host[:port]/...`
+/// - Supports `host[:port]`
+/// - Supports bracketed IPv6: `[::1]:25565`
+fn extract_host_port(raw: &str) -> Option<(String, u16)> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let without_scheme = trimmed
+        .strip_prefix("http://")
+        .or_else(|| trimmed.strip_prefix("https://"))
+        .unwrap_or(trimmed);
+
+    // Drop any path/query fragment.
+    let authority = without_scheme
+        .split('/')
+        .next()
+        .unwrap_or(without_scheme)
+        .trim();
+    if authority.is_empty() {
+        return None;
+    }
+
+    // Bracketed IPv6 form: [::1]:25565
+    if let Some(rest) = authority.strip_prefix('[') {
+        if let Some(end) = rest.find(']') {
+            let host = rest[..end].trim();
+            if host.is_empty() {
+                return None;
+            }
+            let after = rest[end + 1..].trim(); // may start with :port
+            let port = after
+                .strip_prefix(':')
+                .and_then(|p| p.parse::<u16>().ok())
+                .unwrap_or(25565);
+            return Some((host.to_string(), port));
+        }
+    }
+
+    let mut parts = authority.split(':');
+    let host = parts.next().unwrap_or("").trim();
+    if host.is_empty() {
+        return None;
+    }
+    let port = parts
+        .next()
+        .and_then(|p| p.trim().parse::<u16>().ok())
+        .unwrap_or(25565);
+
+    Some((host.to_string(), port))
+}
+
 /// GET /dashboard/:server_id/status
 ///
 /// Returns connection status including plugin heartbeat and server ping.
@@ -594,20 +648,26 @@ pub async fn get_status(
     // Try to ping the server if we have an address
     // The callback_url might be like "http://ip:port" or just "ip:port"
     // Or we might need to extract from server_id if it contains IP info
-    let (server_ping_ms, server_reachable, server_address) = if let Some(ref url) = callback_url {
-        // Extract host from URL
-        let host = url
-            .replace("http://", "")
-            .replace("https://", "")
-            .split(':')
-            .next()
-            .unwrap_or("")
-            .to_string();
+    let ping_source: Option<&str> = if let Some(ref url) = callback_url {
+        Some(url.as_str())
+    } else {
+        // Only fall back to server_id if it doesn't look like a UUID.
+        // Avoid slow 3s timeouts every 5s poll on UUID-like ids.
+        if Uuid::parse_str(&server_id).is_ok() {
+            None
+        } else {
+            Some(server_id.as_str())
+        }
+    };
 
-        if !host.is_empty() && host != "127.0.0.1" && host != "localhost" {
-            // Ping Minecraft default port (25565)
-            let ping = tcp_ping(&host, 25565).await;
-            (ping, ping.is_some(), Some(format!("{}:25565", host)))
+    let (server_ping_ms, server_reachable, server_address) = if let Some(raw) = ping_source {
+        if let Some((host, port)) = extract_host_port(raw) {
+            if host != "127.0.0.1" && host != "localhost" {
+                let ping = tcp_ping(&host, port).await;
+                (ping, ping.is_some(), Some(format!("{}:{}", host, port)))
+            } else {
+                (None, false, None)
+            }
         } else {
             (None, false, None)
         }

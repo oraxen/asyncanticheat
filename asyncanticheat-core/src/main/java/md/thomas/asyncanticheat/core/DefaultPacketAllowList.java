@@ -22,6 +22,7 @@ final class DefaultPacketAllowList {
                 "ROTATION",
                 "LOOK",
                 "FLYING",
+                "ABILIT",
                 "KEEP_ALIVE",
                 "PING",
                 "PONG",

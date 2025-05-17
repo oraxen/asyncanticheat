@@ -16,6 +16,7 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSp
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnPlayer;
 import md.thomas.asyncanticheat.core.AsyncAnticheatService;
 import md.thomas.asyncanticheat.core.PacketRecord;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -72,7 +73,7 @@ final class BukkitPacketCaptureListener implements PacketListener {
         }
         
         final String packetName = String.valueOf(event.getPacketType());
-        final Map<String, Object> fields = extractServerBoundFields(event);
+        final Map<String, Object> fields = extractServerBoundFields(event, player);
         service.tryEnqueue(new PacketRecord(
                 System.currentTimeMillis(),
                 "serverbound",
@@ -113,8 +114,9 @@ final class BukkitPacketCaptureListener implements PacketListener {
      * These are the packets that reveal player intent and potential cheating.
      */
     @NotNull
-    private static Map<String, Object> extractServerBoundFields(@NotNull PacketReceiveEvent event) {
+    private static Map<String, Object> extractServerBoundFields(@NotNull PacketReceiveEvent event, Player player) {
         final Object packetType = event.getPacketType();
+        final String packetTypeStr = String.valueOf(packetType);
 
         // === POSITION PACKETS ===
         // These are critical for movement checks (fly, speed, teleport)
@@ -133,6 +135,13 @@ final class BukkitPacketCaptureListener implements PacketListener {
         
         if (packetType == PacketType.Play.Client.PLAYER_FLYING) {
             return extractPlayerFlying(event);
+        }
+
+        // === ABILITIES ===
+        // On 1.16+ the packet itself only contains the "flying" bit, so we also annotate
+        // server-side allow-flight state for deterministic downstream checks.
+        if ("PLAYER_ABILITIES".equals(packetTypeStr)) {
+            return extractPlayerAbilities(event, player);
         }
 
         // === COMBAT PACKETS ===
@@ -320,6 +329,23 @@ final class BukkitPacketCaptureListener implements PacketListener {
         final Map<String, Object> m = new HashMap<>();
         m.put("on_ground", wrapper.isOnGround());
         // Position/rotation may be present depending on sub-type, but we handle those separately
+        return m;
+    }
+
+    @NotNull
+    private static Map<String, Object> extractPlayerAbilities(@NotNull PacketReceiveEvent event, Player player) {
+        final WrapperPlayClientPlayerAbilities wrapper = new WrapperPlayClientPlayerAbilities(event);
+        final Map<String, Object> m = new HashMap<>();
+        m.put("flying", wrapper.isFlying());
+
+        // Packet doesn't reliably include allow-flight / creative flags on modern versions (1.16+),
+        // so annotate from Bukkit state for downstream checks.
+        if (player != null) {
+            m.put("allow_flying", player.getAllowFlight());
+            m.put("invulnerable", player.isInvulnerable());
+            final GameMode gm = player.getGameMode();
+            m.put("instant_break", gm == GameMode.CREATIVE);
+        }
         return m;
     }
 

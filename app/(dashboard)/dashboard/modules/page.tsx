@@ -17,8 +17,12 @@ import {
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import { api, type Module } from "@/lib/api";
+import { getSelectedWorkspaceId } from "@/lib/server-store";
 
-const DEFAULT_SERVER_ID = "demo-server";
+// Get active server ID from localStorage or fallback to demo
+function getActiveServerId(): string {
+  return getSelectedWorkspaceId() || "demo-server";
+}
 
 // Mock check data for modules (in a real app, this would come from the API)
 const moduleChecks: Record<string, string[]> = {
@@ -399,7 +403,7 @@ export default function ModulesPage() {
         setLoading(true);
         setError(null);
 
-        const apiModules = await api.getModules(DEFAULT_SERVER_ID);
+        const apiModules = await api.getModules(getActiveServerId());
 
         // Transform API modules to InstalledModule format
         const installedModules: InstalledModule[] = apiModules.map((m) => ({
@@ -455,7 +459,7 @@ export default function ModulesPage() {
 
     // Call API
     try {
-      await api.toggleModule(DEFAULT_SERVER_ID, id, newEnabled);
+      await api.toggleModule(getActiveServerId(), id, newEnabled);
     } catch (err) {
       console.error("Failed to toggle module:", err);
       // Revert on error - use the intended state we tried to set

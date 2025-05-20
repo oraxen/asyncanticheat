@@ -11,8 +11,12 @@ import {
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import { api, type Finding } from "@/lib/api";
+import { getSelectedWorkspaceId } from "@/lib/server-store";
 
-const DEFAULT_SERVER_ID = "demo-server";
+// Get active server ID from localStorage or fallback to demo
+function getActiveServerId(): string {
+  return getSelectedWorkspaceId() || "demo-server";
+}
 
 const severityColors = {
   low: "text-blue-400",
@@ -321,7 +325,7 @@ export default function FindingsPage() {
         if (filter) params.severity = filter;
 
         const { findings: data } = await api.getFindings(
-          DEFAULT_SERVER_ID,
+          getActiveServerId(),
           params
         );
 

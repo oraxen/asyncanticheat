@@ -15,6 +15,7 @@ import {
   type DashboardStats,
   type ConnectionMetrics,
 } from "@/lib/api";
+import { getSelectedWorkspaceId } from "@/lib/server-store";
 
 // Transform API player to dashboard player format
 interface DashboardPlayer {
@@ -62,15 +63,22 @@ function formatRelativeTime(dateStr: string): string {
 // Generate pseudo-random position for globe visualization
 function generateGlobePosition(uuid: string): { lat: number; lng: number } {
   // Use uuid to generate deterministic but varied positions
-  const hash = uuid.split("").reduce((a, b) => {
-    a = (a << 5) - a + b.charCodeAt(0);
-    return a & a;
-  }, 0);
+  const hash = hashString(uuid);
 
   return {
     lat: ((hash % 100) / 100 - 0.5) * Math.PI * 0.9,
     lng: ((hash >> 8) % 628) / 100,
   };
+}
+
+// Helper to convert string (including UUID) to numeric hash for animation/rendering
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash);
 }
 
 // Player Detail Panel
@@ -356,7 +364,9 @@ function AnimatedGlobe({
           const color =
             severityColors[player.severity as keyof typeof severityColors] ||
             severityColors.low;
-          const pulseSize = 4 + Math.sin(time * 3 + parseFloat(player.id)) * 2;
+          // Use hash of player.id (UUID) instead of parseFloat which returns NaN for UUIDs
+          const playerHash = hashString(player.id);
+          const pulseSize = 4 + Math.sin(time * 3 + playerHash) * 2;
 
           // Outer pulse ring
           ctx.beginPath();
@@ -378,7 +388,7 @@ function AnimatedGlobe({
           ctx.fill();
 
           // Label line and text
-          const labelOffset = 60 + (parseFloat(player.id) % 3) * 20;
+          const labelOffset = 60 + (playerHash % 3) * 20;
           const angle = Math.atan2(y - centerY, x - centerX);
           const labelX = x + Math.cos(angle) * labelOffset;
           const labelY = y + Math.sin(angle) * labelOffset;
@@ -537,8 +547,10 @@ function StatPanel({
   );
 }
 
-// Default server ID for demo
-const DEFAULT_SERVER_ID = "demo-server";
+// Get active server ID from localStorage or fallback to demo
+function getActiveServerId(): string {
+  return getSelectedWorkspaceId() || "demo-server";
+}
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
@@ -561,9 +573,10 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
 
+        const serverId = getActiveServerId();
         const [playersData, statsData] = await Promise.all([
-          api.getPlayers(DEFAULT_SERVER_ID),
-          api.getStats(DEFAULT_SERVER_ID),
+          api.getPlayers(serverId),
+          api.getStats(serverId),
         ]);
 
         // Transform API players to dashboard format
@@ -595,7 +608,7 @@ export default function DashboardPage() {
     // Fetch connection status
     async function fetchConnectionStatus() {
       try {
-        const metrics = await api.getConnectionStatus(DEFAULT_SERVER_ID);
+        const metrics = await api.getConnectionStatus(getActiveServerId());
         setConnectionMetrics(metrics);
       } catch (err) {
         console.error("Failed to fetch connection status:", err);

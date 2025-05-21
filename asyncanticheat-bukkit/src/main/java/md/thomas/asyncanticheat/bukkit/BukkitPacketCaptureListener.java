@@ -65,14 +65,18 @@ final class BukkitPacketCaptureListener implements PacketListener {
     @Override
     public void onPacketReceive(PacketReceiveEvent event) {
         final Player player = event.getPlayer();
-        
-        // Check exemptions before processing (based on NCP patterns)
-        // This avoids capturing packets from players who shouldn't be checked
-        if (exemptionTracker.isExempt(player)) {
+
+        final String packetName = String.valueOf(event.getPacketType());
+
+        // Check exemptions before processing (based on NCP patterns).
+        //
+        // IMPORTANT: Always allow abilities packets through even for exempt players.
+        // Otherwise, "skip_flying" style exemptions can suppress the very signal we need
+        // to detect unauthorized flight (flying=true while allow_flying=false).
+        if (!"PLAYER_ABILITIES".equals(packetName) && exemptionTracker.isExempt(player)) {
             return;
         }
-        
-        final String packetName = String.valueOf(event.getPacketType());
+
         final Map<String, Object> fields = extractServerBoundFields(event, player);
         service.tryEnqueue(new PacketRecord(
                 System.currentTimeMillis(),

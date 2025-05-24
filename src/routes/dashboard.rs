@@ -122,12 +122,29 @@ pub async fn get_findings(
     let offset = params.offset.unwrap_or(0);
 
     // Build dynamic query based on filters
-    let mut conditions = vec!["f.server_id = $1"];
-    let mut bind_idx = 2;
+    let mut conditions: Vec<String> = vec!["f.server_id = $1".to_string()];
+    let mut bind_idx: i64 = 2;
 
+    // Optional severity filter
     if params.severity.is_some() {
-        conditions.push("f.severity = $2");
-        bind_idx = 3;
+        conditions.push(format!("f.severity = ${}", bind_idx));
+        bind_idx += 1;
+    }
+
+    // Optional player filter: accept either UUID or username
+    let parsed_player_uuid = params
+        .player
+        .as_ref()
+        .and_then(|p| Uuid::parse_str(p).ok());
+
+    if params.player.is_some() {
+        if parsed_player_uuid.is_some() {
+            conditions.push(format!("f.player_uuid = ${}", bind_idx));
+        } else {
+            // Case-insensitive exact match on username
+            conditions.push(format!("LOWER(p.username) = LOWER(${})", bind_idx));
+        }
+        bind_idx += 1;
     }
 
     let where_clause = conditions.join(" AND ");
@@ -154,8 +171,14 @@ pub async fn get_findings(
         bind_idx + 1
     );
 
+    // Include the players join because the player filter can reference p.username
     let count_query = format!(
-        "SELECT COUNT(*) FROM public.findings f WHERE {}",
+        r#"
+        SELECT COUNT(*)
+        FROM public.findings f
+        LEFT JOIN public.players p ON f.player_uuid = p.uuid
+        WHERE {}
+        "#,
         where_clause
     );
 
@@ -171,61 +194,39 @@ pub async fn get_findings(
     )>;
     let total: (i64,);
 
+    // Build queries with consistent bind ordering: server_id, severity?, player?, limit, offset
+    let mut q = sqlx::query_as(&base_query).bind(&server_id);
+    let mut q_count = sqlx::query_as(&count_query).bind(&server_id);
+
     if let Some(ref severity) = params.severity {
-        findings = sqlx::query_as(&base_query)
-            .bind(&server_id)
-            .bind(severity)
-            .bind(limit)
-            .bind(offset)
-            .fetch_all(&state.db)
-            .await
-            .map_err(|e| {
-                tracing::error!("get findings failed: {:?}", e);
-                ApiError::Internal
-            })?;
-
-        total = sqlx::query_as(&count_query)
-            .bind(&server_id)
-            .bind(severity)
-            .fetch_one(&state.db)
-            .await
-            .unwrap_or((0,));
-    } else {
-        // No severity filter - adjust query
-        let base_query = r#"
-            SELECT 
-                f.id, 
-                f.player_uuid, 
-                p.username as player_name,
-                f.detector_name, 
-                f.severity, 
-                f.title, 
-                f.description,
-                f.created_at
-            FROM public.findings f
-            LEFT JOIN public.players p ON f.player_uuid = p.uuid
-            WHERE f.server_id = $1
-            ORDER BY f.created_at DESC
-            LIMIT $2 OFFSET $3
-        "#;
-
-        findings = sqlx::query_as(base_query)
-            .bind(&server_id)
-            .bind(limit)
-            .bind(offset)
-            .fetch_all(&state.db)
-            .await
-            .map_err(|e| {
-                tracing::error!("get findings failed: {:?}", e);
-                ApiError::Internal
-            })?;
-
-        total = sqlx::query_as("SELECT COUNT(*) FROM public.findings WHERE server_id = $1")
-            .bind(&server_id)
-            .fetch_one(&state.db)
-            .await
-            .unwrap_or((0,));
+        q = q.bind(severity);
+        q_count = q_count.bind(severity);
     }
+
+    if let Some(ref player) = params.player {
+        if let Some(player_uuid) = parsed_player_uuid {
+            q = q.bind(player_uuid);
+            q_count = q_count.bind(player_uuid);
+        } else {
+            q = q.bind(player);
+            q_count = q_count.bind(player);
+        }
+    }
+
+    findings = q
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("get findings failed: {:?}", e);
+            ApiError::Internal
+        })?;
+
+    total = q_count
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or((0,));
 
     let items: Vec<FindingItem> = findings
         .into_iter()

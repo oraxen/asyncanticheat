@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { ServerProvider } from "@/lib/server-context";
 import {
   loadServerWorkspaces,
   saveServerWorkspaces,
@@ -64,14 +65,16 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen surface-0">
-      <Sidebar
-        servers={servers}
-        selectedServerId={selectedServerId}
-        onServersChange={handleServersChange}
-        onServerSelect={handleServerSelect}
-      />
-      <main className="flex-1 ml-56 p-6">{children}</main>
-    </div>
+    <ServerProvider selectedServerId={selectedServerId}>
+      <div className="flex min-h-screen surface-0">
+        <Sidebar
+          servers={servers}
+          selectedServerId={selectedServerId}
+          onServersChange={handleServersChange}
+          onServerSelect={handleServerSelect}
+        />
+        <main className="flex-1 ml-56 p-6">{children}</main>
+      </div>
+    </ServerProvider>
   );
 }

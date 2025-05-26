@@ -17,12 +17,7 @@ import {
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import { api, type Module } from "@/lib/api";
-import { getSelectedWorkspaceId } from "@/lib/server-store";
-
-// Get active server ID from localStorage or fallback to demo
-function getActiveServerId(): string {
-  return getSelectedWorkspaceId() || "demo-server";
-}
+import { useSelectedServer } from "@/lib/server-context";
 
 // Mock check data for modules (in a real app, this would come from the API)
 const moduleChecks: Record<string, string[]> = {
@@ -395,15 +390,18 @@ export default function ModulesPage() {
   const [error, setError] = useState<string | null>(null);
   // Track pending toggle operations to prevent desync on rapid clicks
   const pendingToggles = useRef<Set<string>>(new Set());
+  const selectedServerId = useSelectedServer();
 
-  // Fetch modules from API
+  // Fetch modules from API - refetch when server changes
   useEffect(() => {
+    if (!selectedServerId) return;
+    
     async function fetchModules() {
       try {
         setLoading(true);
         setError(null);
 
-        const apiModules = await api.getModules(getActiveServerId());
+        const apiModules = await api.getModules(selectedServerId);
 
         // Transform API modules to InstalledModule format
         const installedModules: InstalledModule[] = apiModules.map((m) => ({
@@ -431,11 +429,11 @@ export default function ModulesPage() {
     }
 
     fetchModules();
-  }, []);
+  }, [selectedServerId]);
 
   const toggleModule = async (id: string) => {
     const module = modules.find((m) => m.id === id);
-    if (!module) return;
+    if (!module || !selectedServerId) return;
 
     // Prevent rapid clicks from causing desync
     if (pendingToggles.current.has(id)) return;
@@ -459,7 +457,7 @@ export default function ModulesPage() {
 
     // Call API
     try {
-      await api.toggleModule(getActiveServerId(), id, newEnabled);
+      await api.toggleModule(selectedServerId, id, newEnabled);
     } catch (err) {
       console.error("Failed to toggle module:", err);
       // Revert on error - use the intended state we tried to set

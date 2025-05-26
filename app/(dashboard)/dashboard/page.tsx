@@ -15,7 +15,7 @@ import {
   type DashboardStats,
   type ConnectionMetrics,
 } from "@/lib/api";
-import { getSelectedWorkspaceId } from "@/lib/server-store";
+import { useSelectedServer } from "@/lib/server-context";
 
 // Transform API player to dashboard player format
 interface DashboardPlayer {
@@ -547,12 +547,8 @@ function StatPanel({
   );
 }
 
-// Get active server ID from localStorage or fallback to demo
-function getActiveServerId(): string {
-  return getSelectedWorkspaceId() || "demo-server";
-}
-
 export default function DashboardPage() {
+  const selectedServerId = useSelectedServer();
   const [mounted, setMounted] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<DashboardPlayer | null>(
     null
@@ -566,6 +562,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setMounted(true);
+    
+    if (!selectedServerId) return;
+    
+    // Capture serverId for closures (TypeScript narrowing)
+    const serverId = selectedServerId;
 
     // Fetch data from API
     async function fetchData() {
@@ -573,7 +574,6 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
 
-        const serverId = getActiveServerId();
         const [playersData, statsData] = await Promise.all([
           api.getPlayers(serverId),
           api.getStats(serverId),
@@ -608,7 +608,7 @@ export default function DashboardPage() {
     // Fetch connection status
     async function fetchConnectionStatus() {
       try {
-        const metrics = await api.getConnectionStatus(getActiveServerId());
+        const metrics = await api.getConnectionStatus(serverId);
         setConnectionMetrics(metrics);
       } catch (err) {
         console.error("Failed to fetch connection status:", err);
@@ -627,7 +627,7 @@ export default function DashboardPage() {
       clearInterval(dataInterval);
       clearInterval(statusInterval);
     };
-  }, []);
+  }, [selectedServerId]);
 
   if (!mounted) return null;
 

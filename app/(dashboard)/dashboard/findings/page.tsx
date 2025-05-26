@@ -11,12 +11,7 @@ import {
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import { api, type Finding } from "@/lib/api";
-import { getSelectedWorkspaceId } from "@/lib/server-store";
-
-// Get active server ID from localStorage or fallback to demo
-function getActiveServerId(): string {
-  return getSelectedWorkspaceId() || "demo-server";
-}
+import { useSelectedServer } from "@/lib/server-context";
 
 const severityColors = {
   low: "text-blue-400",
@@ -304,6 +299,7 @@ function PlayerHistoryPanel({
 
 export default function FindingsPage() {
   const searchParams = useSearchParams();
+  const selectedServerId = useSelectedServer();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
@@ -312,8 +308,10 @@ export default function FindingsPage() {
   const [error, setError] = useState<string | null>(null);
   const fetchIdRef = useRef(0);
 
-  // Fetch findings from API
+  // Fetch findings from API - refetch when filter OR server changes
   useEffect(() => {
+    if (!selectedServerId) return;
+    
     const fetchId = ++fetchIdRef.current;
 
     async function fetchFindings() {
@@ -325,7 +323,7 @@ export default function FindingsPage() {
         if (filter) params.severity = filter;
 
         const { findings: data } = await api.getFindings(
-          getActiveServerId(),
+          selectedServerId,
           params
         );
 
@@ -350,7 +348,7 @@ export default function FindingsPage() {
     }
 
     fetchFindings();
-  }, [filter]);
+  }, [filter, selectedServerId]);
 
   // Check for player query param on mount
   useEffect(() => {

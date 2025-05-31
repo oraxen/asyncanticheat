@@ -64,7 +64,8 @@ final class BungeeDevModeManager {
     }
 
     void stopAll(@NotNull String reason) {
-        for (UUID id : sessions.keySet()) {
+        // Snapshot keys first: stop() / offline branch mutates sessions.
+        for (UUID id : sessions.keySet().toArray(new UUID[0])) {
             final ProxiedPlayer p = proxy.getPlayer(id);
             if (p != null) {
                 stop(p, reason);

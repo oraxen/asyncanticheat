@@ -58,13 +58,16 @@ public final class AsyncAnticheatBungeePlugin extends Plugin {
             exemptionTracker.cleanup();
             exemptionTracker = null;
         }
-        if (service != null) {
-            service.stop();
-            service = null;
-        }
+        // IMPORTANT: devMode.stopAll() enqueues DEV_MARKER stop events via service.tryEnqueue(...).
+        // service.stop() triggers a best-effort final flush/upload on a daemon thread.
+        // Therefore, stopAll MUST run before stop() so stop markers are included in the final upload.
         if (devMode != null) {
             devMode.stopAll("plugin_disable");
             devMode = null;
+        }
+        if (service != null) {
+            service.stop();
+            service = null;
         }
     }
 

@@ -1,5 +1,9 @@
 use crate::{error::ApiError, transforms, AppState};
+use flate2::read::GzDecoder;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::FromRow;
+use std::io::{BufRead, BufReader};
 use uuid::Uuid;
 
 #[derive(Debug, FromRow)]
@@ -14,12 +18,73 @@ struct ServerModuleRow {
     consecutive_failures: i32,
 }
 
+#[derive(Debug, Deserialize)]
+struct RawPacketLine {
+    ts: i64,
+    uuid: String,
+    #[serde(default)]
+    name: Option<String>,
+    pkt: String,
+    #[serde(default)]
+    fields: Value,
+}
+
+#[derive(Debug, Serialize)]
+struct ModulePacketRecord {
+    timestamp_ms: i64,
+    player_uuid: Uuid,
+    player_name: Option<String>,
+    packet_type: String,
+    data: Value,
+}
+
+#[derive(Debug, Serialize)]
+struct ProcessBatchRequest {
+    server_id: String,
+    session_id: String,
+    batch_id: String,
+    packets: Vec<ModulePacketRecord>,
+}
+
+fn parse_raw_gz_ndjson_packets(raw_gz_ndjson: &[u8]) -> Vec<ModulePacketRecord> {
+    let decoder = GzDecoder::new(raw_gz_ndjson);
+    let reader = BufReader::new(decoder);
+
+    let mut packets = Vec::new();
+    for (idx, line) in reader.lines().enumerate() {
+        let Ok(line) = line else { continue };
+        if line.trim().is_empty() {
+            continue;
+        }
+        // First line is metadata
+        if idx == 0 {
+            continue;
+        }
+        let parsed: RawPacketLine = match serde_json::from_str(&line) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let uuid = match Uuid::parse_str(&parsed.uuid) {
+            Ok(u) => u,
+            Err(_) => continue,
+        };
+        packets.push(ModulePacketRecord {
+            timestamp_ms: parsed.ts,
+            player_uuid: uuid,
+            player_name: parsed.name,
+            packet_type: parsed.pkt,
+            data: parsed.fields,
+        });
+    }
+    packets
+}
+
 pub async fn dispatch_batch(
     state: AppState,
     server_id: String,
     session_id: String,
     batch_id: Uuid,
-    s3_key: String,
+    _s3_key: String,
     raw_gz_ndjson: Vec<u8>,
 ) -> Result<(), ApiError> {
     let modules = sqlx::query_as::<_, ServerModuleRow>(
@@ -52,24 +117,28 @@ pub async fn dispatch_batch(
             continue;
         }
 
-        let ingest_url = format!("{}/ingest", m.base_url.trim_end_matches('/'));
-        let payload = transforms::apply_transform(&m.transform, &raw_gz_ndjson)
+        // Our built-in modules expose /process and accept a JSON ProcessBatchRequest.
+        // (The raw packet batch is gzipped NDJSON as produced by the plugin.)
+        let process_url = format!("{}/process", m.base_url.trim_end_matches('/'));
+
+        let payload_gz = transforms::apply_transform(&m.transform, &raw_gz_ndjson)
             .map_err(|e| {
                 tracing::error!("transform failed for module {}: {:?}", m.name, e);
                 ApiError::Internal
             })?;
 
+        let packets = parse_raw_gz_ndjson_packets(&payload_gz);
+        let req = ProcessBatchRequest {
+            server_id: m.server_id.clone(),
+            session_id: session_id.clone(),
+            batch_id: batch_id.to_string(),
+            packets,
+        };
+
         let resp = state
             .http
-            .post(ingest_url)
-            .header("content-type", "application/x-ndjson")
-            .header("content-encoding", "gzip")
-            .header("x-server-id", m.server_id.clone())
-            .header("x-session-id", session_id.clone())
-            .header("x-batch-id", batch_id.to_string())
-            .header("x-s3-key", s3_key.clone())
-            .header("x-transform", m.transform.clone())
-            .body(payload)
+            .post(process_url)
+            .json(&req)
             .send()
             .await;
 

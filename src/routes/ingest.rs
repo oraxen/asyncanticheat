@@ -87,6 +87,15 @@ pub async fn ingest(
             ApiError::Internal
         })?;
 
+    // Ensure default modules exist for newly-seen servers.
+    // Without this, dispatch_batch is a no-op and the dashboard shows no modules/findings.
+    ensure_default_modules(&state.db, &server_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to ensure default modules: {:?}", e);
+            ApiError::Internal
+        })?;
+
     // Insert batch_index row (before S3 upload to reserve the slot)
     insert_batch_index(&state.db, &batch_id, &server_id, &session_id, &s3_key, payload_bytes)
         .await
@@ -162,6 +171,41 @@ async fn upsert_server(db: &PgPool, server_id: &str, platform: Option<&str>) -> 
     .bind(platform)
     .execute(db)
     .await?;
+    Ok(())
+}
+
+/// Ensure a server has at least the built-in module entries configured.
+///
+/// New servers won't have any `server_modules` rows by default, which prevents analysis and
+/// results in empty dashboard data. We add the built-in default module entries on first ingest.
+async fn ensure_default_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx::Error> {
+    let (count,): (i64,) = sqlx::query_as("select count(*) from public.server_modules where server_id = $1")
+        .bind(server_id)
+        .fetch_one(db)
+        .await
+        .unwrap_or((0,));
+
+    if count > 0 {
+        return Ok(());
+    }
+
+    // Legacy default modules (ports 4011/4012).
+    // These are deployed on the same host and exposed as local HTTP services.
+    let mut tx = db.begin().await?;
+
+    sqlx::query(
+        r#"
+        insert into public.server_modules (server_id, name, base_url, enabled, transform, created_at, updated_at)
+        values
+            ($1, 'Legacy Module (4011)', 'http://127.0.0.1:4011', true, 'raw_ndjson_gz', now(), now()),
+            ($1, 'Legacy Module (4012)', 'http://127.0.0.1:4012', true, 'raw_ndjson_gz', now(), now())
+        "#,
+    )
+    .bind(server_id)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
     Ok(())
 }
 

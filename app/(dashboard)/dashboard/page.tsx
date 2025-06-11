@@ -566,7 +566,17 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true);
 
-    if (!selectedServerId) return;
+    // If there's no server selected (e.g., server removed), don't get stuck loading
+    if (!selectedServerId) {
+      currentServerIdRef.current = null;
+      setSelectedPlayer(null);
+      setPlayers([]);
+      setStats(null);
+      setConnectionMetrics(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
 
     // Update ref to current server - used to guard against stale responses
     currentServerIdRef.current = selectedServerId;

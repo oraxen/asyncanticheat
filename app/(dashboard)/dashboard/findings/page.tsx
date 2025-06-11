@@ -310,7 +310,17 @@ export default function FindingsPage() {
 
   // Fetch findings from API - refetch when filter OR server changes
   useEffect(() => {
-    if (!selectedServerId) return;
+    // If there's no server selected (e.g., server removed), don't get stuck loading
+    if (!selectedServerId) {
+      setFindings([]);
+      setSelectedPlayer(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    // Capture serverId for async closures (TypeScript narrowing)
+    const serverId = selectedServerId;
     
     const fetchId = ++fetchIdRef.current;
 
@@ -323,7 +333,7 @@ export default function FindingsPage() {
         if (filter) params.severity = filter;
 
         const { findings: data } = await api.getFindings(
-          selectedServerId,
+          serverId,
           params
         );
 

@@ -390,18 +390,35 @@ export default function ModulesPage() {
   const [error, setError] = useState<string | null>(null);
   // Track pending toggle operations to prevent desync on rapid clicks
   const pendingToggles = useRef<Set<string>>(new Set());
+  // Guard against out-of-order fetch responses when switching servers quickly
+  const fetchIdRef = useRef(0);
   const selectedServerId = useSelectedServer();
 
   // Fetch modules from API - refetch when server changes
   useEffect(() => {
-    if (!selectedServerId) return;
+    // If there's no server selected (e.g., server removed), don't get stuck loading
+    if (!selectedServerId) {
+      setSelectedModule(null);
+      setModules([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    // Server changed: clear stale selection immediately
+    setSelectedModule(null);
+
+    // Capture serverId for async closures (TypeScript narrowing)
+    const serverId = selectedServerId;
     
+    const fetchId = ++fetchIdRef.current;
+
     async function fetchModules() {
       try {
         setLoading(true);
         setError(null);
 
-        const apiModules = await api.getModules(selectedServerId);
+        const apiModules = await api.getModules(serverId);
 
         // Transform API modules to InstalledModule format
         const installedModules: InstalledModule[] = apiModules.map((m) => ({
@@ -419,12 +436,18 @@ export default function ModulesPage() {
           },
         }));
 
+        // Guard against stale responses (previous server request finishing last)
+        if (fetchId !== fetchIdRef.current) return;
+
         setModules(installedModules);
       } catch (err) {
+        if (fetchId !== fetchIdRef.current) return;
         console.error("Failed to fetch modules:", err);
         setError(err instanceof Error ? err.message : "Failed to load modules");
       } finally {
-        setLoading(false);
+        if (fetchId === fetchIdRef.current) {
+          setLoading(false);
+        }
       }
     }
 

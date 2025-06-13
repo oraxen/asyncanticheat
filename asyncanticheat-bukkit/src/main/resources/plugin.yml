@@ -1,0 +1,31 @@
+name: AsyncAnticheat
+version: ${version}
+main: md.thomas.asyncanticheat.bukkit.AsyncAnticheatBukkitPlugin
+api-version: "1.21"
+description: Async anticheat packet capture and streaming via PacketEvents
+authors:
+  - th0rgal
+softdepend:
+  - ProtocolLib
+  - ProtocolSupport
+  - ViaVersion
+  - ViaBackwards
+  - ViaRewind
+  - Geyser-Spigot
+
+commands:
+  aacdev:
+    description: AsyncAnticheat dev mode (labeled packet recording)
+    usage: /aacdev <start|stop|status> ...
+    permission: asyncanticheat.dev
+  aac:
+    description: AsyncAnticheat dashboard linking / status
+    usage: /aac
+    aliases: [asyncanticheat]
+
+permissions:
+  asyncanticheat.dev:
+    description: Allows using AsyncAnticheat dev mode for labeled data recording
+    default: op
+
+

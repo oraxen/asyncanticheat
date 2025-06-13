@@ -1,0 +1,7 @@
+name: AsyncAnticheat
+version: ${version}
+main: md.thomas.asyncanticheat.bungee.AsyncAnticheatBungeePlugin
+description: Async anticheat packet capture and streaming via PacketEvents
+author: th0rgal
+
+

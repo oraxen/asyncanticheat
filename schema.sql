@@ -30,6 +30,21 @@ create table if not exists public.players (
 create index if not exists idx_players_username on public.players (username);
 
 --------------------------------------------------------------------------------
+-- SERVER_PLAYERS: per-server last-seen tracking (for "active players" UI)
+--------------------------------------------------------------------------------
+create table if not exists public.server_players (
+    server_id text not null references public.servers(id) on delete cascade,
+    player_uuid uuid not null references public.players(uuid) on delete cascade,
+    player_name text not null,                 -- last known username on this server
+    first_seen_at timestamptz not null default now(),
+    last_seen_at timestamptz not null default now(),
+    primary key (server_id, player_uuid)
+);
+
+create index if not exists idx_server_players_server_last_seen
+    on public.server_players (server_id, last_seen_at desc);
+
+--------------------------------------------------------------------------------
 -- SESSIONS: a player's connection session on a server
 --------------------------------------------------------------------------------
 create table if not exists public.sessions (

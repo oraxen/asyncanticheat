@@ -4,8 +4,11 @@ use axum::{
     http::HeaderMap,
     Json,
 };
-use serde::Serialize;
+use flate2::read::GzDecoder;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use std::collections::HashSet;
+use std::io::{BufRead, BufReader};
 use uuid::Uuid;
 
 use crate::{error::ApiError, AppState};
@@ -116,6 +119,20 @@ pub async fn ingest(
             // Note: batch_index row exists but S3 object doesn't - should be retried
             ApiError::Internal
         })?;
+
+    // --- Track players (best-effort, async) ---
+    // This allows the dashboard to show "active players" as subtle gray dots even without findings.
+    {
+        let db = state.db.clone();
+        let track_server_id = server_id.clone();
+        let gz_body = body.to_vec();
+        tokio::spawn(async move {
+            if let Err(e) = extract_and_upsert_server_players(&db, &track_server_id, &gz_body).await
+            {
+                tracing::debug!("server player tracking failed (non-critical): {:?}", e);
+            }
+        });
+    }
 
     // --- Dispatch to modules (best-effort, async) ---
     {
@@ -233,5 +250,98 @@ async fn insert_batch_index(
     .bind(payload_bytes)
     .execute(db)
     .await?;
+    Ok(())
+}
+
+/// Minimal packet record for player extraction (only uuid and name)
+#[derive(Debug, Deserialize)]
+struct PacketRecordPartial {
+    #[serde(default)]
+    uuid: Option<String>,
+    #[serde(default)]
+    name: Option<String>,
+}
+
+async fn extract_and_upsert_server_players(
+    db: &PgPool,
+    server_id: &str,
+    gz_body: &[u8],
+) -> anyhow::Result<()> {
+    const MAX_LINES: usize = 2000;
+
+    let decoder = GzDecoder::new(gz_body);
+    let reader = BufReader::new(decoder);
+
+    let mut seen: HashSet<(Uuid, String)> = HashSet::new();
+
+    for (i, line_result) in reader.lines().enumerate() {
+        if i >= MAX_LINES {
+            break;
+        }
+        let line = match line_result {
+            Ok(l) => l,
+            Err(_) => continue,
+        };
+        if line.is_empty() {
+            continue;
+        }
+
+        let record: PacketRecordPartial = match serde_json::from_str(&line) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+
+        let (Some(uuid_str), Some(name)) = (record.uuid, record.name) else {
+            continue;
+        };
+
+        if name.is_empty() {
+            continue;
+        }
+
+        let Ok(uuid) = uuid_str.parse::<Uuid>() else {
+            continue;
+        };
+
+        seen.insert((uuid, name));
+    }
+
+    if seen.is_empty() {
+        return Ok(());
+    }
+
+    for (uuid, username) in seen {
+        // Upsert into global players
+        let _ = sqlx::query(
+            r#"
+            insert into public.players (uuid, username, first_seen_at, last_seen_at)
+            values ($1, $2, now(), now())
+            on conflict (uuid) do update set
+                username = excluded.username,
+                last_seen_at = now()
+            "#,
+        )
+        .bind(uuid)
+        .bind(&username)
+        .execute(db)
+        .await;
+
+        // Upsert per-server last seen
+        let _ = sqlx::query(
+            r#"
+            insert into public.server_players (server_id, player_uuid, player_name, first_seen_at, last_seen_at)
+            values ($1, $2, $3, now(), now())
+            on conflict (server_id, player_uuid) do update set
+                player_name = excluded.player_name,
+                last_seen_at = now()
+            "#,
+        )
+        .bind(server_id)
+        .bind(uuid)
+        .bind(&username)
+        .execute(db)
+        .await;
+    }
+
     Ok(())
 }

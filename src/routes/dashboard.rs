@@ -132,10 +132,7 @@ pub async fn get_findings(
     }
 
     // Optional player filter: accept either UUID or username
-    let parsed_player_uuid = params
-        .player
-        .as_ref()
-        .and_then(|p| Uuid::parse_str(p).ok());
+    let parsed_player_uuid = params.player.as_ref().and_then(|p| Uuid::parse_str(p).ok());
 
     if params.player.is_some() {
         if parsed_player_uuid.is_some() {
@@ -223,10 +220,7 @@ pub async fn get_findings(
             ApiError::Internal
         })?;
 
-    total = q_count
-        .fetch_one(&state.db)
-        .await
-        .unwrap_or((0,));
+    total = q_count.fetch_one(&state.db).await.unwrap_or((0,));
 
     let items: Vec<FindingItem> = findings
         .into_iter()
@@ -273,9 +267,17 @@ pub struct PlayerItem {
 }
 
 #[derive(Debug, Serialize)]
+pub struct ActivePlayer {
+    pub uuid: Uuid,
+    pub username: String,
+    pub last_seen: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct PlayersResponse {
     pub ok: bool,
     pub players: Vec<PlayerItem>,
+    pub active_players: Vec<ActivePlayer>,
 }
 
 /// GET /dashboard/:server_id/players
@@ -358,7 +360,41 @@ pub async fn get_players(
         });
     }
 
-    Ok(Json(PlayersResponse { ok: true, players }))
+    // Active players (seen recently, even without findings) from server_players
+    let players_with_findings: std::collections::HashSet<Uuid> =
+        players.iter().map(|p| p.uuid).collect();
+
+    let active_rows: Vec<(Uuid, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        r#"
+        select player_uuid, player_name, last_seen_at
+        from public.server_players
+        where server_id = $1
+          and last_seen_at > now() - interval '1 hour'
+        order by last_seen_at desc
+        limit 200
+        "#,
+    )
+    .bind(&server_id)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
+
+    let mut active_players: Vec<ActivePlayer> = active_rows
+        .into_iter()
+        .filter(|(uuid, _, _)| !players_with_findings.contains(uuid))
+        .map(|(uuid, username, last_seen)| ActivePlayer {
+            uuid,
+            username,
+            last_seen: last_seen.to_rfc3339(),
+        })
+        .collect();
+    active_players.truncate(100);
+
+    Ok(Json(PlayersResponse {
+        ok: true,
+        players,
+        active_players,
+    }))
 }
 
 #[derive(Debug, Serialize)]

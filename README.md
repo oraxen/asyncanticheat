@@ -29,14 +29,26 @@ cd async_anticheat
 
 Output jar: `build/libs/async-anticheat-<version>.jar`
 
+## Quick Start (For Server Owners)
+
+1. Drop the plugin JAR into your `/plugins/` folder
+2. Start your server
+3. Click the registration link in console (or run `/aac`)
+4. Sign in with GitHub, Discord, or Email
+5. Done! Your server is linked and protected
+
 ## Configuration
 
-On first start, the plugin generates `config.yml` in its data folder (platform-specific). Example:
+On first start, the plugin generates `config.yml` in its data folder (platform-specific). 
+
+The plugin works out-of-the-box with the managed service at [asyncanticheat.com](https://asyncanticheat.com). 
+
+For self-hosted or advanced configuration:
 
 ```yaml
 api:
-  url: "http://127.0.0.1:3002"
-  token: "change_me"
+  url: "https://api.asyncanticheat.com"  # Default managed service
+  token: ""                               # Auto-generated after linking
   timeout_seconds: 10
 
 spool:

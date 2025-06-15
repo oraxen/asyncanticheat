@@ -22,6 +22,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class AsyncAnticheatService {
 
     private static final int DEFAULT_QUEUE_CAPACITY = 10_000;
+    // Keep a lightweight heartbeat so the dashboard can show the plugin as "online"
+    // even when there are no players/packets to upload.
+    private static final long HEARTBEAT_INTERVAL_MS = 15_000L;
 
     private final AcLogger logger;
     private final AsyncAnticheatConfig config;
@@ -36,6 +39,7 @@ public final class AsyncAnticheatService {
     });
     // Ensure flush/upload is single-flight: stop() and scheduled task must never overlap.
     private final AtomicBoolean flushRunning = new AtomicBoolean(false);
+    private long lastHeartbeatAtMs = 0L;
 
     private final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
     private final DiskSpool spool;
@@ -127,6 +131,10 @@ public final class AsyncAnticheatService {
         // First: upload already spooled files (oldest first).
         uploader.uploadSpoolDir(spool.getSpoolDir());
 
+        // Heartbeat: keep last_seen_at fresh even when idle.
+        // Runs on the uploader executor (already a daemon thread).
+        maybeHeartbeat();
+
         // Then: drain queue and spool + attempt upload (best effort).
         final List<PacketRecord> drained = new ArrayList<>(Math.min(queue.size(), 2048));
         queue.drainTo(drained, 2048);
@@ -137,6 +145,18 @@ public final class AsyncAnticheatService {
         final File batchFile = spool.writeBatch(drained, serverIdentity.getServerId(), sessionId);
         if (batchFile != null) {
             uploader.uploadFile(batchFile);
+        }
+    }
+
+    private void maybeHeartbeat() {
+        final long now = System.currentTimeMillis();
+        if (now - lastHeartbeatAtMs < HEARTBEAT_INTERVAL_MS) {
+            return;
+        }
+        lastHeartbeatAtMs = now;
+        try {
+            uploader.handshake();
+        } catch (Exception ignored) {
         }
     }
 

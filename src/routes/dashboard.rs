@@ -37,6 +37,7 @@ pub async fn get_stats(
     State(state): State<AppState>,
     Path(server_id): Path<String>,
 ) -> Result<Json<DashboardStatsResponse>, ApiError> {
+    let server_id = server_id.trim().to_string();
     // Total findings for this server
     let total_findings: (i64,) =
         sqlx::query_as("SELECT COUNT(*) FROM public.findings WHERE server_id = $1")
@@ -118,6 +119,7 @@ pub async fn get_findings(
     Path(server_id): Path<String>,
     Query(params): Query<FindingsQuery>,
 ) -> Result<Json<FindingsResponse>, ApiError> {
+    let server_id = server_id.trim().to_string();
     let limit = params.limit.unwrap_or(50).min(100);
     let offset = params.offset.unwrap_or(0);
 
@@ -287,6 +289,7 @@ pub async fn get_players(
     State(state): State<AppState>,
     Path(server_id): Path<String>,
 ) -> Result<Json<PlayersResponse>, ApiError> {
+    let server_id = server_id.trim().to_string();
     // Get players with aggregated stats
     let rows: Vec<(Uuid, String, i64, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
         r#"
@@ -364,7 +367,7 @@ pub async fn get_players(
     let players_with_findings: std::collections::HashSet<Uuid> =
         players.iter().map(|p| p.uuid).collect();
 
-    let active_rows: Vec<(Uuid, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+    let active_rows: Vec<(Uuid, String, chrono::DateTime<chrono::Utc>)> = match sqlx::query_as(
         r#"
         select player_uuid, player_name, last_seen_at
         from public.server_players
@@ -377,7 +380,13 @@ pub async fn get_players(
     .bind(&server_id)
     .fetch_all(&state.db)
     .await
-    .unwrap_or_default();
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(server_id = %server_id, "get active players failed: {:?}", e);
+            Vec::new()
+        }
+    };
 
     let mut active_players: Vec<ActivePlayer> = active_rows
         .into_iter()
@@ -421,6 +430,7 @@ pub async fn get_modules(
     State(state): State<AppState>,
     Path(server_id): Path<String>,
 ) -> Result<Json<ModulesResponse>, ApiError> {
+    let server_id = server_id.trim().to_string();
     let rows: Vec<(Uuid, String, String, bool, Option<bool>, Option<String>)> = sqlx::query_as(
         r#"
         SELECT 
@@ -490,6 +500,7 @@ pub async fn toggle_module(
     Path((server_id, module_id)): Path<(String, Uuid)>,
     Json(req): Json<ToggleModuleRequest>,
 ) -> Result<Json<ToggleModuleResponse>, ApiError> {
+    let server_id = server_id.trim().to_string();
     sqlx::query(
         "UPDATE public.server_modules SET enabled = $1, updated_at = NOW() WHERE id = $2 AND server_id = $3",
     )
@@ -651,6 +662,7 @@ pub async fn get_status(
     State(state): State<AppState>,
     Path(server_id): Path<String>,
 ) -> Result<Json<StatusResponse>, ApiError> {
+    let server_id = server_id.trim().to_string();
     // Get server info including last_seen_at and callback_url
     let server: Option<(chrono::DateTime<chrono::Utc>, Option<String>)> =
         sqlx::query_as("SELECT last_seen_at, callback_url FROM public.servers WHERE id = $1")
@@ -665,6 +677,7 @@ pub async fn get_status(
     let (last_seen_at, callback_url) = match server {
         Some(s) => s,
         None => {
+            tracing::warn!(server_id = %server_id, "status requested for unknown server");
             return Ok(Json(StatusResponse {
                 ok: true,
                 status: ConnectionStatus {

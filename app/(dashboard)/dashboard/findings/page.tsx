@@ -300,6 +300,7 @@ function PlayerHistoryPanel({
 export default function FindingsPage() {
   const searchParams = useSearchParams();
   const selectedServerId = useSelectedServer();
+  const deepLinkPlayer = searchParams.get("player")?.trim() || null;
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
@@ -329,8 +330,11 @@ export default function FindingsPage() {
         setLoading(true);
         setError(null);
 
-        const params: { severity?: string; limit?: number } = { limit: 100 };
+        const params: { severity?: string; player?: string; limit?: number } = {
+          limit: 100,
+        };
         if (filter) params.severity = filter;
+        if (deepLinkPlayer) params.player = deepLinkPlayer;
 
         const { findings: data } = await api.getFindings(
           serverId,
@@ -358,7 +362,7 @@ export default function FindingsPage() {
     }
 
     fetchFindings();
-  }, [filter, selectedServerId]);
+  }, [filter, selectedServerId, deepLinkPlayer]);
 
   // Check for player query param on mount
   useEffect(() => {

@@ -388,16 +388,21 @@ export default function ModulesPage() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Track pending toggle operations to prevent desync on rapid clicks
+  // Track pending toggle operations (keyed per-server) to prevent desync on rapid clicks
   const pendingToggles = useRef<Set<string>>(new Set());
+  // Track per-module toggle request ordering (keyed per-server) to ignore late responses/reverts
+  const toggleRequestIdRef = useRef<Map<string, number>>(new Map());
   // Guard against out-of-order fetch responses when switching servers quickly
   const fetchIdRef = useRef(0);
+  // Track current server ID to prevent late toggle responses from mutating a newly-selected server
+  const currentServerIdRef = useRef<string | null>(null);
   const selectedServerId = useSelectedServer();
 
   // Fetch modules from API - refetch when server changes
   useEffect(() => {
     // If there's no server selected (e.g., server removed), don't get stuck loading
     if (!selectedServerId) {
+      currentServerIdRef.current = null;
       setSelectedModule(null);
       setModules([]);
       setError(null);
@@ -407,6 +412,9 @@ export default function ModulesPage() {
 
     // Server changed: clear stale selection immediately
     setSelectedModule(null);
+
+    // Update ref to current server - used to guard against stale toggle responses
+    currentServerIdRef.current = selectedServerId;
 
     // Capture serverId for async closures (TypeScript narrowing)
     const serverId = selectedServerId;
@@ -455,12 +463,20 @@ export default function ModulesPage() {
   }, [selectedServerId]);
 
   const toggleModule = async (id: string) => {
+    const serverId = selectedServerId;
     const module = modules.find((m) => m.id === id);
-    if (!module || !selectedServerId) return;
+    if (!module || !serverId) return;
+
+    // Per-server key so toggles don't block (or mutate) when switching servers
+    const toggleKey = `${serverId}:${id}`;
 
     // Prevent rapid clicks from causing desync
-    if (pendingToggles.current.has(id)) return;
-    pendingToggles.current.add(id);
+    if (pendingToggles.current.has(toggleKey)) return;
+    pendingToggles.current.add(toggleKey);
+
+    // Increment request id so late responses (or errors) can't revert newer state
+    const requestId = (toggleRequestIdRef.current.get(toggleKey) ?? 0) + 1;
+    toggleRequestIdRef.current.set(toggleKey, requestId);
 
     const newEnabled = !module.enabled;
 
@@ -477,19 +493,34 @@ export default function ModulesPage() {
 
     // Call API
     try {
-      await api.toggleModule(selectedServerId, id, newEnabled);
+      await api.toggleModule(serverId, id, newEnabled);
     } catch (err) {
       console.error("Failed to toggle module:", err);
+      // If the user switched servers while this request was in flight, ignore this error/revert.
+      if (currentServerIdRef.current !== serverId) return;
+      // If a newer toggle request exists for this module+server, ignore this late error/revert.
+      if (toggleRequestIdRef.current.get(toggleKey) !== requestId) return;
+
       // Revert modules on error
       setModules((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, enabled: !newEnabled } : m))
+        prev.map((m) => {
+          if (m.id !== id) return m;
+          // Only revert if we're still in the optimistic state for this request
+          if (m.enabled !== newEnabled) return m;
+          return { ...m, enabled: !newEnabled };
+        })
       );
       // Revert selected module if it's still the one we toggled
       setSelectedModule((current) =>
-        current?.id === id ? { ...current, enabled: !newEnabled } : current
+        current?.id === id && current.enabled === newEnabled
+          ? { ...current, enabled: !newEnabled }
+          : current
       );
     } finally {
-      pendingToggles.current.delete(id);
+      // Only clear pending if this is still the latest request for this module+server
+      if (toggleRequestIdRef.current.get(toggleKey) === requestId) {
+        pendingToggles.current.delete(toggleKey);
+      }
     }
   };
 

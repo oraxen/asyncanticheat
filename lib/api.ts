@@ -224,6 +224,10 @@ class ApiClient {
       if (params?.severity) {
         findings = findings.filter(f => f.severity === params.severity);
       }
+      if (params?.player) {
+        const wanted = params.player.toLowerCase();
+        findings = findings.filter(f => (f.player_name || "Unknown").toLowerCase() === wanted);
+      }
       return { findings, total: findings.length };
     }
   }

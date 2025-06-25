@@ -138,7 +138,8 @@ public final class BukkitPlayerExemptionTracker extends PlayerExemptionTracker i
         //
         // IMPORTANT:
         // Only exempt flight if the server actually allows it (creative/permissions).
-        // If allowFlight is false but isFlying is true, that is itself suspicious and we
+        // If allowFlight is false but isFlying is true, that is itself suspicious and
+        // we
         // still want to capture packets so async modules can detect it.
         if (config.isSkipFlying() && player.isFlying() && player.getAllowFlight()) {
             return ExemptionReason.FLYING;

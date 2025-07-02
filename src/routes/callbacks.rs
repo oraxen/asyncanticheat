@@ -2,6 +2,7 @@ use axum::{extract::State, http::HeaderMap, Json};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
+use std::collections::HashSet;
 
 use crate::{error::ApiError, AppState};
 
@@ -62,28 +63,35 @@ pub async fn post_findings(
         ApiError::Internal
     })?;
 
+    // Upsert players once per request (instead of per-finding).
+    // This avoids N identical upserts for the same uuid when a noisy module sends many findings.
+    let mut player_uuids: HashSet<Uuid> = HashSet::new();
+    for f in &req.findings {
+        if let Some(u) = f.player_uuid {
+            player_uuids.insert(u);
+        }
+    }
+    for player_uuid in player_uuids {
+        sqlx::query(
+            r#"
+            insert into public.players (uuid, username, first_seen_at, last_seen_at)
+            values ($1, 'unknown', now(), now())
+            on conflict (uuid) do update set last_seen_at = now()
+            "#,
+        )
+        .bind(player_uuid)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            tracing::error!("upsert player failed: {:?}", e);
+            ApiError::Internal
+        })?;
+    }
+
     let mut inserted = 0usize;
     for f in &req.findings {
         if f.detector_name.trim().is_empty() || f.title.trim().is_empty() {
             continue;
-        }
-
-        // Ensure player row exists if a player_uuid is provided (FK constraint).
-        if let Some(player_uuid) = f.player_uuid {
-            sqlx::query(
-                r#"
-                insert into public.players (uuid, username, first_seen_at, last_seen_at)
-                values ($1, 'unknown', now(), now())
-                on conflict (uuid) do update set last_seen_at = now()
-                "#,
-            )
-            .bind(player_uuid)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
-                tracing::error!("upsert player failed: {:?}", e);
-                ApiError::Internal
-            })?;
         }
 
         let evidence_json = f.evidence_json.as_ref().map(sqlx::types::Json);
@@ -118,6 +126,14 @@ pub async fn post_findings(
         tracing::error!("commit failed: {:?}", e);
         ApiError::Internal
     })?;
+
+    tracing::info!(
+        server_id = %req.server_id.trim(),
+        session_id = ?req.session_id.as_deref(),
+        batch_id = ?req.batch_id,
+        inserted = inserted,
+        "callbacks/findings stored"
+    );
 
     Ok(Json(PostFindingsResponse {
         ok: true,

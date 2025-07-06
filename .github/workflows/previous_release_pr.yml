@@ -44,10 +44,17 @@ jobs:
 
       - name: Create PR (HEAD -> previous_release) if missing
         env:
-          GH_TOKEN: ${{ github.token }}
+          # NOTE: Many orgs disable PR creation for GITHUB_TOKEN.
+          # Use a fine-grained PAT secret with Pull Requests: Read/Write.
+          GH_TOKEN: ${{ secrets.PREVIOUS_RELEASE_PR_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
+          
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "PREVIOUS_RELEASE_PR_TOKEN is not set; skipping PR creation."
+            exit 0
+          fi
 
           HEAD_BRANCH="${{ github.ref_name }}"
 

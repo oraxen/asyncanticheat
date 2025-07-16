@@ -135,6 +135,11 @@ create table if not exists public.findings (
     description text,
     evidence_s3_key text,                      -- optional link to relevant batch
     evidence_json jsonb,                       -- optional structured evidence
+    -- Aggregation fields: we store one row per minute bucket per detector, and increment occurrences.
+    occurrences integer not null default 1,
+    window_start_at timestamptz not null default date_trunc('minute', now()),
+    first_seen_at timestamptz not null default now(),
+    last_seen_at timestamptz not null default now(),
     reviewed_at timestamptz,
     reviewed_by text,
     status text not null default 'open'        -- open, confirmed, dismissed
@@ -143,6 +148,11 @@ create table if not exists public.findings (
 create index if not exists idx_findings_server on public.findings (server_id, created_at desc);
 create index if not exists idx_findings_player on public.findings (player_uuid, created_at desc);
 create index if not exists idx_findings_status on public.findings (status, created_at desc);
+create index if not exists idx_findings_server_last_seen on public.findings (server_id, last_seen_at desc);
+create index if not exists idx_findings_player_last_seen on public.findings (player_uuid, last_seen_at desc);
+create unique index if not exists uq_findings_agg_minute
+    on public.findings (server_id, player_uuid, detector_name, window_start_at)
+    where player_uuid is not null;
 
 --------------------------------------------------------------------------------
 -- DETECTOR_CONFIGS: per-server processor/detector settings

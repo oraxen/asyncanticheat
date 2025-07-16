@@ -39,8 +39,9 @@ pub async fn get_stats(
 ) -> Result<Json<DashboardStatsResponse>, ApiError> {
     let server_id = server_id.trim().to_string();
     // Total findings for this server
-    let total_findings: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM public.findings WHERE server_id = $1")
+    let total_findings: (i64,) = sqlx::query_as(
+        "SELECT COALESCE(SUM(occurrences), 0) FROM public.findings WHERE server_id = $1",
+    )
             .bind(&server_id)
             .fetch_one(&state.db)
             .await
@@ -66,7 +67,7 @@ pub async fn get_stats(
 
     // Findings in the last 24 hours
     let findings_today: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM public.findings WHERE server_id = $1 AND created_at > NOW() - INTERVAL '24 hours'",
+        "SELECT COALESCE(SUM(occurrences), 0) FROM public.findings WHERE server_id = $1 AND last_seen_at > NOW() - INTERVAL '24 hours'",
     )
     .bind(&server_id)
     .fetch_one(&state.db)
@@ -101,6 +102,7 @@ pub struct FindingItem {
     pub severity: String,
     pub title: String,
     pub description: Option<String>,
+    pub occurrences: i32,
     pub created_at: String,
 }
 
@@ -158,11 +160,12 @@ pub async fn get_findings(
             f.severity, 
             f.title, 
             f.description,
-            f.created_at
+            f.occurrences,
+            f.last_seen_at
         FROM public.findings f
         LEFT JOIN public.players p ON f.player_uuid = p.uuid
         WHERE {}
-        ORDER BY f.created_at DESC
+        ORDER BY f.last_seen_at DESC
         LIMIT ${} OFFSET ${}
         "#,
         where_clause,
@@ -189,6 +192,7 @@ pub async fn get_findings(
         String,
         String,
         Option<String>,
+        i32,
         chrono::DateTime<chrono::Utc>,
     )>;
     let total: (i64,);
@@ -235,7 +239,8 @@ pub async fn get_findings(
                 severity,
                 title,
                 description,
-                created_at,
+                occurrences,
+                last_seen_at,
             )| {
                 FindingItem {
                     id,
@@ -245,7 +250,8 @@ pub async fn get_findings(
                     severity,
                     title,
                     description,
-                    created_at: created_at.to_rfc3339(),
+                    occurrences,
+                    created_at: last_seen_at.to_rfc3339(),
                 }
             },
         )
@@ -296,13 +302,13 @@ pub async fn get_players(
         SELECT 
             p.uuid,
             p.username,
-            COUNT(f.id) as findings_count,
-            MAX(f.created_at) as last_finding
+            COALESCE(SUM(f.occurrences), 0) as findings_count,
+            MAX(f.last_seen_at) as last_finding
         FROM public.players p
         INNER JOIN public.findings f ON p.uuid = f.player_uuid
         WHERE f.server_id = $1
         GROUP BY p.uuid, p.username
-        ORDER BY COUNT(f.id) DESC
+        ORDER BY COALESCE(SUM(f.occurrences), 0) DESC
         LIMIT 50
         "#,
     )
@@ -458,7 +464,7 @@ pub async fn get_modules(
         // Get detection count for this module (approximation based on detector_name pattern)
         let detections: (i64,) = sqlx::query_as(
             r#"
-            SELECT COUNT(*) FROM public.findings 
+            SELECT COALESCE(SUM(occurrences), 0) FROM public.findings 
             WHERE server_id = $1 AND detector_name LIKE $2
             "#,
         )

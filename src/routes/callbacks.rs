@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 use std::collections::HashSet;
+use std::collections::HashMap;
+use chrono::{DateTime, Timelike, Utc};
 
 use crate::{error::ApiError, AppState};
 
@@ -63,6 +65,13 @@ pub async fn post_findings(
         ApiError::Internal
     })?;
 
+    // Per-request minute bucket (best-effort "last minute" window).
+    let now: DateTime<Utc> = Utc::now();
+    let window_start_at: DateTime<Utc> = now
+        .with_second(0)
+        .and_then(|t| t.with_nanosecond(0))
+        .unwrap_or(now);
+
     // Upsert players once per request (instead of per-finding).
     // This avoids N identical upserts for the same uuid when a noisy module sends many findings.
     let mut player_uuids: HashSet<Uuid> = HashSet::new();
@@ -89,34 +98,116 @@ pub async fn post_findings(
     }
 
     let mut inserted = 0usize;
+    // Aggregate per (player_uuid, detector_name) per minute.
+    #[derive(Debug, Clone)]
+    struct Agg {
+        count: i32,
+        detector_version: Option<String>,
+        severity: String,
+        title: String,
+        description: Option<String>,
+        evidence_s3_key: Option<String>,
+        evidence_json: Option<Value>,
+    }
+
+    fn sev_rank(sev: &str) -> i32 {
+        match sev {
+            "critical" => 4,
+            "high" => 3,
+            "medium" => 2,
+            "low" => 1,
+            _ => 0,
+        }
+    }
+
+    let mut agg: HashMap<(Uuid, String), Agg> = HashMap::new();
     for f in &req.findings {
-        if f.detector_name.trim().is_empty() || f.title.trim().is_empty() {
+        let Some(player_uuid) = f.player_uuid else { continue };
+        let detector_name = f.detector_name.trim();
+        if detector_name.is_empty() || f.title.trim().is_empty() {
             continue;
         }
 
-        let evidence_json = f.evidence_json.as_ref().map(sqlx::types::Json);
+        let sev = f.severity.as_deref().unwrap_or("info").to_string();
+        let key = (player_uuid, detector_name.to_string());
+        let entry = agg.entry(key).or_insert_with(|| Agg {
+            count: 0,
+            detector_version: f.detector_version.clone(),
+            severity: sev.clone(),
+            title: f.title.trim().to_string(),
+            description: f.description.clone(),
+            evidence_s3_key: f.evidence_s3_key.clone(),
+            evidence_json: f.evidence_json.clone(),
+        });
+
+        entry.count += 1;
+        entry.detector_version = f.detector_version.clone().or(entry.detector_version.clone());
+
+        // Keep the "strongest" severity/title/desc in the bucket.
+        if sev_rank(&sev) >= sev_rank(&entry.severity) {
+            entry.severity = sev;
+            entry.title = f.title.trim().to_string();
+            entry.description = f.description.clone();
+            entry.evidence_s3_key = f.evidence_s3_key.clone();
+            entry.evidence_json = f.evidence_json.clone();
+        }
+    }
+
+    for ((player_uuid, detector_name), a) in agg {
+        let evidence_json = a.evidence_json.as_ref().map(sqlx::types::Json);
+
+        // Upsert minute-bucket row and increment occurrences.
         sqlx::query(
             r#"
             insert into public.findings
-                (server_id, player_uuid, session_id, detector_name, detector_version, severity, title, description, evidence_s3_key, evidence_json)
+                (server_id, player_uuid, session_id, detector_name, detector_version, severity, title, description, evidence_s3_key, evidence_json,
+                 occurrences, window_start_at, first_seen_at, last_seen_at)
             values
-                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                 $11, $12, now(), now())
+            on conflict (server_id, player_uuid, detector_name, window_start_at) do update set
+                occurrences = public.findings.occurrences + excluded.occurrences,
+                last_seen_at = now(),
+                detector_version = coalesce(excluded.detector_version, public.findings.detector_version),
+                -- keep max severity
+                severity = case
+                    when (case excluded.severity
+                            when 'critical' then 4
+                            when 'high' then 3
+                            when 'medium' then 2
+                            when 'low' then 1
+                            else 0 end)
+                         >= (case public.findings.severity
+                            when 'critical' then 4
+                            when 'high' then 3
+                            when 'medium' then 2
+                            when 'low' then 1
+                            else 0 end)
+                    then excluded.severity
+                    else public.findings.severity
+                end,
+                title = excluded.title,
+                description = excluded.description,
+                evidence_s3_key = excluded.evidence_s3_key,
+                evidence_json = excluded.evidence_json
             "#,
         )
         .bind(req.server_id.trim())
-        .bind(f.player_uuid)
+        .bind(player_uuid)
         .bind(req.session_id.as_deref())
-        .bind(f.detector_name.trim())
-        .bind(f.detector_version.as_deref())
-        .bind(f.severity.as_deref().unwrap_or("info"))
-        .bind(f.title.trim())
-        .bind(f.description.as_deref())
-        .bind(f.evidence_s3_key.as_deref())
+        .bind(detector_name)
+        .bind(a.detector_version.as_deref())
+        .bind(&a.severity)
+        .bind(&a.title)
+        .bind(a.description.as_deref())
+        .bind(a.evidence_s3_key.as_deref())
         .bind(evidence_json)
+        .bind(a.count)
+        .bind(window_start_at)
         .execute(&mut *tx)
         .await
         .map_err(|e| {
-            tracing::error!("insert finding failed: {:?}", e);
+            tracing::error!("upsert aggregated finding failed: {:?}", e);
             ApiError::Internal
         })?;
         inserted += 1;

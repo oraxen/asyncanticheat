@@ -219,6 +219,19 @@ function AnimatedGlobe({
   const playerPositionsRef = useRef<
     { id: string; x: number; y: number; radius: number; isText?: boolean }[]
   >([]);
+  // Persist animation state across data refreshes (players/activePlayers change every refresh)
+  const rotationRef = useRef(0);
+  const gridPointsRef = useRef<{ lat: number; lng: number }[]>([]);
+  const playersRef = useRef(players);
+  const activePlayersRef = useRef(activePlayers);
+
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+
+  useEffect(() => {
+    activePlayersRef.current = activePlayers;
+  }, [activePlayers]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -228,7 +241,6 @@ function AnimatedGlobe({
     if (!ctx) return;
 
     let animationId: number;
-    let rotation = 0;
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -244,12 +256,15 @@ function AnimatedGlobe({
     window.addEventListener("resize", resize);
 
     // Grid points
-    const gridPoints: { lat: number; lng: number }[] = [];
-    for (let i = 0; i < 100; i++) {
-      gridPoints.push({
-        lat: (Math.random() - 0.5) * Math.PI * 0.9,
-        lng: Math.random() * Math.PI * 2,
-      });
+    if (gridPointsRef.current.length === 0) {
+      const pts: { lat: number; lng: number }[] = [];
+      for (let i = 0; i < 100; i++) {
+        pts.push({
+          lat: (Math.random() - 0.5) * Math.PI * 0.9,
+          lng: Math.random() * Math.PI * 2,
+        });
+      }
+      gridPointsRef.current = pts;
     }
 
     const draw = () => {
@@ -258,6 +273,7 @@ function AnimatedGlobe({
       const centerY = rect.height / 2;
       const radius = Math.min(centerX, centerY) * 0.85;
       const time = Date.now() / 1000;
+      const rotation = rotationRef.current;
 
       ctx.clearRect(0, 0, rect.width, rect.height);
 
@@ -338,7 +354,7 @@ function AnimatedGlobe({
       }
 
       // Draw grid points
-      gridPoints.forEach((point) => {
+      gridPointsRef.current.forEach((point) => {
         const x =
           centerX +
           Math.cos(point.lat) * Math.sin(point.lng + rotation) * radius;
@@ -354,7 +370,7 @@ function AnimatedGlobe({
       });
 
       // Draw active players (seen but no findings) as subtle gray points
-      activePlayers.forEach((p) => {
+      activePlayersRef.current.forEach((p) => {
         const x =
           centerX + Math.cos(p.lat) * Math.sin(p.lng + rotation) * radius;
         const y = centerY + Math.sin(p.lat) * radius;
@@ -388,7 +404,7 @@ function AnimatedGlobe({
         isText?: boolean;
       }[] = [];
 
-      players.forEach((player) => {
+      playersRef.current.forEach((player) => {
         const x =
           centerX +
           Math.cos(player.lat) * Math.sin(player.lng + rotation) * radius;
@@ -488,7 +504,7 @@ function AnimatedGlobe({
 
       playerPositionsRef.current = newPlayerPositions;
 
-      rotation += 0.002;
+      rotationRef.current = rotation + 0.002;
       animationId = requestAnimationFrame(draw);
     };
 
@@ -498,7 +514,7 @@ function AnimatedGlobe({
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(animationId);
     };
-  }, [players, activePlayers]);
+  }, []);
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

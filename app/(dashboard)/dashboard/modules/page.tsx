@@ -47,6 +47,24 @@ const moduleDescriptions: Record<string, { short: string; full: string }> = {
   },
 };
 
+function hashStringToUnitInterval(input: string): number {
+  // FNV-1a 32-bit
+  let h = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  // Convert to [0, 1)
+  return (h >>> 0) / 2 ** 32;
+}
+
+function deterministicAccuracy(moduleId: string): number {
+  // Stable 99.1% - 99.6% based on module id (no Math.random jitter across refreshes)
+  const u = hashStringToUnitInterval(moduleId);
+  const value = 99.1 + u * 0.5;
+  return Math.round(value * 10) / 10;
+}
+
 const storeModules = [
   {
     id: "s1",
@@ -440,7 +458,7 @@ export default function ModulesPage() {
           stats: {
             detections: m.detections,
             falsePositives: Math.floor(m.detections * 0.003),
-            accuracy: 99.6 - Math.random() * 0.5,
+            accuracy: deterministicAccuracy(m.id ?? m.name),
           },
         }));
 

@@ -42,10 +42,10 @@ pub async fn get_stats(
     let total_findings: (i64,) = sqlx::query_as(
         "SELECT COALESCE(SUM(occurrences), 0) FROM public.findings WHERE server_id = $1",
     )
-            .bind(&server_id)
-            .fetch_one(&state.db)
-            .await
-            .unwrap_or((0,));
+    .bind(&server_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or((0,));
 
     // Active modules for this server
     let active_modules: (i64,) = sqlx::query_as(

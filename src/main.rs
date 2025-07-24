@@ -2,7 +2,9 @@ use axum::{routing::get, Router};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::EnvFilter;
 
-use async_anticheat_api::{config::Config, db, module_pipeline, routes, s3::ObjectStore, AppState};
+use async_anticheat_api::{
+    config::Config, db, module_pipeline, object_store_cleanup, routes, s3::ObjectStore, AppState,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -26,6 +28,17 @@ async fn main() -> anyhow::Result<()> {
     if cfg.module_callback_token.is_empty() {
         tracing::warn!("MODULE_CALLBACK_TOKEN is empty; module callbacks will be rejected.");
     }
+    if cfg.object_store_cleanup_enabled {
+        tracing::info!(
+            dry_run = cfg.object_store_cleanup_dry_run,
+            ttl_days = cfg.object_store_ttl_days,
+            ttl_seconds = cfg.object_store_ttl_seconds_override,
+            batch_index_ttl_days = cfg.batch_index_ttl_days,
+            batch_index_ttl_seconds = cfg.batch_index_ttl_seconds_override,
+            interval_seconds = cfg.object_store_cleanup_interval_seconds,
+            "object store TTL cleanup is enabled"
+        );
+    }
 
     let db = db::connect(&cfg.database_url).await?;
     let object_store = ObjectStore::from_config(&cfg).expect("Failed to initialize object store");
@@ -41,6 +54,13 @@ async fn main() -> anyhow::Result<()> {
         module_callback_token: cfg.module_callback_token,
         http,
         max_body_bytes: cfg.max_body_bytes,
+        object_store_cleanup_enabled: cfg.object_store_cleanup_enabled,
+        object_store_cleanup_dry_run: cfg.object_store_cleanup_dry_run,
+        object_store_cleanup_interval_seconds: cfg.object_store_cleanup_interval_seconds,
+        object_store_ttl_days: cfg.object_store_ttl_days,
+        object_store_ttl_seconds_override: cfg.object_store_ttl_seconds_override,
+        batch_index_ttl_days: cfg.batch_index_ttl_days,
+        batch_index_ttl_seconds_override: cfg.batch_index_ttl_seconds_override,
     };
 
     // Background: module health checks ("check modules" system)
@@ -52,6 +72,19 @@ async fn main() -> anyhow::Result<()> {
             loop {
                 ticker.tick().await;
                 module_pipeline::healthcheck_tick(health_state.clone()).await;
+            }
+        });
+    }
+
+    // Background: object store TTL cleanup
+    if cfg.object_store_cleanup_enabled {
+        let cleanup_state = state.clone();
+        let interval_seconds = cfg.object_store_cleanup_interval_seconds.max(60);
+        tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(std::time::Duration::from_secs(interval_seconds));
+            loop {
+                ticker.tick().await;
+                object_store_cleanup::cleanup_tick(cleanup_state.clone()).await;
             }
         });
     }

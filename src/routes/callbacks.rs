@@ -165,7 +165,9 @@ pub async fn post_findings(
             values
                 ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                  $11, $12, now(), now())
-            on conflict (server_id, player_uuid, detector_name, window_start_at) do update set
+            on conflict (server_id, player_uuid, detector_name, window_start_at)
+                where player_uuid is not null
+            do update set
                 occurrences = public.findings.occurrences + excluded.occurrences,
                 last_seen_at = now(),
                 detector_version = coalesce(excluded.detector_version, public.findings.detector_version),

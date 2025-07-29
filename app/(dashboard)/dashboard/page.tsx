@@ -35,6 +35,7 @@ interface ActivePlayerDot {
   name: string;
   lat: number;
   lng: number;
+  lastSeen: string;
 }
 
 const severityColors = {
@@ -671,7 +672,13 @@ export default function DashboardPage() {
         setActivePlayers(
           playersData.activePlayers.map((p) => {
             const pos = generateGlobePosition(p.uuid);
-            return { id: p.uuid, name: p.username, lat: pos.lat, lng: pos.lng };
+            return {
+              id: p.uuid,
+              name: p.username,
+              lat: pos.lat,
+              lng: pos.lng,
+              lastSeen: formatRelativeTime(p.last_seen),
+            };
           })
         );
         setStats(statsData);
@@ -810,9 +817,46 @@ export default function DashboardPage() {
             </h2>
           </div>
           <div className="flex-1 overflow-auto divide-y divide-white/[0.04]">
-            {players.length === 0 && !loading && (
+            {players.length === 0 && activePlayers.length === 0 && !loading && (
               <div className="px-4 py-8 text-center text-white/40 text-sm">
-                No findings yet
+                No players yet
+              </div>
+            )}
+            {players.length === 0 && activePlayers.length > 0 && !loading && (
+              <div className="divide-y divide-white/[0.04]">
+                <div className="px-4 py-3 text-[10px] uppercase tracking-wider text-white/40">
+                  Active players (no findings)
+                </div>
+                {activePlayers.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() =>
+                      setSelectedPlayer({
+                        id: p.id,
+                        name: p.name,
+                        lat: p.lat,
+                        lng: p.lng,
+                        severity: "low",
+                        detector: "—",
+                        findings: 0,
+                        lastSeen: p.lastSeen,
+                        region: "Global",
+                      })
+                    }
+                    className="w-full px-4 py-3 hover:bg-white/[0.03] transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0 bg-white/20" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white/90 truncate">{p.name}</p>
+                        <p className="text-[10px] text-white/40">{p.lastSeen}</p>
+                      </div>
+                      <span className="text-[10px] text-white/30 uppercase">
+                        active
+                      </span>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
             {players.map((player) => (

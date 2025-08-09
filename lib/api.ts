@@ -18,6 +18,9 @@ export interface Finding {
   severity: "low" | "medium" | "high" | "critical";
   title: string;
   description: string | null;
+  // When the backend aggregates spammy detectors, multiple triggers within a minute
+  // collapse into one row and this indicates how many times it fired.
+  occurrences?: number;
   created_at: string;
 }
 

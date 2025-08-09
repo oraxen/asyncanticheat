@@ -74,9 +74,10 @@ function getPlayerStats(findings: Finding[]) {
 
   findings.forEach((f) => {
     const playerName = f.player_name || "Unknown";
+    const occ = f.occurrences && f.occurrences > 0 ? f.occurrences : 1;
     const existing = playerMap.get(playerName);
     if (existing) {
-      existing.totalFindings++;
+      existing.totalFindings += occ;
       if (
         severityRank[f.severity] >
         severityRank[existing.highestSeverity as keyof typeof severityRank]
@@ -91,7 +92,7 @@ function getPlayerStats(findings: Finding[]) {
     } else {
       playerMap.set(playerName, {
         name: playerName,
-        totalFindings: 1,
+        totalFindings: occ,
         highestSeverity: f.severity,
         lastSeen: f.created_at,
         detectors: new Set([f.detector_name]),
@@ -260,6 +261,10 @@ function PlayerHistoryPanel({
                 <div className="space-y-3">
                   {items.map((finding) => {
                     const { time } = formatDate(finding.created_at);
+                    const occ =
+                      finding.occurrences && finding.occurrences > 1
+                        ? finding.occurrences
+                        : null;
                     return (
                       <div
                         key={finding.id}
@@ -286,14 +291,21 @@ function PlayerHistoryPanel({
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span
-                              className={cn(
-                                "text-sm font-medium",
-                                severityColors[finding.severity]
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={cn(
+                                  "text-sm font-medium truncate",
+                                  severityColors[finding.severity]
+                                )}
+                              >
+                                {finding.title}
+                              </span>
+                              {occ && (
+                                <span className="text-[10px] text-white/40 font-mono flex-shrink-0">
+                                  ×{occ}
+                                </span>
                               )}
-                            >
-                              {finding.title}
-                            </span>
+                            </div>
                             <span
                               className={cn(
                                 "px-2 py-0.5 rounded text-[9px] uppercase font-medium tracking-wide",
@@ -554,6 +566,10 @@ export default function FindingsPage() {
           <div className="divide-y divide-white/[0.04]">
             {filtered.map((finding) => {
               const { date, time } = formatDate(finding.created_at);
+              const occ =
+                finding.occurrences && finding.occurrences > 1
+                  ? finding.occurrences
+                  : null;
               return (
                 <button
                   key={finding.id}
@@ -583,14 +599,22 @@ export default function FindingsPage() {
                     </span>
                   </div>
                   <div className="w-24 text-right flex-shrink-0">
-                    <span
-                      className={cn(
-                        "text-xs",
-                        severityColors[finding.severity]
+                    <div className="flex items-center justify-end gap-2">
+                      <span
+                        className={cn(
+                          "text-xs truncate max-w-[8rem]",
+                          severityColors[finding.severity]
+                        )}
+                        title={finding.title}
+                      >
+                        {finding.title}
+                      </span>
+                      {occ && (
+                        <span className="text-[10px] text-white/40 font-mono">
+                          ×{occ}
+                        </span>
                       )}
-                    >
-                      {finding.title}
-                    </span>
+                    </div>
                   </div>
                   <div className="w-20 text-right flex-shrink-0">
                     <span className="text-[10px] text-white/30">{date}</span>

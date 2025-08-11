@@ -17,6 +17,23 @@ create table if not exists public.servers (
 alter table public.servers
     add column if not exists callback_url text;
 
+-- Registration / ownership (dashboard linking)
+-- The plugin generates a per-server secret token and sends it as Bearer auth.
+-- We store only a SHA-256 hash so the raw token never needs to live in the DB.
+alter table public.servers
+    add column if not exists auth_token_hash text;
+
+alter table public.servers
+    add column if not exists auth_token_first_seen_at timestamptz;
+
+-- Supabase auth.users.id (UUID). Null means "not linked to any account yet".
+alter table public.servers
+    add column if not exists owner_user_id uuid;
+
+-- Set when a server is linked to an account.
+alter table public.servers
+    add column if not exists registered_at timestamptz;
+
 --------------------------------------------------------------------------------
 -- PLAYERS: unique player identities (by UUID)
 --------------------------------------------------------------------------------

@@ -2,9 +2,7 @@ use axum::{routing::get, Router};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::EnvFilter;
 
-use async_anticheat_api::{
-    config::Config, db, module_pipeline, object_store_cleanup, routes, s3::ObjectStore, AppState,
-};
+use async_anticheat_api::{config::Config, db, module_pipeline, routes, s3::ObjectStore, AppState};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -28,19 +26,10 @@ async fn main() -> anyhow::Result<()> {
     if cfg.module_callback_token.is_empty() {
         tracing::warn!("MODULE_CALLBACK_TOKEN is empty; module callbacks will be rejected.");
     }
-    if cfg.object_store_cleanup_enabled {
-        tracing::info!(
-            dry_run = cfg.object_store_cleanup_dry_run,
-            ttl_days = cfg.object_store_ttl_days,
-            ttl_seconds = cfg.object_store_ttl_seconds_override,
-            batch_index_ttl_days = cfg.batch_index_ttl_days,
-            batch_index_ttl_seconds = cfg.batch_index_ttl_seconds_override,
-            interval_seconds = cfg.object_store_cleanup_interval_seconds,
-            "object store TTL cleanup is enabled"
-        );
-    }
 
     let db = db::connect(&cfg.database_url).await?;
+    // Minimal migrations to keep deployments forward-compatible.
+    db::migrate(&db).await?;
     let object_store = ObjectStore::from_config(&cfg).expect("Failed to initialize object store");
     let http = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -76,21 +65,9 @@ async fn main() -> anyhow::Result<()> {
         });
     }
 
-    // Background: object store TTL cleanup
-    if cfg.object_store_cleanup_enabled {
-        let cleanup_state = state.clone();
-        let interval_seconds = cfg.object_store_cleanup_interval_seconds.max(60);
-        tokio::spawn(async move {
-            let mut ticker = tokio::time::interval(std::time::Duration::from_secs(interval_seconds));
-            loop {
-                ticker.tick().await;
-                object_store_cleanup::cleanup_tick(cleanup_state.clone()).await;
-            }
-        });
-    }
-
     let app = Router::new()
         .route("/health", get(routes::health::health))
+        .route("/handshake", axum::routing::post(routes::handshake::handshake))
         .route("/ingest", axum::routing::post(routes::ingest::ingest))
         .route(
             "/servers/:server_id/modules",

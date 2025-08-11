@@ -21,6 +21,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 flate2 = "1"
+sha2 = "0.10"
+hex = "0.4"
 
 # S3-compatible object storage (rust-s3 is lighter than AWS SDK)
 rust-s3 = { version = "0.35", default-features = false, features = ["tokio-rustls-tls"] }

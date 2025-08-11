@@ -1,7 +1,7 @@
 use axum::{
     body::Bytes,
     extract::State,
-    http::HeaderMap,
+    http::{HeaderMap, StatusCode},
     Json,
 };
 use flate2::read::GzDecoder;
@@ -21,6 +21,37 @@ pub struct IngestResponse {
     pub s3_key: String,
 }
 
+#[derive(Serialize)]
+pub struct WaitingForRegistrationResponse {
+    pub ok: bool,
+    pub status: String,
+    pub server_id: String,
+}
+
+fn parse_bearer_token(headers: &HeaderMap) -> Option<String> {
+    let auth = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .trim();
+    let prefix = "bearer ";
+    if auth.len() <= prefix.len() {
+        return None;
+    }
+    if !auth[..prefix.len()].eq_ignore_ascii_case(prefix) {
+        return None;
+    }
+    Some(auth[prefix.len()..].trim().to_string())
+}
+
+fn sha256_hex(input: &str) -> String {
+    use sha2::Digest;
+    let mut h = sha2::Sha256::new();
+    h.update(input.as_bytes());
+    let out = h.finalize();
+    hex::encode(out)
+}
+
 /// POST /ingest
 ///
 /// Receives a gzipped NDJSON batch of packet records.
@@ -32,7 +63,26 @@ pub async fn ingest(
     State(state): State<AppState>,
     headers: HeaderMap,
     body: Bytes,
-) -> Result<Json<IngestResponse>, ApiError> {
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    // --- Extract required headers early (also needed for auth/registration gate) ---
+    let server_id = headers
+        .get("x-server-id")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let session_id = headers
+        .get("x-session-id")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if server_id.is_empty() || session_id.is_empty() {
+        return Err(ApiError::BadRequest(
+            "missing X-Server-Id or X-Session-Id".to_string(),
+        ));
+    }
+
     // --- Size check ---
     if body.len() > state.max_body_bytes {
         return Err(ApiError::BadRequest(format!(
@@ -42,38 +92,108 @@ pub async fn ingest(
         )));
     }
 
-    // --- Auth ---
-    let auth = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
-    let expected = format!("Bearer {}", state.ingest_token);
-    if state.ingest_token.is_empty() || auth != expected {
-        return Err(ApiError::Unauthorized);
-    }
-
-    // --- Extract required headers ---
-    let server_id = headers
-        .get("x-server-id")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .to_string();
-    let session_id = headers
-        .get("x-session-id")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .to_string();
-    if server_id.is_empty() || session_id.is_empty() {
-        return Err(ApiError::BadRequest(
-            "missing X-Server-Id or X-Session-Id".to_string(),
-        ));
-    }
+    // --- Auth (per-server token) ---
+    let token = parse_bearer_token(&headers).ok_or(ApiError::Unauthorized)?;
+    let token_hash = sha256_hex(&token);
 
     // --- Optional metadata from headers ---
     let platform = headers
         .get("x-server-platform")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
+
+    // --- Registration gate ---
+    // We store the server + token hash the first time we see it, but we do not accept payloads
+    // until the server is linked to a dashboard account (owner_user_id + registered_at).
+    let row: Option<(Option<String>, Option<uuid::Uuid>, Option<chrono::DateTime<chrono::Utc>>)> =
+        sqlx::query_as(
+            r#"
+            select auth_token_hash, owner_user_id, registered_at
+            from public.servers
+            where id = $1
+            "#,
+        )
+        .bind(&server_id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("ingest registration lookup failed: {:?}", e);
+            ApiError::Internal
+        })?;
+
+    match row {
+        None => {
+            // New server: insert as pending.
+            sqlx::query(
+                r#"
+                insert into public.servers
+                    (id, platform, first_seen_at, last_seen_at, auth_token_hash, auth_token_first_seen_at)
+                values
+                    ($1, $2, now(), now(), $3, now())
+                on conflict (id) do update set
+                    platform = coalesce(excluded.platform, servers.platform),
+                    last_seen_at = now()
+                "#,
+            )
+            .bind(&server_id)
+            .bind(platform.as_deref())
+            .bind(&token_hash)
+            .execute(&state.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("ingest insert pending server failed: {:?}", e);
+                ApiError::Internal
+            })?;
+
+            let body = WaitingForRegistrationResponse {
+                ok: true,
+                status: "waiting_for_registration".to_string(),
+                server_id,
+            };
+            return Ok((StatusCode::CONFLICT, Json(serde_json::to_value(body).unwrap())));
+        }
+        Some((stored_hash_opt, owner_user_id, registered_at)) => {
+            // Keep last_seen_at fresh (heartbeat).
+            let _ = sqlx::query("update public.servers set last_seen_at = now() where id = $1")
+                .bind(&server_id)
+                .execute(&state.db)
+                .await;
+
+            // Token must match.
+            if let Some(stored_hash) = stored_hash_opt {
+                if stored_hash != token_hash {
+                    return Err(ApiError::Unauthorized);
+                }
+            } else {
+                // First time we see a token for an existing row: store it.
+                let _ = sqlx::query(
+                    r#"
+                    update public.servers
+                    set auth_token_hash = $2,
+                        auth_token_first_seen_at = coalesce(auth_token_first_seen_at, now())
+                    where id = $1
+                    "#,
+                )
+                .bind(&server_id)
+                .bind(&token_hash)
+                .execute(&state.db)
+                .await;
+            }
+
+            let is_registered = owner_user_id.is_some() && registered_at.is_some();
+            if !is_registered {
+                let body = WaitingForRegistrationResponse {
+                    ok: true,
+                    status: "waiting_for_registration".to_string(),
+                    server_id,
+                };
+                return Ok((
+                    StatusCode::CONFLICT,
+                    Json(serde_json::to_value(body).unwrap()),
+                ));
+            }
+        }
+    }
 
     let batch_id = Uuid::new_v4();
     let payload_bytes: i32 = body.len().try_into().unwrap_or(i32::MAX);
@@ -82,7 +202,7 @@ pub async fn ingest(
     let s3_key = crate::s3::ObjectStore::batch_key(&server_id, &session_id, &batch_id);
 
     // --- DB operations FIRST to avoid orphaned S3 objects on failure ---
-    // Upsert server identity
+    // Upsert server identity (registered servers only reach this point).
     upsert_server(&state.db, &server_id, platform.as_deref())
         .await
         .map_err(|e| {
@@ -166,11 +286,15 @@ pub async fn ingest(
         "batch ingested"
     );
 
-    Ok(Json(IngestResponse {
-        ok: true,
-        batch_id,
-        s3_key,
-    }))
+    Ok((
+        StatusCode::OK,
+        Json(serde_json::to_value(IngestResponse {
+            ok: true,
+            batch_id,
+            s3_key,
+        })
+        .unwrap()),
+    ))
 }
 
 /// Upsert a server record (update last_seen_at if exists).

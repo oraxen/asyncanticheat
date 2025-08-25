@@ -1,3 +1,5 @@
+test_data
+
 # Rust
 /target/
 modules/*/target/
@@ -6,6 +8,8 @@ Cargo.lock
 
 # Environment
 .env
+.env.prod
+.env.local
 *.env.local
 
 # IDE

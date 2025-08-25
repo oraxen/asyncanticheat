@@ -12,16 +12,13 @@ import {
   RiServerLine,
   RiCheckLine,
   RiArrowDownSLine,
+  RiLogoutBoxRLine,
+  RiUserLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
-import {
-  loadServerWorkspaces,
-  saveServerWorkspaces,
-  getSelectedWorkspaceId,
-  setSelectedWorkspaceId,
-  newWorkspaceId,
-} from "@/lib/server-store";
+import { newWorkspaceId } from "@/lib/server-store";
 import type { ServerWorkspace } from "@/types/supabase";
+import type { User } from "@supabase/supabase-js";
 import { AddServerDialog } from "./add-server-dialog";
 
 const navigation = [
@@ -36,6 +33,8 @@ interface SidebarProps {
   selectedServerId: string | null;
   onServersChange: (servers: ServerWorkspace[]) => void;
   onServerSelect: (serverId: string) => void;
+  user?: User;
+  onSignOut?: () => void;
 }
 
 export function Sidebar({
@@ -43,6 +42,8 @@ export function Sidebar({
   selectedServerId,
   onServersChange,
   onServerSelect,
+  user,
+  onSignOut,
 }: SidebarProps) {
   const pathname = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -164,8 +165,45 @@ export function Sidebar({
           </div>
         </nav>
 
+        {/* User Section */}
+        {user && (
+          <div className="px-3 pb-3">
+            <div className="flex items-center gap-3 rounded-lg bg-white/[0.02] px-3 py-2.5 border border-white/[0.04]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/20">
+                {user.user_metadata?.avatar_url ? (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt=""
+                    className="h-8 w-8 rounded-full"
+                  />
+                ) : (
+                  <RiUserLine className="h-4 w-4 text-indigo-400" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white/90 truncate">
+                  {user.user_metadata?.full_name ||
+                    user.user_metadata?.user_name ||
+                    user.email?.split("@")[0] ||
+                    "User"}
+                </p>
+                <p className="text-xs text-white/40 truncate">{user.email}</p>
+              </div>
+              {onSignOut && (
+                <button
+                  onClick={onSignOut}
+                  className="p-1.5 rounded-md hover:bg-white/[0.08] text-white/40 hover:text-white/80 transition-colors"
+                  title="Sign out"
+                >
+                  <RiLogoutBoxRLine className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="px-4 py-4 border-t border-white/[0.06]">
+        <div className="px-4 py-3 border-t border-white/[0.06]">
           <p className="text-xs text-white/30">AsyncAnticheat v0.1.0</p>
         </div>
       </aside>

@@ -1,0 +1,151 @@
+---
+description: How to install AsyncAnticheat on your Minecraft server
+title: Installation
+---
+
+# Installation
+
+AsyncAnticheat consists of two components:
+
+1. **Plugin** — Runs on your Minecraft server to capture packets
+2. **API** — Cloud service that receives and processes packet data
+
+## Requirements
+
+- **Java 21** or newer
+- **Paper/Spigot 1.18+**, **BungeeCord**, or **Velocity**
+- An AsyncAnticheat API instance (self-hosted or managed)
+
+## Plugin Installation
+
+### Step 1: Download
+
+Download the latest `async-anticheat-<version>.jar` from the [GitHub releases](https://github.com/oraxen/asyncanticheat/releases).
+
+### Step 2: Install
+
+Drop the JAR file into your server's `/plugins/` folder.
+
+### Step 3: Configure
+
+Start your server once to generate the default configuration, then edit `plugins/AsyncAnticheat/config.yml`:
+
+```yaml
+api:
+  url: "https://api.asyncanticheat.com"  # Your API endpoint
+  token: "your_api_token"                 # Authentication token
+  timeout_seconds: 10
+
+spool:
+  dir: "spool"
+  max_mb: 256
+  flush_interval_ms: 1000
+  drop_policy: "drop_oldest"  # drop_oldest | drop_newest
+
+capture:
+  enabled_packets: []   # Empty = use default allow-list
+  disabled_packets: []
+  sample_rate: 1.0      # 1.0 = capture all, 0.5 = 50%
+
+privacy:
+  redact_chat: true     # Redact chat message content
+```
+
+### Step 4: Restart
+
+Restart your server. The plugin will begin capturing packets and uploading them to your API.
+
+## API Installation (Self-Hosted)
+
+If you want to self-host the AsyncAnticheat API:
+
+### Requirements
+
+- **Rust** (latest stable)
+- **PostgreSQL** 15+
+- **S3-compatible storage** (MinIO, AWS S3, Supabase Storage, etc.)
+
+### Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/oraxen/asyncanticheat-api.git
+cd asyncanticheat-api
+```
+
+2. Copy and configure environment:
+
+```bash
+cp .env.example .env
+# Edit .env with your database and S3 credentials
+```
+
+3. Apply database schema:
+
+```bash
+psql -d your_database -f schema.sql
+```
+
+4. Run the API:
+
+```bash
+cargo run --release
+```
+
+The API will start on `http://127.0.0.1:3002` by default.
+
+## Verifying Installation
+
+### Check Plugin Status
+
+Run `/aac status` in-game or from console to verify:
+
+- Connection to API
+- Packet capture is active
+- Spool directory is writable
+
+### Check API Health
+
+```bash
+curl http://your-api:3002/health
+```
+
+Should return:
+
+```json
+{"status": "ok"}
+```
+
+## Proxy Setup
+
+### BungeeCord / Velocity
+
+For proxy setups, you can install the plugin on either:
+
+1. **Proxy only** — Captures packets at the proxy level (recommended for networks)
+2. **Backend servers** — Captures packets per-server with more detail
+
+The plugin automatically detects the platform and uses the appropriate PacketEvents adapter.
+
+## Troubleshooting
+
+### Plugin not connecting to API
+
+1. Verify the API URL in `config.yml` is correct
+2. Check that your API token is valid
+3. Ensure firewall allows outbound connections to the API
+
+### High spool directory usage
+
+If the spool directory grows large, the API may be unreachable:
+
+1. Check API connectivity
+2. Verify API is accepting batches
+3. Consider increasing `flush_interval_ms` or reducing `sample_rate`
+
+### Packets not being captured
+
+1. Ensure `capture.enabled_packets` is empty (uses default allow-list) or correctly configured
+2. Check server logs for PacketEvents errors
+3. Verify Java 21 is being used

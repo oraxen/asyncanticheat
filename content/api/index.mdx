@@ -1,0 +1,59 @@
+---
+description: AsyncAnticheat API reference and integration guide
+title: API Reference
+---
+
+# API Reference
+
+The AsyncAnticheat API is a Rust-based service that receives packet batches from plugins, stores them, and distributes them to detection modules.
+
+## Base URL
+
+```
+https://api.asyncanticheat.com
+```
+
+For self-hosted instances, replace with your API URL.
+
+## Quick Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/ingest` | POST | Upload packet batch |
+| `/servers/:id/modules` | GET | List modules for server |
+| `/servers/:id/modules` | POST | Register/update module |
+| `/callback/findings` | POST | Module reports findings |
+
+## Response Format
+
+All responses are JSON:
+
+```json
+{
+  "status": "ok",
+  "data": { ... }
+}
+```
+
+Error responses:
+
+```json
+{
+  "error": "Error message",
+  "code": "ERROR_CODE"
+}
+```
+
+## Rate Limits
+
+- **Ingest**: 100 requests/second per server
+- **Module callbacks**: 1000 requests/second
+- **Dashboard API**: 60 requests/minute per user
+
+## SDKs
+
+Currently, the plugin handles all API communication. For custom integrations:
+
+- **Rust**: Use the `async_anticheat_api` crate directly
+- **Other languages**: Use standard HTTP clients with the endpoints documented here

@@ -1,0 +1,125 @@
+---
+description: Overview of AsyncAnticheat detection checks
+title: Checks Overview
+---
+
+# Checks Overview
+
+AsyncAnticheat modules implement various checks to detect different types of cheating. This section documents the available checks, how they work, and how to configure them.
+
+## Check Categories
+
+### Movement Checks
+
+Detect speed hacks, fly hacks, and other movement-related cheats.
+
+- [Speed](/checks/movement#speed) — Horizontal movement speed violations
+- [Fly](/checks/movement#fly) — Unauthorized flight detection
+- [NoFall](/checks/movement#nofall) — Fall damage bypass
+- [Phase](/checks/movement#phase) — Moving through solid blocks
+- [Step](/checks/movement#step) — Stepping up blocks too quickly
+
+### Combat Checks
+
+Detect killaura, reach hacks, and other combat cheats.
+
+- [Reach](/checks/combat#reach) — Hitting from too far away
+- [Killaura](/checks/combat#killaura) — Automated combat detection
+- [Velocity](/checks/combat#velocity) — Knockback modification
+- [AutoClicker](/checks/combat#autoclicker) — Abnormal click patterns
+
+### Interaction Checks
+
+Detect scaffold, nuker, and other block interaction cheats.
+
+- [Scaffold](/checks/interaction#scaffold) — Automated bridge building
+- [Nuker](/checks/interaction#nuker) — Fast block breaking
+- [FastPlace](/checks/interaction#fastplace) — Rapid block placement
+- [Inventory](/checks/interaction#inventory) — Inventory manipulation cheats
+
+## Check Naming Convention
+
+Checks follow a hierarchical naming pattern:
+
+```
+category.type.subtype
+```
+
+Examples:
+- `speed.ground` — Speed on ground
+- `speed.air` — Speed while airborne
+- `fly.creative` — Creative-mode fly detection
+- `reach.attack` — Attack reach violation
+
+## Violation Levels (VL)
+
+Each finding includes a **violation level (VL)** indicating severity:
+
+| VL Range | Severity | Typical Action |
+|----------|----------|----------------|
+| 0-10 | Low | Log only |
+| 10-25 | Medium | Warn player |
+| 25-50 | High | Kick player |
+| 50+ | Critical | Ban player |
+
+### VL Thresholds
+
+Configure thresholds per check:
+
+```yaml
+checks:
+  speed:
+    ground:
+      warn_vl: 15
+      kick_vl: 30
+      ban_vl: 50
+```
+
+### VL Decay
+
+VLs should decay over time to account for false positives:
+
+- Typical decay: 1 VL per 10 seconds
+- No violations for 60 seconds: Reset to 0
+
+## Check Feasibility
+
+Different checks have varying effectiveness in async analysis:
+
+### ✅ Well-Suited for Async
+
+- Speed checks (clear packet patterns)
+- Fly checks (gravity violations)
+- Reach checks (distance calculations)
+- Click pattern analysis
+
+### ⚠️ Challenging for Async
+
+- Timer checks (requires precise timing)
+- Phase checks (needs world state)
+- FastUse checks (item timing sensitive)
+
+### ❌ Not Suitable for Async
+
+- Instant checks (require server-side response)
+- World-dependent checks (need block data)
+
+## Check Configuration
+
+Per-check configuration via module settings:
+
+```json
+{
+  "checks": {
+    "speed": {
+      "enabled": true,
+      "sensitivity": 1.0,
+      "max_vl_per_batch": 100
+    },
+    "fly": {
+      "enabled": true,
+      "creative_exempt": true
+    }
+  }
+}
+```

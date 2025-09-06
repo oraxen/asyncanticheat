@@ -1,85 +1,68 @@
-# AsyncAnticheat Dashboard
+# AsyncAnticheat Website
 
-A beautiful, professional dashboard for Minecraft server owners to monitor and manage their AsyncAnticheat protection.
+Complete website for AsyncAnticheat including:
+- **Landing page** (`/`) - Product showcase and features
+- **Dashboard** (`/dashboard`) - Server owner panel for managing findings
+- **Documentation** (`/docs`) - Built with Nextra
 
-## Features
-
-- **Server Management**: Add, remove, and switch between multiple Minecraft servers
-- **Module Configuration**: Toggle and configure anticheat check modules
-- **Findings View**: Browse detected cheating attempts with filtering and search
-- **Analytics**: Visualize trends with charts and a detection timeline
-- **Real-time Updates**: Live data from your AsyncAnticheat plugin
-
-## Tech Stack
-
-- **Framework**: Next.js 15 (App Router)
-- **Styling**: Tailwind CSS with dark theme
-- **Components**: Radix UI primitives
-- **Icons**: Remix Icons
-- **Database**: Supabase (PostgreSQL)
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+ or Bun
-- Supabase account (for production)
-
-### Installation
+## Development
 
 ```bash
+# Copy environment variables
+cp .env.example .env.local
+
 # Install dependencies
 bun install
 
-# Copy environment file
-cp .env.example .env.local
-
-# Configure your Supabase credentials in .env.local
-
-# Start development server
-bun run dev
+# Start dev server
+bun dev
 ```
 
-### Development
+## Build
 
 ```bash
-bun run dev      # Start dev server at http://localhost:3000
-bun run build    # Build for production
-bun run start    # Start production server
-bun run lint     # Run ESLint
+bun run build
 ```
 
-## Project Structure
+## Environment Variables
+
+```bash
+# API URL - points to the async_anticheat_api Rust backend
+NEXT_PUBLIC_API_URL=http://localhost:3002
+
+# Supabase Configuration (required for authentication)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+## Structure
 
 ```
-asyncanticheat.com/
+async_anticheat_website/
 ├── app/
-│   ├── (dashboard)/           # Dashboard route group
-│   │   ├── layout.tsx         # Dashboard layout with sidebar
-│   │   └── dashboard/
-│   │       ├── page.tsx       # Overview page
-│   │       ├── modules/       # Module management
-│   │       ├── findings/      # Findings browser
-│   │       ├── analytics/     # Charts and insights
-│   │       └── settings/      # Server settings
-│   ├── globals.css            # Global styles
-│   ├── layout.tsx             # Root layout
-│   └── page.tsx               # Landing page (redirects to dashboard)
-├── components/
-│   ├── dashboard/             # Dashboard components
-│   │   ├── sidebar.tsx        # Navigation sidebar
-│   │   └── add-server-dialog.tsx
-│   ├── ui/                    # Reusable UI components
-│   └── ...
-├── lib/
-│   ├── supabase/              # Supabase client utilities
-│   ├── server-store.ts        # Local server storage
-│   └── utils.ts               # Utility functions
-└── types/
-    └── supabase.ts            # TypeScript types
+│   ├── (dashboard)/     # Dashboard routes (protected)
+│   ├── api/             # API routes
+│   ├── auth/            # Auth callback
+│   ├── docs/            # Documentation (Nextra)
+│   ├── login/           # Login page
+│   ├── page.tsx         # Landing page
+│   └── layout.tsx       # Root layout
+├── components/          # Shared React components
+├── content/             # MDX documentation files
+├── lib/                 # Utilities and Supabase clients
+├── public/              # Static assets
+└── types/               # TypeScript types
 ```
+
+## Tech Stack
+
+- **Next.js 16** - React framework
+- **Tailwind CSS v4** - Styling
+- **Nextra** - Documentation
+- **Supabase** - Authentication & Database
+- **Pagefind** - Documentation search
 
 ## License
 
-MIT
-
+GPL-3.0

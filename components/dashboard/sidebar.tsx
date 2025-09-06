@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
@@ -29,7 +30,6 @@ const navigation = [
 interface SidebarProps {
   servers: ServerWorkspace[];
   selectedServerId: string | null;
-  onServersChange: (servers: ServerWorkspace[]) => void;
   onServerSelect: (serverId: string) => void;
   user?: User;
   onSignOut?: () => void;
@@ -38,7 +38,6 @@ interface SidebarProps {
 export function Sidebar({
   servers,
   selectedServerId,
-  onServersChange,
   onServerSelect,
   user,
   onSignOut,
@@ -156,10 +155,13 @@ export function Sidebar({
             <div className="flex items-center gap-3 rounded-lg bg-white/[0.02] px-3 py-2.5 border border-white/[0.04]">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/20">
                 {user.user_metadata?.avatar_url ? (
-                  <img
+                  <Image
                     src={user.user_metadata.avatar_url}
                     alt=""
+                    width={32}
+                    height={32}
                     className="h-8 w-8 rounded-full"
+                    unoptimized
                   />
                 ) : (
                   <RiUserLine className="h-4 w-4 text-indigo-400" />

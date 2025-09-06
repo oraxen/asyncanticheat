@@ -109,11 +109,6 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
     };
   }, []);
 
-  const handleServersChange = (updated: ServerWorkspace[]) => {
-    setServers(updated);
-    saveServerWorkspaces(updated);
-  };
-
   const handleServerSelect = (id: string) => {
     setSelectedServerId(id);
     setSelectedWorkspaceId(id);
@@ -134,7 +129,6 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
         <Sidebar
           servers={servers}
           selectedServerId={selectedServerId}
-          onServersChange={handleServersChange}
           onServerSelect={handleServerSelect}
           user={user}
           onSignOut={handleSignOut}

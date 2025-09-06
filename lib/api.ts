@@ -99,11 +99,6 @@ interface ModulesResponse {
   modules: Module[];
 }
 
-interface ServersResponse {
-  ok: boolean;
-  servers: Server[];
-}
-
 interface StatusResponse {
   ok: boolean;
   status: ConnectionStatus;

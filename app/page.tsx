@@ -103,7 +103,7 @@ export default function HomePage() {
               GitHub
             </Link>
             <Link
-              href="https://docs.asyncanticheat.com"
+              href="/docs"
               className="text-xs font-medium text-[rgb(var(--foreground-secondary))] hover:text-[rgb(var(--foreground))] transition-colors"
             >
               Documentation
@@ -117,7 +117,7 @@ export default function HomePage() {
           </nav>
 
           <Link
-            href="https://docs.asyncanticheat.com"
+            href="/docs"
             className="inline-flex items-center rounded-md bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-600 transition-colors"
           >
             View Docs
@@ -190,7 +190,7 @@ export default function HomePage() {
               icon={RiOpenSourceLine}
               title="Open Source"
               description="Fully transparent and community-driven. Inspect the code, contribute improvements."
-              link="https://docs.asyncanticheat.com"
+              link="/docs"
               linkText="Read the docs"
             />
           </div>
@@ -240,7 +240,7 @@ export default function HomePage() {
               Modules are HTTP services that receive packet batches and return
               findings. You can write them in any language. See the{" "}
               <Link
-                href="https://docs.asyncanticheat.com"
+                href="/docs/modules/creating-modules"
                 className="text-indigo-500 hover:underline"
               >
                 documentation
@@ -254,10 +254,10 @@ export default function HomePage() {
             <FaqItem question="Where can I find documentation?">
               Full documentation is available at{" "}
               <Link
-                href="https://docs.asyncanticheat.com"
+                href="/docs"
                 className="text-indigo-500 hover:underline inline-flex items-center gap-0.5"
               >
-                docs.asyncanticheat.com
+                /docs
                 <RiExternalLinkLine className="h-3 w-3" />
               </Link>
             </FaqItem>

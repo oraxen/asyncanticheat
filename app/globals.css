@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* 
  * AsyncAnticheat Dashboard
@@ -210,4 +208,9 @@ select:focus-visible {
 
 .animate-slide-in-right {
   animation: slide-in-right 200ms ease-out;
+}
+
+/* Background mesh gradient - subtle */
+.bg-mesh-subtle {
+  background: rgb(var(--background));
 }

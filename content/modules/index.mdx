@@ -1,0 +1,92 @@
+---
+description: Overview of AsyncAnticheat detection modules
+title: Module Development
+---
+
+# Module Development
+
+AsyncAnticheat uses a modular architecture where detection logic runs in separate services called **modules**. This allows:
+
+- **Language flexibility** — Write modules in any language (Rust, Python, Go, etc.)
+- **Independent scaling** — Scale detection separately from the API
+- **Easy experimentation** — Test new detection methods without affecting production
+- **Specialized analysis** — Different modules for different cheat types
+
+## How Modules Work
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Plugin    │────▶│     API     │────▶│   Module    │
+│  (Capture)  │     │  (Storage)  │     │ (Detection) │
+└─────────────┘     └─────────────┘     └─────────────┘
+                           │                   │
+                           │◀──────────────────┘
+                           │    (Findings)
+                           ▼
+                    ┌─────────────┐
+                    │  Dashboard  │
+                    └─────────────┘
+```
+
+1. Plugin captures packets and sends to API
+2. API stores batch and forwards to registered modules
+3. Module analyzes packets and detects violations
+4. Module sends findings back to API via callback
+5. Dashboard displays findings for review
+
+## Module Interface
+
+Modules must implement a simple HTTP interface.
+
+### Process Batch
+
+```http
+POST /process
+Content-Type: application/gzip
+X-Batch-Id: <uuid>
+X-Server-Id: <server_id>
+```
+
+The request body is the transformed batch (gzipped NDJSON).
+
+### Response
+
+Return `200 OK` to acknowledge receipt. Findings are submitted asynchronously via the callback endpoint.
+
+### Health Check
+
+```http
+GET /health
+```
+
+Return `200 OK` with `{"status": "ok"}` when healthy.
+
+## Official Modules
+
+### NCP Module
+
+NoCheatPlus-style detection with traditional rule-based checks:
+
+- Speed detection
+- Fly detection
+- Reach detection
+- Timer detection
+
+### Movement Analysis Module
+
+Advanced movement analysis using statistical methods:
+
+- Velocity pattern analysis
+- Acceleration anomaly detection
+- Path prediction comparison
+
+## Creating Custom Modules
+
+See the [Creating Modules](/modules/creating-modules) guide for a step-by-step tutorial.
+
+Basic requirements:
+
+1. HTTP server with `/process` and `/health` endpoints
+2. Accept gzipped NDJSON batches
+3. Submit findings to API callback
+4. Register with API via the modules endpoint

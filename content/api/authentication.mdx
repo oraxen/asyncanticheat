@@ -1,0 +1,107 @@
+---
+description: AsyncAnticheat API authentication methods
+title: Authentication
+---
+
+# Authentication
+
+AsyncAnticheat uses token-based authentication for API requests.
+
+## Token Types
+
+### Ingest Token
+
+Used by the Minecraft plugin to upload packet batches.
+
+```http
+Authorization: Bearer <INGEST_TOKEN>
+```
+
+Configure in your plugin's `config.yml`:
+
+```yaml
+api:
+  token: "your_ingest_token"
+```
+
+### Module Callback Token
+
+Used by detection modules to submit findings.
+
+```http
+Authorization: Bearer <MODULE_CALLBACK_TOKEN>
+```
+
+This is configured in the API's environment:
+
+```bash
+MODULE_CALLBACK_TOKEN="your_module_callback_token"
+```
+
+### Dashboard Authentication
+
+The dashboard uses Supabase Auth for user authentication. Users log in via:
+
+- Email/password
+- OAuth providers (GitHub, Discord)
+
+## Generating Tokens
+
+### For Self-Hosted APIs
+
+Generate secure random tokens:
+
+```bash
+# Using openssl
+openssl rand -hex 32
+
+# Using Python
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Add to your `.env`:
+
+```bash
+INGEST_TOKEN="generated_token_here"
+MODULE_CALLBACK_TOKEN="another_generated_token"
+```
+
+### For Managed APIs
+
+Tokens are provided in your dashboard at [asyncanticheat.com](https://asyncanticheat.com).
+
+## Security Best Practices
+
+1. **Never commit tokens** — Use environment variables or secrets management
+2. **Rotate tokens periodically** — Especially after team member changes
+3. **Use separate tokens** — Different tokens for different environments (dev/staging/prod)
+4. **Monitor usage** — Check for unusual API patterns
+
+## Error Responses
+
+### 401 Unauthorized
+
+```json
+{
+  "error": "Invalid or missing authorization token",
+  "code": "UNAUTHORIZED"
+}
+```
+
+**Causes:**
+- Missing `Authorization` header
+- Invalid token
+- Expired token
+
+### 403 Forbidden
+
+```json
+{
+  "error": "Token does not have permission for this resource",
+  "code": "FORBIDDEN"
+}
+```
+
+**Causes:**
+- Using ingest token for module callback endpoint
+- Using module token for ingest endpoint

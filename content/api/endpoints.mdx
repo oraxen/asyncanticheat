@@ -1,0 +1,160 @@
+---
+description: AsyncAnticheat API endpoint documentation
+title: API Endpoints
+---
+
+# API Endpoints
+
+## Health Check
+
+```http
+GET /health
+```
+
+Returns API health status.
+
+**Response:**
+
+```json
+{
+  "status": "ok"
+}
+```
+
+## Ingest Batch
+
+```http
+POST /ingest
+Authorization: Bearer <INGEST_TOKEN>
+Content-Type: application/gzip
+X-Server-Id: <server_id>
+X-Batch-Id: <uuid>
+```
+
+Upload a gzipped NDJSON batch of packets.
+
+**Headers:**
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `Authorization` | Yes | Bearer token |
+| `X-Server-Id` | Yes | Unique server identifier |
+| `X-Batch-Id` | Yes | UUID for this batch |
+| `Content-Type` | Yes | Must be `application/gzip` |
+
+**Response:**
+
+```json
+{
+  "status": "ok",
+  "batch_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+## List Modules
+
+```http
+GET /servers/:server_id/modules
+Authorization: Bearer <INGEST_TOKEN>
+```
+
+List all registered modules for a server.
+
+**Response:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "server_id": "my-server",
+    "name": "ncp-module",
+    "base_url": "https://module.example.com",
+    "enabled": true,
+    "transform": "movement_events_v1_ndjson_gz",
+    "last_healthcheck_ok": true,
+    "last_error": null
+  }
+]
+```
+
+## Register Module
+
+```http
+POST /servers/:server_id/modules
+Authorization: Bearer <INGEST_TOKEN>
+Content-Type: application/json
+```
+
+Register or update a detection module subscription.
+
+**Body:**
+
+```json
+{
+  "name": "ncp-module",
+  "base_url": "https://module.example.com",
+  "enabled": true,
+  "transform": "raw_ndjson_gz"
+}
+```
+
+**Transforms:**
+
+| Transform | Description |
+|-----------|-------------|
+| `raw_ndjson_gz` | Raw packets, gzipped NDJSON |
+| `movement_events_v1_ndjson_gz` | Pre-processed movement events |
+
+## Submit Findings
+
+```http
+POST /callback/findings
+Authorization: Bearer <MODULE_CALLBACK_TOKEN>
+Content-Type: application/json
+```
+
+Module endpoint to report detected violations.
+
+**Body:**
+
+```json
+{
+  "batch_id": "550e8400-e29b-41d4-a716-446655440000",
+  "server_id": "my-server",
+  "findings": [
+    {
+      "player_uuid": "player-uuid",
+      "player_name": "PlayerName",
+      "check": "speed.ground",
+      "vl": 15.5,
+      "details": {
+        "expected_speed": 0.2,
+        "actual_speed": 0.8
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "status": "ok",
+  "accepted": 1
+}
+```
+
+## Dashboard Endpoints
+
+These require user authentication via Supabase:
+
+```http
+GET /dashboard/servers
+GET /dashboard/servers/:id/findings
+GET /dashboard/servers/:id/modules
+GET /dashboard/servers/:id/stats
+```
+
+See the dashboard integration guide for details.

@@ -482,8 +482,8 @@ export default function ModulesPage() {
 
   const toggleModule = async (id: string) => {
     const serverId = selectedServerId;
-    const module = modules.find((m) => m.id === id);
-    if (!module || !serverId) return;
+    const moduleItem = modules.find((m) => m.id === id);
+    if (!moduleItem || !serverId) return;
 
     // Per-server key so toggles don't block (or mutate) when switching servers
     const toggleKey = `${serverId}:${id}`;
@@ -496,7 +496,7 @@ export default function ModulesPage() {
     const requestId = (toggleRequestIdRef.current.get(toggleKey) ?? 0) + 1;
     toggleRequestIdRef.current.set(toggleKey, requestId);
 
-    const newEnabled = !module.enabled;
+    const newEnabled = !moduleItem.enabled;
 
     // Optimistically update modules list
     setModules((prev) =>

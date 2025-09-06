@@ -1,0 +1,46 @@
+---
+description: AsyncAnticheat - Cloud-powered cheat detection for Minecraft servers
+title: Welcome to AsyncAnticheat
+---
+
+# Welcome to AsyncAnticheat
+
+AsyncAnticheat is a multi-platform Minecraft plugin (Paper/Spigot, BungeeCord, Velocity) that captures high-signal packets and streams them to a cloud service for asynchronous analysis.
+
+## What Is AsyncAnticheat?
+
+Unlike traditional anticheats that run detection logic on your game server's main thread, AsyncAnticheat offloads all analysis to external **modules** running in the cloud. This approach provides:
+
+- **Zero server lag** — Packet capture is lightweight; all analysis happens off-server
+- **Flexible detection** — Modules can use machine learning, statistical analysis, or traditional rule-based checks
+- **Easy updates** — Update detection logic without restarting your Minecraft server
+- **Cross-server analysis** — Detect ban evaders and patterns across your entire network
+
+## How Does It Work?
+
+1. **Capture** — The plugin intercepts game packets using [PacketEvents](https://docs.packetevents.com/)
+2. **Spool** — Packets are buffered locally and batched into compressed NDJSON files
+3. **Upload** — Batches are streamed to the AsyncAnticheat API
+4. **Analyze** — The API distributes batches to registered detection modules
+5. **Report** — Modules return findings (violations) which are stored and can trigger alerts
+
+## Quick Start
+
+```bash
+# 1. Download the plugin
+# 2. Drop into /plugins/ folder
+# 3. Configure config.yml with your API endpoint
+# 4. Restart server
+```
+
+See the [Installation](/installation) guide for detailed instructions.
+
+## Requirements
+
+- **Java 21** or newer
+- **Paper/Spigot 1.18+**, **BungeeCord**, or **Velocity**
+- An AsyncAnticheat API instance (self-hosted or managed)
+
+## License
+
+This project is **GPL-3.0** licensed (required for PacketEvents compatibility).

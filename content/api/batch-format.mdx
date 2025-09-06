@@ -1,0 +1,201 @@
+---
+description: AsyncAnticheat packet batch format specification
+title: Batch Format
+---
+
+# Batch Format
+
+Packet batches are the core data format for AsyncAnticheat. Understanding this format is essential for module development.
+
+## Overview
+
+Batches are:
+- **NDJSON** (Newline-Delimited JSON)
+- **Gzip compressed**
+- **Chronologically ordered**
+
+## Packet Structure
+
+Each line in the batch is a JSON object representing one packet:
+
+```json
+{
+  "type": "PLAYER_POSITION",
+  "timestamp": 1705312200000,
+  "server_id": "my-server",
+  "player": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "PlayerName"
+  },
+  "data": {
+    "x": 100.5,
+    "y": 64.0,
+    "z": -200.3,
+    "yaw": 45.0,
+    "pitch": 0.0,
+    "on_ground": true
+  }
+}
+```
+
+## Common Packet Types
+
+### Movement Packets
+
+#### PLAYER_POSITION
+
+```json
+{
+  "type": "PLAYER_POSITION",
+  "data": {
+    "x": 100.5,
+    "y": 64.0,
+    "z": -200.3,
+    "on_ground": true
+  }
+}
+```
+
+#### PLAYER_POSITION_AND_ROTATION
+
+```json
+{
+  "type": "PLAYER_POSITION_AND_ROTATION",
+  "data": {
+    "x": 100.5,
+    "y": 64.0,
+    "z": -200.3,
+    "yaw": 45.0,
+    "pitch": 0.0,
+    "on_ground": true
+  }
+}
+```
+
+#### PLAYER_ROTATION
+
+```json
+{
+  "type": "PLAYER_ROTATION",
+  "data": {
+    "yaw": 45.0,
+    "pitch": 0.0,
+    "on_ground": true
+  }
+}
+```
+
+### Combat Packets
+
+#### INTERACT_ENTITY
+
+```json
+{
+  "type": "INTERACT_ENTITY",
+  "data": {
+    "entity_id": 12345,
+    "action": "ATTACK",
+    "target_x": 101.0,
+    "target_y": 64.0,
+    "target_z": -199.0,
+    "sneaking": false
+  }
+}
+```
+
+#### PLAYER_ARM_ANIMATION
+
+```json
+{
+  "type": "PLAYER_ARM_ANIMATION",
+  "data": {
+    "hand": "MAIN_HAND"
+  }
+}
+```
+
+### Block Interaction Packets
+
+#### PLAYER_DIGGING
+
+```json
+{
+  "type": "PLAYER_DIGGING",
+  "data": {
+    "action": "START_DIGGING",
+    "block_x": 100,
+    "block_y": 63,
+    "block_z": -200,
+    "face": "TOP"
+  }
+}
+```
+
+#### PLAYER_BLOCK_PLACEMENT
+
+```json
+{
+  "type": "PLAYER_BLOCK_PLACEMENT",
+  "data": {
+    "hand": "MAIN_HAND",
+    "block_x": 100,
+    "block_y": 64,
+    "block_z": -200,
+    "face": "TOP",
+    "cursor_x": 0.5,
+    "cursor_y": 1.0,
+    "cursor_z": 0.5
+  }
+}
+```
+
+## Transforms
+
+The API can pre-process batches before sending to modules.
+
+### raw_ndjson_gz
+
+Raw packets as captured, gzip compressed. No transformation.
+
+### movement_events_v1_ndjson_gz
+
+Pre-processed movement events with computed velocities:
+
+```json
+{
+  "type": "MOVEMENT_EVENT",
+  "timestamp": 1705312200000,
+  "player": { ... },
+  "data": {
+    "from": { "x": 100.0, "y": 64.0, "z": -200.0 },
+    "to": { "x": 100.5, "y": 64.0, "z": -200.3 },
+    "delta": { "x": 0.5, "y": 0.0, "z": -0.3 },
+    "horizontal_distance": 0.583,
+    "vertical_distance": 0.0,
+    "on_ground": true,
+    "delta_time_ms": 50
+  }
+}
+```
+
+## Metadata
+
+Each batch includes metadata in the first line:
+
+```json
+{
+  "type": "_BATCH_META",
+  "batch_id": "550e8400-e29b-41d4-a716-446655440000",
+  "server_id": "my-server",
+  "captured_at": "2024-01-15T10:30:00Z",
+  "packet_count": 1523,
+  "compression": "gzip"
+}
+```
+
+## Processing Tips
+
+1. **Stream processing** — Don't load entire batch into memory
+2. **Handle missing fields** — Not all packets have all fields
+3. **Validate timestamps** — Watch for clock skew between servers
+4. **Group by player** — Most checks operate per-player

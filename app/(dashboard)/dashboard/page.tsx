@@ -11,7 +11,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   api,
-  type Player as ApiPlayer,
   type DashboardStats,
   type ConnectionMetrics,
 } from "@/lib/api";

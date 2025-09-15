@@ -39,24 +39,6 @@ fn sha256_hex(input: &str) -> String {
     hex::encode(out)
 }
 
-fn forwarded_client_ip(headers: &HeaderMap) -> Option<String> {
-    // Prefer common reverse-proxy headers (nginx / Cloudflare / etc).
-    // X-Forwarded-For can be a comma-separated list; first is original client.
-    if let Some(xff) = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()) {
-        let ip = xff.split(',').next().unwrap_or("").trim();
-        if !ip.is_empty() {
-            return Some(ip.to_string());
-        }
-    }
-    if let Some(xri) = headers.get("x-real-ip").and_then(|v| v.to_str().ok()) {
-        let ip = xri.trim();
-        if !ip.is_empty() {
-            return Some(ip.to_string());
-        }
-    }
-    None
-}
-
 /// POST /handshake
 ///
 /// Lightweight "hello" endpoint used by the plugin on startup.
@@ -87,32 +69,34 @@ pub async fn handshake(
     let token_hash = sha256_hex(&token);
 
     // Load or create server row.
-    let row: Option<(Option<String>, Option<uuid::Uuid>, Option<chrono::DateTime<chrono::Utc>>)> =
-        sqlx::query_as(
-            r#"
+    let row: Option<(
+        Option<String>,
+        Option<uuid::Uuid>,
+        Option<chrono::DateTime<chrono::Utc>>,
+    )> = sqlx::query_as(
+        r#"
             select auth_token_hash, owner_user_id, registered_at
             from public.servers
             where id = $1
             "#,
-        )
-        .bind(&server_id)
-        .fetch_optional(&state.db)
-        .await
-        .map_err(|e| {
-            tracing::error!("handshake lookup failed: {:?}", e);
-            ApiError::Internal
-        })?;
+    )
+    .bind(&server_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("handshake lookup failed: {:?}", e);
+        ApiError::Internal
+    })?;
 
     match row {
         None => {
             // New server: insert as "pending registration".
-            let callback_url = forwarded_client_ip(&headers).map(|ip| format!("{ip}:25565"));
             sqlx::query(
                 r#"
                 insert into public.servers
-                    (id, platform, first_seen_at, last_seen_at, auth_token_hash, auth_token_first_seen_at, callback_url)
+                    (id, platform, first_seen_at, last_seen_at, auth_token_hash, auth_token_first_seen_at)
                 values
-                    ($1, $2, now(), now(), $3, now(), $4)
+                    ($1, $2, now(), now(), $3, now())
                 on conflict (id) do update set
                     platform = coalesce(excluded.platform, servers.platform),
                     last_seen_at = now()
@@ -121,7 +105,6 @@ pub async fn handshake(
             .bind(&server_id)
             .bind(platform.as_deref())
             .bind(&token_hash)
-            .bind(callback_url.as_deref())
             .execute(&state.db)
             .await
             .map_err(|e| {
@@ -140,21 +123,10 @@ pub async fn handshake(
         }
         Some((stored_hash_opt, owner_user_id, registered_at)) => {
             // Always bump last_seen_at for heartbeat.
-            let callback_url = forwarded_client_ip(&headers).map(|ip| format!("{ip}:25565"));
-            if let Some(cb) = callback_url {
-                let _ = sqlx::query(
-                    "update public.servers set last_seen_at = now(), callback_url = coalesce(callback_url, $2) where id = $1",
-                )
+            let _ = sqlx::query("update public.servers set last_seen_at = now() where id = $1")
                 .bind(&server_id)
-                .bind(cb)
                 .execute(&state.db)
                 .await;
-            } else {
-                let _ = sqlx::query("update public.servers set last_seen_at = now() where id = $1")
-                    .bind(&server_id)
-                    .execute(&state.db)
-                    .await;
-            }
 
             // If hash doesn't match, reject.
             if let Some(stored_hash) = stored_hash_opt {
@@ -200,4 +172,3 @@ pub async fn handshake(
         }
     }
 }
-

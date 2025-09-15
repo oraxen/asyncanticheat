@@ -11,8 +11,8 @@ use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
 use uuid::Uuid;
 
-use crate::{error::ApiError, AppState};
 use crate::module_pipeline;
+use crate::{error::ApiError, AppState};
 
 #[derive(Serialize)]
 pub struct IngestResponse {
@@ -50,24 +50,6 @@ fn sha256_hex(input: &str) -> String {
     h.update(input.as_bytes());
     let out = h.finalize();
     hex::encode(out)
-}
-
-fn forwarded_client_ip(headers: &HeaderMap) -> Option<String> {
-    // Prefer common reverse-proxy headers (nginx / Cloudflare / etc).
-    // X-Forwarded-For can be a comma-separated list; first is original client.
-    if let Some(xff) = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()) {
-        let ip = xff.split(',').next().unwrap_or("").trim();
-        if !ip.is_empty() {
-            return Some(ip.to_string());
-        }
-    }
-    if let Some(xri) = headers.get("x-real-ip").and_then(|v| v.to_str().ok()) {
-        let ip = xri.trim();
-        if !ip.is_empty() {
-            return Some(ip.to_string());
-        }
-    }
-    None
 }
 
 /// POST /ingest
@@ -123,32 +105,34 @@ pub async fn ingest(
     // --- Registration gate ---
     // We store the server + token hash the first time we see it, but we do not accept payloads
     // until the server is linked to a dashboard account (owner_user_id + registered_at).
-    let row: Option<(Option<String>, Option<uuid::Uuid>, Option<chrono::DateTime<chrono::Utc>>)> =
-        sqlx::query_as(
-            r#"
+    let row: Option<(
+        Option<String>,
+        Option<uuid::Uuid>,
+        Option<chrono::DateTime<chrono::Utc>>,
+    )> = sqlx::query_as(
+        r#"
             select auth_token_hash, owner_user_id, registered_at
             from public.servers
             where id = $1
             "#,
-        )
-        .bind(&server_id)
-        .fetch_optional(&state.db)
-        .await
-        .map_err(|e| {
-            tracing::error!("ingest registration lookup failed: {:?}", e);
-            ApiError::Internal
-        })?;
+    )
+    .bind(&server_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("ingest registration lookup failed: {:?}", e);
+        ApiError::Internal
+    })?;
 
     match row {
         None => {
             // New server: insert as pending.
-            let callback_url = forwarded_client_ip(&headers).map(|ip| format!("{ip}:25565"));
             sqlx::query(
                 r#"
                 insert into public.servers
-                    (id, platform, first_seen_at, last_seen_at, auth_token_hash, auth_token_first_seen_at, callback_url)
+                    (id, platform, first_seen_at, last_seen_at, auth_token_hash, auth_token_first_seen_at)
                 values
-                    ($1, $2, now(), now(), $3, now(), $4)
+                    ($1, $2, now(), now(), $3, now())
                 on conflict (id) do update set
                     platform = coalesce(excluded.platform, servers.platform),
                     last_seen_at = now()
@@ -157,7 +141,6 @@ pub async fn ingest(
             .bind(&server_id)
             .bind(platform.as_deref())
             .bind(&token_hash)
-            .bind(callback_url.as_deref())
             .execute(&state.db)
             .await
             .map_err(|e| {
@@ -170,25 +153,17 @@ pub async fn ingest(
                 status: "waiting_for_registration".to_string(),
                 server_id,
             };
-            return Ok((StatusCode::CONFLICT, Json(serde_json::to_value(body).unwrap())));
+            return Ok((
+                StatusCode::CONFLICT,
+                Json(serde_json::to_value(body).unwrap()),
+            ));
         }
         Some((stored_hash_opt, owner_user_id, registered_at)) => {
             // Keep last_seen_at fresh (heartbeat).
-            let callback_url = forwarded_client_ip(&headers).map(|ip| format!("{ip}:25565"));
-            if let Some(cb) = callback_url {
-                let _ = sqlx::query(
-                    "update public.servers set last_seen_at = now(), callback_url = coalesce(callback_url, $2) where id = $1",
-                )
+            let _ = sqlx::query("update public.servers set last_seen_at = now() where id = $1")
                 .bind(&server_id)
-                .bind(cb)
                 .execute(&state.db)
                 .await;
-            } else {
-                let _ = sqlx::query("update public.servers set last_seen_at = now() where id = $1")
-                    .bind(&server_id)
-                    .execute(&state.db)
-                    .await;
-            }
 
             // Token must match.
             if let Some(stored_hash) = stored_hash_opt {
@@ -228,7 +203,7 @@ pub async fn ingest(
 
     let batch_id = Uuid::new_v4();
     let payload_bytes: i32 = body.len().try_into().unwrap_or(i32::MAX);
-    
+
     // Generate the S3 key upfront (deterministic, doesn't require upload)
     let s3_key = crate::s3::ObjectStore::batch_key(&server_id, &session_id, &batch_id);
 
@@ -251,12 +226,19 @@ pub async fn ingest(
         })?;
 
     // Insert batch_index row (before S3 upload to reserve the slot)
-    insert_batch_index(&state.db, &batch_id, &server_id, &session_id, &s3_key, payload_bytes)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to insert batch_index: {:?}", e);
-            ApiError::Internal
-        })?;
+    insert_batch_index(
+        &state.db,
+        &batch_id,
+        &server_id,
+        &session_id,
+        &s3_key,
+        payload_bytes,
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to insert batch_index: {:?}", e);
+        ApiError::Internal
+    })?;
 
     // --- Upload to S3 after DB success ---
     // If this fails, we have a batch_index row without data, but that's easier
@@ -319,17 +301,23 @@ pub async fn ingest(
 
     Ok((
         StatusCode::OK,
-        Json(serde_json::to_value(IngestResponse {
-            ok: true,
-            batch_id,
-            s3_key,
-        })
-        .unwrap()),
+        Json(
+            serde_json::to_value(IngestResponse {
+                ok: true,
+                batch_id,
+                s3_key,
+            })
+            .unwrap(),
+        ),
     ))
 }
 
 /// Upsert a server record (update last_seen_at if exists).
-async fn upsert_server(db: &PgPool, server_id: &str, platform: Option<&str>) -> Result<(), sqlx::Error> {
+async fn upsert_server(
+    db: &PgPool,
+    server_id: &str,
+    platform: Option<&str>,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         insert into public.servers (id, platform, first_seen_at, last_seen_at)
@@ -349,28 +337,32 @@ async fn upsert_server(db: &PgPool, server_id: &str, platform: Option<&str>) -> 
 /// Ensure a server has at least the built-in module entries configured.
 ///
 /// New servers won't have any `server_modules` rows by default, which prevents analysis and
-/// results in empty dashboard data. We add the built-in default module entries on first ingest.
+/// results in empty dashboard data. We add the built-in category modules on first ingest.
 async fn ensure_default_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx::Error> {
-    let (count,): (i64,) = sqlx::query_as("select count(*) from public.server_modules where server_id = $1")
-        .bind(server_id)
-        .fetch_one(db)
-        .await
-        .unwrap_or((0,));
+    let (count,): (i64,) =
+        sqlx::query_as("select count(*) from public.server_modules where server_id = $1")
+            .bind(server_id)
+            .fetch_one(db)
+            .await
+            .unwrap_or((0,));
 
     if count > 0 {
         return Ok(());
     }
 
-    // Legacy default modules (ports 4011/4012).
-    // These are deployed on the same host and exposed as local HTTP services.
+    // Category-based modules:
+    // - Combat Module (port 4021): KillAura, Aim, AutoClicker, Reach, NoSwing
+    // - Movement Module (port 4022): Flight, Speed, NoFall, Timer, Step, GroundSpoof, Velocity, NoSlow
+    // - Player Module (port 4023): BadPackets, Scaffold, FastPlace, FastBreak, Interact, Inventory
     let mut tx = db.begin().await?;
 
     sqlx::query(
         r#"
         insert into public.server_modules (server_id, name, base_url, enabled, transform, created_at, updated_at)
         values
-            ($1, 'Legacy Module (4011)', 'http://127.0.0.1:4011', true, 'raw_ndjson_gz', now(), now()),
-            ($1, 'Legacy Module (4012)', 'http://127.0.0.1:4012', true, 'raw_ndjson_gz', now(), now())
+            ($1, 'Combat Module', 'http://127.0.0.1:4021', true, 'raw_ndjson_gz', now(), now()),
+            ($1, 'Movement Module', 'http://127.0.0.1:4022', true, 'raw_ndjson_gz', now(), now()),
+            ($1, 'Player Module', 'http://127.0.0.1:4023', true, 'raw_ndjson_gz', now(), now())
         "#,
     )
     .bind(server_id)

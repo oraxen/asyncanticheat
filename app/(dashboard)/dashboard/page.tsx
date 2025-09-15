@@ -935,8 +935,7 @@ export default function DashboardPage() {
             {/* Latency metrics - now using real data */}
             {(() => {
               const getStatus = (ms: number | null, online?: boolean) => {
-                if (ms === null || ms < 0)
-                  return online === false ? "offline" : "unknown";
+                if (ms === null || ms < 0) return online === false ? "offline" : "unknown";
                 if (ms < 50) return "excellent";
                 if (ms < 150) return "good";
                 return "poor";
@@ -951,20 +950,23 @@ export default function DashboardPage() {
                     },
                     {
                       label: "API → Server",
-                      ping: connectionMetrics.serverPingMs,
-                      status: getStatus(
-                        connectionMetrics.serverPingMs,
-                        connectionMetrics.serverReachable
-                      ),
+                      // We only display this when the API knows what address to ping.
+                      // (Today this is typically unset, so treat it as unknown instead of offline.)
+                      ping: connectionMetrics.serverAddress
+                        ? connectionMetrics.serverPingMs
+                        : null,
+                      status: connectionMetrics.serverAddress
+                        ? getStatus(
+                            connectionMetrics.serverPingMs,
+                            connectionMetrics.serverReachable
+                          )
+                        : "unknown",
                     },
                     {
                       label: "Plugin Status",
-                      ping: connectionMetrics.pluginOnline
-                        ? Math.min(connectionMetrics.pluginLastSeenMs, 9999)
-                        : null,
-                      status: connectionMetrics.pluginOnline
-                        ? "excellent"
-                        : "offline",
+                      // Show "last seen" even when offline (otherwise it shows "—" and is impossible to debug).
+                      ping: Math.min(connectionMetrics.pluginLastSeenMs, 999999),
+                      status: connectionMetrics.pluginOnline ? "excellent" : "offline",
                       isLastSeen: true,
                     },
                   ]
@@ -993,10 +995,11 @@ export default function DashboardPage() {
                           ? "bg-emerald-400"
                           : conn.status === "good"
                             ? "bg-amber-400"
-                            : conn.status === "offline" ||
-                                conn.status === "unknown"
+                            : conn.status === "offline"
                               ? "bg-red-400"
-                              : "bg-orange-400"
+                              : conn.status === "unknown"
+                                ? "bg-white/30"
+                                : "bg-orange-400"
                       )}
                     />
                   </div>
@@ -1025,19 +1028,27 @@ export default function DashboardPage() {
                 className={cn(
                   "text-xs",
                   connectionMetrics?.pluginOnline &&
-                    connectionMetrics?.serverReachable
+                    (connectionMetrics?.serverAddress
+                      ? connectionMetrics?.serverReachable
+                      : true)
                     ? "text-emerald-400"
                     : connectionMetrics?.pluginOnline ||
-                        connectionMetrics?.serverReachable
+                        (connectionMetrics?.serverAddress
+                          ? connectionMetrics?.serverReachable
+                          : false)
                       ? "text-amber-400"
                       : "text-red-400"
                 )}
               >
                 {connectionMetrics?.pluginOnline &&
-                connectionMetrics?.serverReachable
+                (connectionMetrics?.serverAddress
+                  ? connectionMetrics?.serverReachable
+                  : true)
                   ? "Operational"
                   : connectionMetrics?.pluginOnline ||
-                      connectionMetrics?.serverReachable
+                      (connectionMetrics?.serverAddress
+                        ? connectionMetrics?.serverReachable
+                        : false)
                     ? "Partial"
                     : "Offline"}
               </span>

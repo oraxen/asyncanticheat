@@ -18,24 +18,38 @@ AsyncAnticheat consists of two components:
 
 ## Plugin Installation
 
-### Step 1: Download
+### Step 1: Download the Plugin
 
 Download the latest `async-anticheat-<version>.jar` from the [GitHub releases](https://github.com/oraxen/asyncanticheat/releases).
 
-### Step 2: Install
+### Step 2: Install and Start
 
-Drop the JAR file into your server's `/plugins/` folder.
+1. Drop the JAR file into your server's `/plugins/` folder
+2. Start (or restart) your server
 
-### Step 3: Configure
+That's it! The plugin will automatically generate a default configuration.
 
-Start your server once to generate the default configuration, then edit `plugins/AsyncAnticheat/config.yml`:
+### Step 3: Link Your Server
+
+When your server starts, the plugin will display a link in the console:
+
+```
+[AsyncAnticheat] Link this server to your dashboard:
+[AsyncAnticheat] https://asyncanticheat.com/register-server?token=YOUR_TOKEN
+```
+
+Simply:
+1. **Click the link** (or copy-paste it into your browser)
+2. **Sign in** to your AsyncAnticheat account (or create one using GitHub/Discord/Email)
+3. **Done!** Your server is now linked and protected
+
+You can also run `/aac` in-game or from console to display the link again.
+
+### Optional: Advanced Configuration
+
+The plugin works out of the box, but you can customize it by editing `plugins/AsyncAnticheat/config.yml`:
 
 ```yaml
-api:
-  url: "https://api.asyncanticheat.com"  # Your API endpoint
-  token: "your_api_token"                 # Authentication token
-  timeout_seconds: 10
-
 spool:
   dir: "spool"
   max_mb: 256
@@ -51,9 +65,7 @@ privacy:
   redact_chat: true     # Redact chat message content
 ```
 
-### Step 4: Restart
-
-Restart your server. The plugin will begin capturing packets and uploading them to your API.
+Changes require a server restart to take effect.
 
 ## API Installation (Self-Hosted)
 
@@ -99,23 +111,13 @@ The API will start on `http://127.0.0.1:3002` by default.
 
 ### Check Plugin Status
 
-Run `/aac status` in-game or from console to verify:
+Run `/aac` in-game or from console to verify:
 
+- Server linkage status
 - Connection to API
 - Packet capture is active
-- Spool directory is writable
 
-### Check API Health
-
-```bash
-curl http://your-api:3002/health
-```
-
-Should return:
-
-```json
-{"status": "ok"}
-```
+If your server isn't linked yet, the command will display the registration link again.
 
 ## Proxy Setup
 
@@ -130,22 +132,29 @@ The plugin automatically detects the platform and uses the appropriate PacketEve
 
 ## Troubleshooting
 
+### Server not linked
+
+If you lose the registration link:
+1. Run `/aac` in-game or from console
+2. The command will display the link again
+3. Click the link and sign in
+
 ### Plugin not connecting to API
 
-1. Verify the API URL in `config.yml` is correct
-2. Check that your API token is valid
-3. Ensure firewall allows outbound connections to the API
+1. Ensure firewall allows outbound connections to `api.asyncanticheat.com`
+2. Check server logs for connection errors
+3. Verify your server is linked (run `/aac`)
 
 ### High spool directory usage
 
 If the spool directory grows large, the API may be unreachable:
 
-1. Check API connectivity
-2. Verify API is accepting batches
-3. Consider increasing `flush_interval_ms` or reducing `sample_rate`
+1. Check API connectivity in server logs
+2. Verify firewall rules allow outbound HTTPS
+3. Consider increasing `flush_interval_ms` or reducing `sample_rate` in config
 
 ### Packets not being captured
 
-1. Ensure `capture.enabled_packets` is empty (uses default allow-list) or correctly configured
+1. Verify Java 21 is being used
 2. Check server logs for PacketEvents errors
-3. Verify Java 21 is being used
+3. Ensure `capture.enabled_packets` is empty (uses default allow-list) or correctly configured

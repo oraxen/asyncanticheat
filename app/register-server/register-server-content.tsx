@@ -67,9 +67,13 @@ export function RegisterServerContent() {
   }, [supabase.auth]);
 
   const loginHref = useMemo(() => {
-    const redirect = safeRedirectPath("/register-server");
+    // Include the token in the redirect URL so it survives the OAuth flow
+    const t = token.trim();
+    const redirect = t 
+      ? `/register-server?token=${encodeURIComponent(t)}`
+      : "/register-server";
     return `/login?redirect=${encodeURIComponent(redirect)}`;
-  }, []);
+  }, [token]);
 
   async function onRegister() {
     const t = token.trim();

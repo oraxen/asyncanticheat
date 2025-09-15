@@ -5,9 +5,39 @@ title: Authentication
 
 # Authentication
 
-AsyncAnticheat uses token-based authentication for API requests.
+AsyncAnticheat uses automatic token-based authentication. No manual configuration needed!
 
-## Token Types
+## For Server Owners
+
+### Linking Your Server (Managed Service)
+
+The AsyncAnticheat plugin automatically handles authentication:
+
+1. **Install the plugin** — Drop the JAR into your `/plugins/` folder
+2. **Start your server** — The plugin generates a unique server token
+3. **Click the link** — A registration link appears in console
+4. **Sign in** — Log in with GitHub, Discord, or Email
+5. **Done!** — Your server is linked and authenticated
+
+The plugin automatically:
+- Generates a secure server token
+- Stores it locally
+- Uses it to authenticate all API requests
+- Handles token rotation if needed
+
+### Dashboard Authentication
+
+Access your dashboard at [asyncanticheat.com](https://asyncanticheat.com) using:
+
+- **GitHub** (recommended for developers)
+- **Discord** (recommended for server owners)
+- **Email** (magic link or password)
+
+Once signed in, you'll see all servers you've linked.
+
+## For Self-Hosted APIs
+
+If you're self-hosting the AsyncAnticheat API, you'll need to manage tokens manually.
 
 ### Ingest Token
 
@@ -21,6 +51,7 @@ Configure in your plugin's `config.yml`:
 
 ```yaml
 api:
+  url: "https://your-api.example.com"
   token: "your_ingest_token"
 ```
 
@@ -38,16 +69,7 @@ This is configured in the API's environment:
 MODULE_CALLBACK_TOKEN="your_module_callback_token"
 ```
 
-### Dashboard Authentication
-
-The dashboard uses Supabase Auth for user authentication. Users log in via:
-
-- Email/password
-- OAuth providers (GitHub, Discord)
-
-## Generating Tokens
-
-### For Self-Hosted APIs
+### Generating Tokens
 
 Generate secure random tokens:
 
@@ -65,10 +87,6 @@ Add to your `.env`:
 INGEST_TOKEN="generated_token_here"
 MODULE_CALLBACK_TOKEN="another_generated_token"
 ```
-
-### For Managed APIs
-
-Tokens are provided in your dashboard at [asyncanticheat.com](https://asyncanticheat.com).
 
 ## Security Best Practices
 

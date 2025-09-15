@@ -3,7 +3,19 @@
 Complete website for AsyncAnticheat including:
 - **Landing page** (`/`) - Product showcase and features
 - **Dashboard** (`/dashboard`) - Server owner panel for managing findings
+- **Server Registration** (`/register-server`) - One-click server linking
 - **Documentation** (`/docs`) - Built with Nextra
+
+## Authentication Flow
+
+1. User installs plugin on their Minecraft server
+2. Plugin generates unique server token and displays registration link
+3. User clicks link → `/register-server?token=...`
+4. If not logged in, user clicks "Sign in to link this server"
+5. User authenticates via GitHub/Discord/Email OAuth
+6. After auth, redirected back to registration page with token preserved
+7. User clicks "Link server" to complete registration
+8. Server is now linked to their dashboard account
 
 ## Development
 

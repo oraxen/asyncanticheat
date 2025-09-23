@@ -1,0 +1,64 @@
+name: previous_release PR
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update_previous_release_and_pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update previous_release branch to pre-push SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BEFORE_SHA="${{ github.event.before }}"
+          HEAD_BRANCH="${{ github.ref_name }}"
+
+          # On first push to a new branch, GitHub uses an all-zero before SHA.
+          if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "before SHA is zeros; skipping previous_release update."
+            exit 0
+          fi
+
+          git fetch origin
+
+          # Delete the branch if it exists (ignore errors if it doesn't, or if protected).
+          git push origin :previous_release || true
+
+          # Point previous_release at the commit before this push.
+          git push --force origin "${BEFORE_SHA}:refs/heads/previous_release"
+
+      - name: Create PR (HEAD -> previous_release) if missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          HEAD_BRANCH="${{ github.ref_name }}"
+
+          EXISTING_NUMBER="$(gh pr list --state open --base previous_release --head "$HEAD_BRANCH" --json number --jq '.[0].number')"
+          if [[ -n "${EXISTING_NUMBER:-}" ]]; then
+            echo "PR already exists: #$EXISTING_NUMBER"
+            exit 0
+          fi
+
+          gh pr create \
+            --base previous_release \
+            --head "$HEAD_BRANCH" \
+            --title "Release diff: ${HEAD_BRANCH} → previous_release" \
+            --body "Automated PR. The 'previous_release' branch is force-updated on every push to ${HEAD_BRANCH} to point at the commit *before* the push, so this PR always represents the current release diff."

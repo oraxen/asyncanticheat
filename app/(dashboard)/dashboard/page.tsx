@@ -9,11 +9,7 @@ import {
   RiMapPinLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
-import {
-  api,
-  type DashboardStats,
-  type ConnectionMetrics,
-} from "@/lib/api";
+import { api, type DashboardStats, type ConnectionMetrics } from "@/lib/api";
 import { useSelectedServer } from "@/lib/server-context";
 
 // Transform API player to dashboard player format
@@ -726,10 +722,13 @@ export default function DashboardPage() {
     return (
       <div className="h-[calc(100vh-3rem)] flex items-center justify-center -m-6 p-6">
         <div className="max-w-xl w-full glass-panel rounded-2xl p-8 border border-white/[0.08]">
-          <h1 className="text-xl font-semibold text-white">No server linked yet</h1>
+          <h1 className="text-xl font-semibold text-white">
+            No server linked yet
+          </h1>
           <p className="mt-2 text-sm text-white/50">
-            Install the AsyncAnticheat plugin, start your server once, then link it
-            to your account using the token shown in the console (or via <span className="font-mono">/aac</span>).
+            Install the AsyncAnticheat plugin, start your server once, then link
+            it to your account using the token shown in the console (or via{" "}
+            <span className="font-mono">/aac</span>).
           </p>
           <div className="mt-6 flex items-center gap-3">
             <Link
@@ -935,7 +934,8 @@ export default function DashboardPage() {
             {/* Latency metrics - now using real data */}
             {(() => {
               const getStatus = (ms: number | null, online?: boolean) => {
-                if (ms === null || ms < 0) return online === false ? "offline" : "unknown";
+                if (ms === null || ms < 0)
+                  return online === false ? "offline" : "unknown";
                 if (ms < 50) return "excellent";
                 if (ms < 150) return "good";
                 return "poor";
@@ -950,23 +950,20 @@ export default function DashboardPage() {
                     },
                     {
                       label: "API → Server",
-                      // We only display this when the API knows what address to ping.
-                      // (Today this is typically unset, so treat it as unknown instead of offline.)
-                      ping: connectionMetrics.serverAddress
-                        ? connectionMetrics.serverPingMs
-                        : null,
-                      status: connectionMetrics.serverAddress
-                        ? getStatus(
-                            connectionMetrics.serverPingMs,
-                            connectionMetrics.serverReachable
-                          )
-                        : "unknown",
+                      ping: connectionMetrics.serverPingMs,
+                      status: getStatus(
+                        connectionMetrics.serverPingMs,
+                        connectionMetrics.serverReachable
+                      ),
                     },
                     {
                       label: "Plugin Status",
-                      // Show "last seen" even when offline (otherwise it shows "—" and is impossible to debug).
-                      ping: Math.min(connectionMetrics.pluginLastSeenMs, 999999),
-                      status: connectionMetrics.pluginOnline ? "excellent" : "offline",
+                      ping: connectionMetrics.pluginOnline
+                        ? Math.min(connectionMetrics.pluginLastSeenMs, 9999)
+                        : null,
+                      status: connectionMetrics.pluginOnline
+                        ? "excellent"
+                        : "offline",
                       isLastSeen: true,
                     },
                   ]
@@ -995,11 +992,10 @@ export default function DashboardPage() {
                           ? "bg-emerald-400"
                           : conn.status === "good"
                             ? "bg-amber-400"
-                            : conn.status === "offline"
+                            : conn.status === "offline" ||
+                                conn.status === "unknown"
                               ? "bg-red-400"
-                              : conn.status === "unknown"
-                                ? "bg-white/30"
-                                : "bg-orange-400"
+                              : "bg-orange-400"
                       )}
                     />
                   </div>
@@ -1028,27 +1024,19 @@ export default function DashboardPage() {
                 className={cn(
                   "text-xs",
                   connectionMetrics?.pluginOnline &&
-                    (connectionMetrics?.serverAddress
-                      ? connectionMetrics?.serverReachable
-                      : true)
+                    connectionMetrics?.serverReachable
                     ? "text-emerald-400"
                     : connectionMetrics?.pluginOnline ||
-                        (connectionMetrics?.serverAddress
-                          ? connectionMetrics?.serverReachable
-                          : false)
+                        connectionMetrics?.serverReachable
                       ? "text-amber-400"
                       : "text-red-400"
                 )}
               >
                 {connectionMetrics?.pluginOnline &&
-                (connectionMetrics?.serverAddress
-                  ? connectionMetrics?.serverReachable
-                  : true)
+                connectionMetrics?.serverReachable
                   ? "Operational"
                   : connectionMetrics?.pluginOnline ||
-                      (connectionMetrics?.serverAddress
-                        ? connectionMetrics?.serverReachable
-                        : false)
+                      connectionMetrics?.serverReachable
                     ? "Partial"
                     : "Offline"}
               </span>

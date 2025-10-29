@@ -1,0 +1,485 @@
+/*
+ * AsyncAnticheat Documentation Theme
+ * Overrides nextra-theme-docs to match dashboard design system
+ * 
+ * Design: Quiet Luxury + Liquid Glass
+ * - Deep charcoal backgrounds (no pure black)
+ * - Indigo accent (#6366F1)
+ * - Subtle borders (0.06-0.08 opacity)
+ * - Glass effects for elevated panels
+ */
+
+/* ============================================
+   BASE COLORS & VARIABLES
+   ============================================ */
+
+:root {
+  /* Override Nextra variables to match our palette */
+  --nextra-primary-hue: 239deg; /* Indigo */
+  --nextra-primary-saturation: 84%;
+}
+
+/* Dark mode (default) */
+html[class~="dark"] {
+  --nextra-bg: 18, 18, 20; /* #121214 */
+  --nextra-primary-hue: 239deg;
+}
+
+/* ============================================
+   LAYOUT & STRUCTURE
+   ============================================ */
+
+/* Main background - deep charcoal, not pure black */
+.nextra-nav-container,
+.nextra-sidebar-container,
+body {
+  background-color: rgb(18, 18, 20) !important;
+}
+
+/* Navigation bar - glass effect */
+nav.nextra-nav-container {
+  background: rgba(18, 18, 20, 0.8) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Sidebar - glass effect */
+.nextra-sidebar-container {
+  background: rgba(28, 28, 30, 0.5) !important;
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Main content area */
+main.nextra-content {
+  background-color: rgb(18, 18, 20) !important;
+}
+
+/* TOC sidebar */
+.nextra-toc {
+  border-left: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+
+/* Headings */
+.nextra-content h1,
+.nextra-content h2,
+.nextra-content h3,
+.nextra-content h4 {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-weight: 600;
+}
+
+.nextra-content h1 {
+  font-size: 2rem;
+  letter-spacing: -0.025em;
+}
+
+.nextra-content h2 {
+  font-size: 1.5rem;
+  margin-top: 2.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.nextra-content h3 {
+  font-size: 1.25rem;
+  margin-top: 2rem;
+}
+
+/* Body text */
+.nextra-content p,
+.nextra-content li {
+  color: rgba(255, 255, 255, 0.7) !important;
+  line-height: 1.75;
+}
+
+/* Links */
+.nextra-content a {
+  color: rgb(99, 102, 241) !important; /* Indigo-500 */
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.nextra-content a:hover {
+  color: rgb(129, 140, 248) !important; /* Indigo-400 */
+}
+
+/* Strong/bold text */
+.nextra-content strong {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 600;
+}
+
+/* ============================================
+   NAVIGATION & SIDEBAR
+   ============================================ */
+
+/* Sidebar links - override Nextra's blue theme */
+.nextra-sidebar-container a,
+aside a,
+[class*="sidebar"] a,
+nav a:not(.nextra-nav-container a) {
+  color: rgba(255, 255, 255, 0.6) !important;
+  border-radius: 0.5rem;
+  transition: all 150ms ease;
+}
+
+.nextra-sidebar-container a:hover,
+aside a:hover,
+[class*="sidebar"] a:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Active sidebar link - force white text, not blue */
+.nextra-sidebar-container a[data-active="true"],
+.nextra-sidebar-container a.active,
+aside a[data-active="true"],
+aside a.active,
+[class*="sidebar"] a[data-active="true"],
+[class*="sidebar"] a.active,
+li.active > a,
+a[aria-current="page"] {
+  color: rgba(255, 255, 255, 0.95) !important;
+  background-color: rgba(99, 102, 241, 0.15) !important; /* Subtle indigo bg */
+}
+
+/* Override any blue/primary color in sidebar */
+aside *,
+[class*="sidebar"] * {
+  --nextra-primary-hue: 239deg;
+}
+
+/* Sidebar section headers */
+.nextra-sidebar-container .nextra-menu-title,
+aside .nextra-menu-title {
+  color: rgba(255, 255, 255, 0.4) !important;
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+/* ============================================
+   CODE BLOCKS
+   ============================================ */
+
+/* Inline code */
+.nextra-content code:not(pre code) {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: rgb(248, 113, 113) !important; /* Subtle red for inline code */
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.375rem;
+  font-size: 0.875em;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Code blocks */
+pre {
+  background-color: rgba(28, 28, 30, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.75rem !important;
+  backdrop-filter: blur(8px);
+}
+
+pre code {
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace !important;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+/* Code block header (filename) */
+.nextra-code-block figcaption {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 0.75rem;
+}
+
+/* ============================================
+   CALLOUTS / ADMONITIONS
+   ============================================ */
+
+.nextra-callout {
+  border-radius: 0.75rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* Info callout */
+.nextra-callout[data-type="info"] {
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  background-color: rgba(59, 130, 246, 0.05) !important;
+}
+
+/* Warning callout */
+.nextra-callout[data-type="warning"] {
+  border-color: rgba(234, 179, 8, 0.3) !important;
+  background-color: rgba(234, 179, 8, 0.05) !important;
+}
+
+/* Error/danger callout */
+.nextra-callout[data-type="error"] {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  background-color: rgba(239, 68, 68, 0.05) !important;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+
+.nextra-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+}
+
+.nextra-content th {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.nextra-content td {
+  color: rgba(255, 255, 255, 0.7) !important;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+.nextra-content tr:hover td {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* ============================================
+   LISTS
+   ============================================ */
+
+.nextra-content ul,
+.nextra-content ol {
+  padding-left: 1.5rem;
+}
+
+.nextra-content li {
+  margin: 0.5rem 0;
+}
+
+.nextra-content li::marker {
+  color: rgba(99, 102, 241, 0.6); /* Indigo accent */
+}
+
+/* ============================================
+   BLOCKQUOTES
+   ============================================ */
+
+.nextra-content blockquote {
+  border-left: 3px solid rgba(99, 102, 241, 0.4) !important;
+  background-color: rgba(99, 102, 241, 0.03) !important;
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.nextra-content blockquote p {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-style: italic;
+}
+
+/* ============================================
+   SEARCH
+   ============================================ */
+
+/* Search input */
+.nextra-search input {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.5rem !important;
+  color: white !important;
+}
+
+.nextra-search input::placeholder {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.nextra-search input:focus {
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  outline: none !important;
+}
+
+/* Search results */
+.nextra-search-results {
+  background-color: rgb(28, 28, 30) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.75rem !important;
+  backdrop-filter: blur(20px);
+}
+
+/* ============================================
+   BREADCRUMBS
+   ============================================ */
+
+.nextra-breadcrumb {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.nextra-breadcrumb a {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.nextra-breadcrumb a:hover {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ============================================
+   PAGINATION
+   ============================================ */
+
+.nextra-nav-link {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.75rem !important;
+  padding: 1rem !important;
+  transition: all 150ms ease;
+}
+
+.nextra-nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.nextra-nav-link span {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.nextra-nav-link-title {
+  color: white !important;
+}
+
+/* ============================================
+   THEME TOGGLE
+   ============================================ */
+
+.nextra-theme-toggle button {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.5rem !important;
+}
+
+.nextra-theme-toggle button:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ============================================
+   SCROLLBARS
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(72, 72, 77, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(110, 110, 115, 0.5);
+}
+
+/* ============================================
+   MISC OVERRIDES
+   ============================================ */
+
+/* HR dividers */
+.nextra-content hr {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  margin: 2rem 0;
+}
+
+/* Selection */
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+}
+
+/* Focus states */
+*:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4) !important;
+}
+
+/* Footer (if exists) */
+footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background-color: rgba(18, 18, 20, 0.8) !important;
+}
+
+/* Edit link */
+.nextra-content a[href*="github.com"] {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.nextra-content a[href*="github.com"]:hover {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* ============================================
+   AGGRESSIVE NEXTRA OVERRIDES
+   Force sidebar to use white text, not blue
+   ============================================ */
+
+/* Kill all blue/purple in sidebar nav */
+aside a,
+aside button,
+aside span,
+nav:not(.nextra-nav-container) a,
+[class*="sidebar"] a,
+[class*="menu"] a,
+[role="navigation"] a {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Active/selected items - white text with subtle indigo background */
+aside a[data-active="true"],
+aside a[aria-current="page"],
+aside a[aria-selected="true"],
+aside li.active a,
+aside .active,
+[class*="sidebar"] a[data-active="true"],
+[class*="sidebar"] .active {
+  color: rgba(255, 255, 255, 0.95) !important;
+  background-color: rgba(99, 102, 241, 0.12) !important;
+}
+
+/* Hover states */
+aside a:hover,
+[class*="sidebar"] a:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Override Nextra's CSS custom properties for primary color */
+:root,
+html,
+html.dark {
+  --nextra-primary-hue: 239deg !important;
+  --nextra-primary-saturation: 30% !important; /* Reduce saturation */
+}

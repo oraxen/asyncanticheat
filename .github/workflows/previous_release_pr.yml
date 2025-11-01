@@ -19,11 +19,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # We'll configure our own PAT for push operations below.
+          persist-credentials: false
 
       - name: Update previous_release branch to pre-push SHA
+        env:
+          # Needed for pushing refs that include .github/workflows/**
+          GH_TOKEN: ${{ secrets.PREVIOUS_RELEASE_PR_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
+
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "PREVIOUS_RELEASE_PR_TOKEN is not set; skipping previous_release update."
+            exit 0
+          fi
 
           BEFORE_SHA="${{ github.event.before }}"
           HEAD_BRANCH="${{ github.ref_name }}"
@@ -34,6 +44,8 @@ jobs:
             exit 0
           fi
 
+          # Use PAT for all remote operations (GITHUB_TOKEN cannot update workflow files).
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch origin
 
           # Delete the branch if it exists (ignore errors if it doesn't, or if protected).

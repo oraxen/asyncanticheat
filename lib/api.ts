@@ -228,28 +228,28 @@ const MOCK_FINDINGS: Finding[] = [
 
 const MOCK_MODULES: Module[] = [
   {
-    id: "1",
-    name: "NCP Core",
-    base_url: "http://127.0.0.1:4010",
+    id: "combat",
+    name: "Combat Module",
+    base_url: "http://127.0.0.1:4021",
     enabled: true,
     healthy: true,
     last_error: null,
     detections: 847,
   },
   {
-    id: "2",
-    name: "Demo Module",
-    base_url: "http://127.0.0.1:4011",
+    id: "movement",
+    name: "Movement Module",
+    base_url: "http://127.0.0.1:4022",
     enabled: true,
     healthy: true,
     last_error: null,
     detections: 156,
   },
   {
-    id: "3",
-    name: "Inventory Guard",
-    base_url: "http://127.0.0.1:4012",
-    enabled: false,
+    id: "player",
+    name: "Player Module",
+    base_url: "http://127.0.0.1:4023",
+    enabled: true,
     healthy: true,
     last_error: null,
     detections: 234,
@@ -258,7 +258,7 @@ const MOCK_MODULES: Module[] = [
 
 const MOCK_STATS: DashboardStats = {
   total_findings: 1247,
-  active_modules: 2,
+  active_modules: 3,
   players_monitored: 4,
   findings_today: 12,
 };

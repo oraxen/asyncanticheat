@@ -19,31 +19,78 @@ import { cn } from "@/lib/utils";
 import { api, type Module } from "@/lib/api";
 import { useSelectedServer } from "@/lib/server-context";
 
-// Mock check data for modules (in a real app, this would come from the API)
+// Mock check metadata for modules.
+// The API currently returns module health/enabled/base_url, but not a full check list yet.
 const moduleChecks: Record<string, string[]> = {
-  "NCP Core": [
-    "fight_angle",
-    "fight_speed",
-    "fight_reach",
-    "moving_speed",
-    "moving_nofall",
+  "Combat Module": [
+    "combat_killaura_multi",
+    "combat_killaura_post",
+    "combat_aim_headsnap",
+    "combat_aim_pitchspread",
+    "combat_aim_sensitivity",
+    "combat_aim_modulo",
+    "combat_aim_dirswitch",
+    "combat_aim_repeated_yaw",
+    "combat_autoclicker_cps",
+    "combat_autoclicker_timing",
+    "combat_autoclicker_variance",
+    "combat_autoclicker_kurtosis",
+    "combat_autoclicker_tickalign",
+    "combat_reach_distance",
+    "combat_reach_critical",
+    "combat_noswing",
   ],
-  "Demo Module": ["demo_speed", "demo_fly"],
-  "Inventory Guard": ["inv_autoclicker", "inv_cheststealer", "inv_cleaner"],
+  "Movement Module": [
+    "movement_flight_yprediction",
+    "movement_flight_ascend",
+    "movement_flight_hover",
+    "movement_speed_horizontal",
+    "movement_speed_sprint",
+    "movement_speed_sneak",
+    "movement_nofall_ground",
+    "movement_nofall_damage",
+    "movement_timer_fast",
+    "movement_timer_slow",
+    "movement_step_height",
+    "movement_step_noground",
+    "movement_groundspoof_falling",
+    "movement_groundspoof_ascending",
+    "movement_velocity_ignored",
+    "movement_velocity_partial",
+    "movement_noslow_item",
+    "movement_noslow_sneak",
+  ],
+  "Player Module": [
+    "player_badpackets_pitch",
+    "player_badpackets_nan",
+    "player_badpackets_abilities",
+    "player_badpackets_instant_break",
+    "player_badpackets_slot",
+    "player_badpackets_flying_flood",
+    "player_scaffold_airborne",
+    "player_scaffold_sprint",
+    "player_fastplace",
+    "player_fastplace_critical",
+    "player_fastbreak",
+    "player_fastbreak_critical",
+    "player_interact_angle",
+    "player_interact_impossible",
+    "player_inventory_fastclick",
+  ],
 };
 
 const moduleDescriptions: Record<string, { short: string; full: string }> = {
-  "NCP Core": {
-    short: "Fight & movement checks",
-    full: "The core NoCheatPlus module provides essential anti-cheat functionality including combat analysis, movement validation, and player behavior monitoring.",
+  "Combat Module": {
+    short: "Combat checks (aim, killaura, reach)",
+    full: "Category module focused on combat cheats: KillAura patterns, aim anomalies, auto-clicker statistics, reach validation, and no-swing detection.",
   },
-  "Demo Module": {
-    short: "Basic speed detection",
-    full: "A demonstration module showing the capabilities of the AsyncAntiCheat system. Includes basic speed and fly detection.",
+  "Movement Module": {
+    short: "Movement checks (fly, speed, timer)",
+    full: "Category module focused on movement cheats: flight physics, speed/sprint/sneak limits, no-fall, timer, step, ground spoofing, velocity, and no-slow.",
   },
-  "Inventory Guard": {
-    short: "Auto-clicker & inventory cheats",
-    full: "Protects against inventory-related cheats including auto-clickers, inventory cleaners, and chest stealers. Uses click pattern analysis.",
+  "Player Module": {
+    short: "Bad packets & action cheats",
+    full: "Category module focused on player action abuse: bad packet validation, scaffold, fast place/break, impossible interactions, and inventory click speed.",
   },
 };
 

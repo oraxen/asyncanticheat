@@ -337,24 +337,33 @@ async fn upsert_server(
 /// Ensure a server has at least the built-in module entries configured.
 ///
 /// New servers won't have any `server_modules` rows by default, which prevents analysis and
-/// results in empty dashboard data. We add the built-in category modules on first ingest.
+/// results in empty dashboard data.
+///
+/// We also perform a small best-effort migration away from the legacy default modules
+/// (pre category split) so older servers don't keep showing outdated module names in the dashboard.
 async fn ensure_default_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx::Error> {
-    let (count,): (i64,) =
-        sqlx::query_as("select count(*) from public.server_modules where server_id = $1")
-            .bind(server_id)
-            .fetch_one(db)
-            .await
-            .unwrap_or((0,));
-
-    if count > 0 {
-        return Ok(());
-    }
-
     // Category-based modules:
     // - Combat Module (port 4021): KillAura, Aim, AutoClicker, Reach, NoSwing
     // - Movement Module (port 4022): Flight, Speed, NoFall, Timer, Step, GroundSpoof, Velocity, NoSlow
     // - Player Module (port 4023): BadPackets, Scaffold, FastPlace, FastBreak, Interact, Inventory
     let mut tx = db.begin().await?;
+
+    // Legacy defaults (pre category split) used local ports 4011/4012.
+    // Remove them so the dashboard doesn't show outdated legacy module entries forever.
+    // (If you intentionally run custom modules on these ports, re-register them under a new name.)
+    sqlx::query(
+        r#"
+        delete from public.server_modules
+        where server_id = $1
+          and (
+            (base_url like 'http://127.0.0.1:4011%' or base_url like 'http://localhost:4011%')
+            or (base_url like 'http://127.0.0.1:4012%' or base_url like 'http://localhost:4012%')
+          )
+        "#,
+    )
+    .bind(server_id)
+    .execute(&mut *tx)
+    .await?;
 
     sqlx::query(
         r#"
@@ -363,6 +372,7 @@ async fn ensure_default_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx
             ($1, 'Combat Module', 'http://127.0.0.1:4021', true, 'raw_ndjson_gz', now(), now()),
             ($1, 'Movement Module', 'http://127.0.0.1:4022', true, 'raw_ndjson_gz', now(), now()),
             ($1, 'Player Module', 'http://127.0.0.1:4023', true, 'raw_ndjson_gz', now(), now())
+        on conflict (server_id, name) do nothing
         "#,
     )
     .bind(server_id)

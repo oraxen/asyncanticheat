@@ -437,6 +437,41 @@ pub async fn get_modules(
     Path(server_id): Path<String>,
 ) -> Result<Json<ModulesResponse>, ApiError> {
     let server_id = server_id.trim().to_string();
+
+    // Best-effort migration: replace legacy default modules (pre category split) with category modules.
+    // This keeps the dashboard accurate even before the next ingest occurs.
+    if let Ok(mut tx) = state.db.begin().await {
+        let _ = sqlx::query(
+            r#"
+            delete from public.server_modules
+            where server_id = $1
+              and (
+                (base_url like 'http://127.0.0.1:4011%' or base_url like 'http://localhost:4011%')
+                or (base_url like 'http://127.0.0.1:4012%' or base_url like 'http://localhost:4012%')
+              )
+            "#,
+        )
+        .bind(&server_id)
+        .execute(&mut *tx)
+        .await;
+
+        let _ = sqlx::query(
+            r#"
+            insert into public.server_modules (server_id, name, base_url, enabled, transform, created_at, updated_at)
+            values
+                ($1, 'Combat Module', 'http://127.0.0.1:4021', true, 'raw_ndjson_gz', now(), now()),
+                ($1, 'Movement Module', 'http://127.0.0.1:4022', true, 'raw_ndjson_gz', now(), now()),
+                ($1, 'Player Module', 'http://127.0.0.1:4023', true, 'raw_ndjson_gz', now(), now())
+            on conflict (server_id, name) do nothing
+            "#,
+        )
+        .bind(&server_id)
+        .execute(&mut *tx)
+        .await;
+
+        let _ = tx.commit().await;
+    }
+
     let rows: Vec<(Uuid, String, String, bool, Option<bool>, Option<String>)> = sqlx::query_as(
         r#"
         SELECT 
@@ -461,7 +496,16 @@ pub async fn get_modules(
 
     let mut modules = Vec::new();
     for (id, name, base_url, enabled, last_healthcheck_ok, last_error) in rows {
-        // Get detection count for this module (approximation based on detector_name pattern)
+        // Get detection count for this module (approximation based on detector_name prefix)
+        // Category modules emit detector names like: combat_*, movement_*, player_*
+        let name_lc = name.trim().to_ascii_lowercase();
+        let detector_like = match name_lc.as_str() {
+            "combat module" | "combat" => "combat_%".to_string(),
+            "movement module" | "movement" => "movement_%".to_string(),
+            "player module" | "player" => "player_%".to_string(),
+            _ => format!("{}%", name_lc.replace(" ", "_")),
+        };
+
         let detections: (i64,) = sqlx::query_as(
             r#"
             SELECT COALESCE(SUM(occurrences), 0) FROM public.findings 
@@ -469,7 +513,7 @@ pub async fn get_modules(
             "#,
         )
         .bind(&server_id)
-        .bind(format!("{}%", name.to_lowercase().replace(" ", "_")))
+        .bind(detector_like)
         .fetch_one(&state.db)
         .await
         .unwrap_or((0,));
@@ -699,7 +743,9 @@ pub async fn get_status(
 
     let now = chrono::Utc::now();
     let plugin_last_seen_ms = (now - last_seen_at).num_milliseconds();
-    let plugin_online = plugin_last_seen_ms < 30_000; // Online if seen within 30s
+    // Plugin uploads batches when there's data. With no players, only PING/PONG
+    // keep-alive packets accumulate (~hourly). Use 2-hour threshold for "online".
+    let plugin_online = plugin_last_seen_ms < 2 * 60 * 60 * 1000; // Online if seen within 2h
 
     // Try to ping the server if we have an address
     // The callback_url might be like "http://ip:port" or just "ip:port"

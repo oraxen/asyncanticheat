@@ -23,7 +23,7 @@ For self-hosted instances, replace with your API URL.
 | `/ingest` | POST | Upload packet batch |
 | `/servers/:id/modules` | GET | List modules for server |
 | `/servers/:id/modules` | POST | Register/update module |
-| `/callback/findings` | POST | Module reports findings |
+| `/callbacks/findings` | POST | Module reports findings |
 
 ## Response Format
 
@@ -31,8 +31,7 @@ All responses are JSON:
 
 ```json
 {
-  "status": "ok",
-  "data": { ... }
+  "ok": true
 }
 ```
 
@@ -40,8 +39,7 @@ Error responses:
 
 ```json
 {
-  "error": "Error message",
-  "code": "ERROR_CODE"
+  "error": "Error message"
 }
 ```
 

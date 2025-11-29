@@ -227,9 +227,10 @@ export default function HomePage() {
               interception.
             </FaqItem>
             <FaqItem question="What checks are included?">
-              The NCP module includes fight checks (angle, speed, reach,
-              direction) and movement checks (speed, more-packets, no-fall). You
-              can also create custom modules.
+              AsyncAnticheat ships with category modules for Combat (aim,
+              killaura, autoclicker, reach), Movement (fly, speed, timer,
+              no-fall, velocity), and Player (bad packets, scaffold, fast
+              break/place). You can also create custom modules.
             </FaqItem>
             <FaqItem question="Does it impact server performance?">
               Minimal impact. Packet capture runs on the network thread with

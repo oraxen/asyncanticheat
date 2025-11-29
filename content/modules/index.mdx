@@ -38,16 +38,18 @@ AsyncAnticheat uses a modular architecture where detection logic runs in separat
 
 Modules must implement a simple HTTP interface.
 
-### Process Batch
+### Ingest Batch
 
 ```http
-POST /process
-Content-Type: application/gzip
-X-Batch-Id: <uuid>
+POST /ingest
+Content-Type: application/x-ndjson
+Content-Encoding: gzip
 X-Server-Id: <server_id>
+X-Session-Id: <session_id>
+X-Batch-Id: <batch_id>
 ```
 
-The request body is the transformed batch (gzipped NDJSON).
+The request body is the (optionally transformed) **gzipped NDJSON** batch.
 
 ### Response
 
@@ -59,26 +61,47 @@ Return `200 OK` to acknowledge receipt. Findings are submitted asynchronously vi
 GET /health
 ```
 
-Return `200 OK` with `{"status": "ok"}` when healthy.
+Return `200 OK` with a small JSON payload when healthy (example):
+
+```json
+{ "ok": true, "name": "movement_module", "version": "0.1.0" }
+```
+
+### Findings Callback (to the API)
+
+After detection, modules submit findings back to the API:
+
+```http
+POST /callbacks/findings
+Authorization: Bearer <MODULE_CALLBACK_TOKEN>
+Content-Type: application/json
+```
 
 ## Official Modules
 
-### NCP Module
+AsyncAnticheat ships **category-based** detection modules:
 
-NoCheatPlus-style detection with traditional rule-based checks:
+### Combat Module
 
-- Speed detection
-- Fly detection
-- Reach detection
-- Timer detection
+- Aim anomalies
+- KillAura patterns
+- Auto-clicker statistics
+- Reach validation
+- NoSwing detection
 
-### Movement Analysis Module
+### Movement Module
 
-Advanced movement analysis using statistical methods:
+- Flight physics
+- Speed / timer / step
+- NoFall / GroundSpoof
+- Velocity / NoSlow
 
-- Velocity pattern analysis
-- Acceleration anomaly detection
-- Path prediction comparison
+### Player Module
+
+- BadPackets validation
+- Scaffold / FastBreak / FastPlace
+- Impossible interactions
+- Inventory click speed
 
 ## Creating Custom Modules
 
@@ -86,7 +109,7 @@ See the [Creating Modules](/modules/creating-modules) guide for a step-by-step t
 
 Basic requirements:
 
-1. HTTP server with `/process` and `/health` endpoints
+1. HTTP server with `/ingest` and `/health` endpoints
 2. Accept gzipped NDJSON batches
 3. Submit findings to API callback
 4. Register with API via the modules endpoint

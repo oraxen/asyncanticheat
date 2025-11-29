@@ -29,19 +29,20 @@ app = Flask(__name__)
 def health():
     return {'status': 'ok'}
 
-@app.route('/process', methods=['POST'])
-def process():
+@app.route('/ingest', methods=['POST'])
+def ingest():
     batch_id = request.headers.get('X-Batch-Id')
     server_id = request.headers.get('X-Server-Id')
+    session_id = request.headers.get('X-Session-Id')
     
     # Decompress and parse batch
     data = gzip.decompress(request.data)
     packets = [json.loads(line) for line in data.decode().strip().split('\n')]
     
     # Process packets (async recommended)
-    process_batch_async(batch_id, server_id, packets)
+    process_batch_async(batch_id, server_id, session_id, packets)
     
-    return {'status': 'ok'}
+    return {'ok': True}
 
 if __name__ == '__main__':
     app.run(port=8080)
@@ -52,7 +53,7 @@ if __name__ == '__main__':
 Group packets by player and analyze:
 
 ```python
-def process_batch_async(batch_id, server_id, packets):
+def process_batch_async(batch_id, server_id, session_id, packets):
     # Group by player
     by_player = {}
     for packet in packets:
@@ -124,7 +125,7 @@ import requests
 
 def submit_findings(batch_id, server_id, findings):
     response = requests.post(
-        'https://api.asyncanticheat.com/callback/findings',
+        'https://api.asyncanticheat.com/callbacks/findings',
         headers={
             'Authorization': f'Bearer {MODULE_CALLBACK_TOKEN}',
             'Content-Type': 'application/json'
@@ -193,22 +194,23 @@ API_URL = os.environ.get('API_URL', 'https://api.asyncanticheat.com')
 def health():
     return {'status': 'ok'}
 
-@app.route('/process', methods=['POST'])
-def process():
+@app.route('/ingest', methods=['POST'])
+def ingest():
     batch_id = request.headers.get('X-Batch-Id')
     server_id = request.headers.get('X-Server-Id')
+    session_id = request.headers.get('X-Session-Id')
     data = gzip.decompress(request.data)
     
     # Process in background
     thread = threading.Thread(
         target=process_batch,
-        args=(batch_id, server_id, data)
+        args=(batch_id, server_id, session_id, data)
     )
     thread.start()
     
-    return {'status': 'ok'}
+    return {'ok': True}
 
-def process_batch(batch_id, server_id, data):
+def process_batch(batch_id, server_id, session_id, data):
     packets = [json.loads(line) for line in data.decode().strip().split('\n')]
     
     # Group by player
@@ -227,7 +229,7 @@ def process_batch(batch_id, server_id, data):
     # Submit
     if findings:
         requests.post(
-            f'{API_URL}/callback/findings',
+            f'{API_URL}/callbacks/findings',
             headers={
                 'Authorization': f'Bearer {MODULE_CALLBACK_TOKEN}',
                 'Content-Type': 'application/json'

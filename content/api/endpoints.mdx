@@ -17,7 +17,7 @@ Returns API health status.
 
 ```json
 {
-  "status": "ok"
+  "ok": true
 }
 ```
 
@@ -25,10 +25,11 @@ Returns API health status.
 
 ```http
 POST /ingest
-Authorization: Bearer <INGEST_TOKEN>
-Content-Type: application/gzip
+Authorization: Bearer <SERVER_TOKEN>
+Content-Type: application/x-ndjson
+Content-Encoding: gzip
 X-Server-Id: <server_id>
-X-Batch-Id: <uuid>
+X-Session-Id: <session_id>
 ```
 
 Upload a gzipped NDJSON batch of packets.
@@ -37,17 +38,19 @@ Upload a gzipped NDJSON batch of packets.
 
 | Header | Required | Description |
 |--------|----------|-------------|
-| `Authorization` | Yes | Bearer token |
+| `Authorization` | Yes | Bearer token (`api.token` from the plugin) |
 | `X-Server-Id` | Yes | Unique server identifier |
-| `X-Batch-Id` | Yes | UUID for this batch |
-| `Content-Type` | Yes | Must be `application/gzip` |
+| `X-Session-Id` | Yes | Session identifier |
+| `Content-Type` | Yes | Must be `application/x-ndjson` |
+| `Content-Encoding` | Yes | Must be `gzip` |
 
 **Response:**
 
 ```json
 {
-  "status": "ok",
-  "batch_id": "550e8400-e29b-41d4-a716-446655440000"
+  "ok": true,
+  "batch_id": "550e8400-e29b-41d4-a716-446655440000",
+  "s3_key": "servers/<server_id>/<session_id>/<batch_id>.ndjson.gz"
 }
 ```
 
@@ -67,7 +70,7 @@ List all registered modules for a server.
   {
     "id": "uuid",
     "server_id": "my-server",
-    "name": "ncp-module",
+    "name": "Movement Module",
     "base_url": "https://module.example.com",
     "enabled": true,
     "transform": "movement_events_v1_ndjson_gz",
@@ -91,7 +94,7 @@ Register or update a detection module subscription.
 
 ```json
 {
-  "name": "ncp-module",
+  "name": "Movement Module",
   "base_url": "https://module.example.com",
   "enabled": true,
   "transform": "raw_ndjson_gz"
@@ -108,7 +111,7 @@ Register or update a detection module subscription.
 ## Submit Findings
 
 ```http
-POST /callback/findings
+POST /callbacks/findings
 Authorization: Bearer <MODULE_CALLBACK_TOKEN>
 Content-Type: application/json
 ```

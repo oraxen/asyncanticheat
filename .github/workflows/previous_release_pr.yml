@@ -26,13 +26,13 @@ jobs:
       - name: Update previous_release branch to pre-push SHA
         env:
           # Needed for pushing refs that include .github/workflows/**
-          GH_TOKEN: ${{ secrets.PREVIOUS_RELEASE_PR_TOKEN }}
+          GH_TOKEN: ${{ secrets.BUGBOT_ORAXEN }}
         shell: bash
         run: |
           set -euo pipefail
 
           if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "PREVIOUS_RELEASE_PR_TOKEN is not set; skipping previous_release update."
+            echo "BUGBOT_ORAXEN is not set; skipping previous_release update."
             exit 0
           fi
 
@@ -59,13 +59,13 @@ jobs:
         env:
           # NOTE: Many orgs disable PR creation for GITHUB_TOKEN.
           # Use a fine-grained PAT secret with Pull Requests: Read/Write.
-          GH_TOKEN: ${{ secrets.PREVIOUS_RELEASE_PR_TOKEN }}
+          GH_TOKEN: ${{ secrets.BUGBOT_ORAXEN }}
         shell: bash
         run: |
           set -euo pipefail
           
           if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "PREVIOUS_RELEASE_PR_TOKEN is not set; skipping PR creation."
+            echo "BUGBOT_ORAXEN is not set; skipping PR creation."
             exit 0
           fi
 

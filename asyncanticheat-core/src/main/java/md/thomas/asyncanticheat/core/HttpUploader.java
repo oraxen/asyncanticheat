@@ -26,6 +26,8 @@ final class HttpUploader {
     private final long maxBackoffMs = 60_000L;
     private int consecutiveFailures = 0;
     private long degradedUntilMs = 0L;
+    private long lastMissingTokenWarnAtMs = 0L;
+    private final long missingTokenWarnIntervalMs = 5 * 60_000L; // 5 minutes
 
     HttpUploader(@NotNull AsyncAnticheatConfig config, @NotNull AcLogger logger, @NotNull String serverId, @NotNull String sessionId) {
         this.config = config;
@@ -61,6 +63,11 @@ final class HttpUploader {
         final String token = config.getApiToken();
         if (token == null || token.isBlank()) {
             // No auth configured: just keep spooling.
+            final long now = System.currentTimeMillis();
+            if (now - lastMissingTokenWarnAtMs >= missingTokenWarnIntervalMs) {
+                lastMissingTokenWarnAtMs = now;
+                logger.warn("[AsyncAnticheat] api.token is not set; spooling packets to disk but not uploading. Set api.token in config.yml to enable uploads.");
+            }
             return;
         }
 
@@ -120,8 +127,9 @@ final class HttpUploader {
     private void onFailure(@NotNull String reason) {
         consecutiveFailures++;
         // Exponential backoff.
-        nextAttemptAtMs = System.currentTimeMillis() + backoffMs;
-        backoffMs = Math.min(maxBackoffMs, backoffMs * 2L);
+        final long appliedBackoffMs = backoffMs;
+        nextAttemptAtMs = System.currentTimeMillis() + appliedBackoffMs;
+        backoffMs = Math.min(maxBackoffMs, appliedBackoffMs * 2L);
 
         // Degraded mode: stop uploading for a while after repeated failures.
         if (consecutiveFailures >= 5) {
@@ -129,7 +137,7 @@ final class HttpUploader {
             logger.warn("[AsyncAnticheat] Entering spool-only mode for 5m after repeated upload failures. Last: " + reason);
         } else if (consecutiveFailures == 1 || consecutiveFailures == 3) {
             // Avoid log spam; log early signals.
-            logger.warn("[AsyncAnticheat] " + reason + " (backoff=" + backoffMs + "ms, failures=" + consecutiveFailures + ")");
+            logger.warn("[AsyncAnticheat] " + reason + " (backoff=" + appliedBackoffMs + "ms, failures=" + consecutiveFailures + ")");
         }
     }
 }

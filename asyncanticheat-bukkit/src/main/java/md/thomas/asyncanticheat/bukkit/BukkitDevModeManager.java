@@ -53,7 +53,8 @@ final class BukkitDevModeManager {
                 "toggle_s", toggleSeconds
         ));
 
-        s.taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> tick(player), 20L, 20L);
+        final UUID playerId = player.getUniqueId();
+        s.taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> tick(playerId), 20L, 20L);
         return true;
     }
 
@@ -68,12 +69,12 @@ final class BukkitDevModeManager {
     }
 
     void stopAll(@NotNull String reason) {
-        for (UUID id : sessions.keySet()) {
+        for (UUID id : sessions.keySet().toArray(new UUID[0])) {
             final Player p = Bukkit.getPlayer(id);
-            if (p != null) {
+            if (p != null && p.isOnline()) {
                 stop(p, reason);
             } else {
-                sessions.remove(id);
+                stopSilent(id);
             }
         }
     }
@@ -83,9 +84,23 @@ final class BukkitDevModeManager {
         return sessions.get(playerId);
     }
 
-    private void tick(@NotNull Player player) {
-        final Session s = sessions.get(player.getUniqueId());
+    void stopSilent(@NotNull UUID playerId) {
+        final Session s = sessions.remove(playerId);
         if (s == null) return;
+        if (s.taskId != -1) {
+            Bukkit.getScheduler().cancelTask(s.taskId);
+        }
+    }
+
+    private void tick(@NotNull UUID playerId) {
+        final Session s = sessions.get(playerId);
+        if (s == null) return;
+        final Player player = Bukkit.getPlayer(playerId);
+        if (player == null || !player.isOnline()) {
+            // Player disconnected - cancel repeating task and remove session without emitting markers/messages.
+            stopSilent(playerId);
+            return;
+        }
 
         s.elapsedSeconds++;
         if (s.elapsedSeconds >= s.durationSeconds) {

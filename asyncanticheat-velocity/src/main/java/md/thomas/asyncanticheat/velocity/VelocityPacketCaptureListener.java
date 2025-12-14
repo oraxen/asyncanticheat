@@ -35,6 +35,11 @@ final class VelocityPacketCaptureListener implements PacketListener {
     public void onPacketReceive(PacketReceiveEvent event) {
         final User user = event.getUser();
         final Player player = user == null ? null : server.getPlayer(user.getUUID()).orElse(null);
+
+        // If we can't resolve a player, drop the packet. Enqueuing null UUID/name creates unusable anonymous traffic.
+        if (user == null || player == null) {
+            return;
+        }
         
         // Check exemptions (Bedrock, join grace, server switch grace)
         if (exemptionTracker.isExempt(player)) {
@@ -47,8 +52,8 @@ final class VelocityPacketCaptureListener implements PacketListener {
                 System.currentTimeMillis(),
                 "serverbound",
                 packetName,
-                player == null ? null : player.getUniqueId().toString(),
-                player == null ? null : player.getUsername(),
+                player.getUniqueId().toString(),
+                player.getUsername(),
                 fields
         ));
     }
@@ -57,6 +62,10 @@ final class VelocityPacketCaptureListener implements PacketListener {
     public void onPacketSend(PacketSendEvent event) {
         final User user = event.getUser();
         final Player player = user == null ? null : server.getPlayer(user.getUUID()).orElse(null);
+
+        if (user == null || player == null) {
+            return;
+        }
         
         // Check exemptions (same as serverbound)
         if (exemptionTracker.isExempt(player)) {
@@ -68,8 +77,8 @@ final class VelocityPacketCaptureListener implements PacketListener {
                 System.currentTimeMillis(),
                 "clientbound",
                 packetName,
-                player == null ? null : player.getUniqueId().toString(),
-                player == null ? null : player.getUsername(),
+                player.getUniqueId().toString(),
+                player.getUsername(),
                 Collections.emptyMap()
         ));
     }

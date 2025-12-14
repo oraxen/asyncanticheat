@@ -135,7 +135,12 @@ public final class BukkitPlayerExemptionTracker extends PlayerExemptionTracker i
         }
 
         // Flying check (AAC: checks.move.check_flying, NCP: isFlying)
-        if (config.isSkipFlying() && player.isFlying()) {
+        //
+        // IMPORTANT:
+        // Only exempt flight if the server actually allows it (creative/permissions).
+        // If allowFlight is false but isFlying is true, that is itself suspicious and we
+        // still want to capture packets so async modules can detect it.
+        if (config.isSkipFlying() && player.isFlying() && player.getAllowFlight()) {
             return ExemptionReason.FLYING;
         }
 
@@ -212,7 +217,7 @@ public final class BukkitPlayerExemptionTracker extends PlayerExemptionTracker i
         if (config.isSkipCreativeMode() && gameMode == GameMode.CREATIVE) {
             reasons.add(ExemptionReason.CREATIVE_MODE);
         }
-        if (config.isSkipFlying() && player.isFlying())
+        if (config.isSkipFlying() && player.isFlying() && player.getAllowFlight())
             reasons.add(ExemptionReason.FLYING);
         if (config.isSkipElytraGliding() && player.isGliding())
             reasons.add(ExemptionReason.ELYTRA_GLIDING);

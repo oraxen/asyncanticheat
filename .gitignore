@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+bin/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+
+# Cursor
+.cursor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local documentation site (separate repo)
+docs.asyncanticheat.com/
+
+# Runtime
+*.log
+logs/
+
+# Local config overrides
+local.properties

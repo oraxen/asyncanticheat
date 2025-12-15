@@ -46,7 +46,7 @@ final class BukkitDevModeManager {
         sessions.put(player.getUniqueId(), s);
 
         // Start in "OFF" state so the first label segment is clean.
-        send(player, "[AsyncAnticheat Dev] Recording started (" + durationSeconds + "s). Keep cheat OFF.");
+        sendStartNotice(player, label, durationSeconds, warmupSeconds, toggleSeconds);
         enqueueMarker(player, devSessionId, label, "start", "off", Map.of(
                 "duration_s", durationSeconds,
                 "warmup_s", warmupSeconds,
@@ -64,7 +64,7 @@ final class BukkitDevModeManager {
         if (s.taskId != -1) {
             Bukkit.getScheduler().cancelTask(s.taskId);
         }
-        send(player, "[AsyncAnticheat Dev] Recording stopped (" + reason + ").");
+        sendStopNotice(player, s.label, reason);
         enqueueMarker(player, s.devSessionId, s.label, "stop", s.cheatState, Map.of("reason", reason));
     }
 
@@ -160,6 +160,41 @@ final class BukkitDevModeManager {
 
     private static void send(@NotNull Player player, @NotNull String msg) {
         player.sendMessage(msg);
+    }
+
+    private static void sendStartNotice(
+            @NotNull Player player,
+            @NotNull String label,
+            int durationSeconds,
+            int warmupSeconds,
+            int toggleSeconds
+    ) {
+        // Chat (always visible in logs / for players without title support).
+        send(player, "[AsyncAnticheat Dev] RECORDING STARTED: label=" + label
+                + " duration=" + durationSeconds + "s warmup=" + warmupSeconds + "s toggle=" + toggleSeconds + "s"
+                + " (start with CHEAT OFF)");
+        // Title (more visible to the player).
+        try {
+            player.sendTitle(
+                    "AsyncAnticheat DEV",
+                    "Recording started: " + label + " (CHEAT OFF)",
+                    10, 60, 10
+            );
+        } catch (Throwable ignored) {
+            // Some servers/platforms may not support titles; chat message is enough.
+        }
+    }
+
+    private static void sendStopNotice(@NotNull Player player, @NotNull String label, @NotNull String reason) {
+        send(player, "[AsyncAnticheat Dev] RECORDING STOPPED: label=" + label + " reason=" + reason);
+        try {
+            player.sendTitle(
+                    "AsyncAnticheat DEV",
+                    "Recording stopped: " + label,
+                    10, 60, 10
+            );
+        } catch (Throwable ignored) {
+        }
     }
 
     static final class Session {

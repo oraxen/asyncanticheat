@@ -66,6 +66,13 @@ public final class AsyncAnticheatVelocityPlugin {
                 .build();
         server.getCommandManager().register(meta, new VelocityDevModeCommand(devMode, service));
 
+        CommandMeta linkMeta = server.getCommandManager()
+                .metaBuilder("aac")
+                .aliases("asyncanticheat")
+                .plugin(pluginContainer)
+                .build();
+        server.getCommandManager().register(linkMeta, new VelocityLinkCommand(service));
+
         logger.info("AsyncAnticheat (Velocity) enabled with exemption tracking (Bedrock detection, grace periods)");
     }
 

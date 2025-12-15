@@ -24,8 +24,8 @@ final class BungeePacketCaptureListener implements PacketListener {
     private final BungeePlayerExemptionTracker exemptionTracker;
 
     BungeePacketCaptureListener(@NotNull ProxyServer proxy,
-                                @NotNull AsyncAnticheatService service,
-                                @NotNull BungeePlayerExemptionTracker exemptionTracker) {
+            @NotNull AsyncAnticheatService service,
+            @NotNull BungeePlayerExemptionTracker exemptionTracker) {
         this.proxy = proxy;
         this.service = service;
         this.exemptionTracker = exemptionTracker;
@@ -35,51 +35,39 @@ final class BungeePacketCaptureListener implements PacketListener {
     public void onPacketReceive(PacketReceiveEvent event) {
         final User user = event.getUser();
         final ProxiedPlayer player = user == null ? null : proxy.getPlayer(user.getUUID());
-        
-        // If we can't resolve a player, drop the packet. Enqueuing null UUID/name creates unusable anonymous traffic.
-        if (user == null || player == null) {
-            return;
-        }
-        
+
         // Check exemptions (Bedrock, join grace, server switch grace)
         if (exemptionTracker.isExempt(player)) {
             return;
         }
-        
+
         final Map<String, Object> fields = extractFields(event);
         service.tryEnqueue(new PacketRecord(
                 System.currentTimeMillis(),
                 "serverbound",
                 String.valueOf(event.getPacketType()),
-                player.getUniqueId().toString(),
-                player.getName(),
-                fields
-        ));
+                player == null ? null : player.getUniqueId().toString(),
+                player == null ? null : player.getName(),
+                fields));
     }
 
     @Override
     public void onPacketSend(PacketSendEvent event) {
         final User user = event.getUser();
         final ProxiedPlayer player = user == null ? null : proxy.getPlayer(user.getUUID());
-        
-        // If we can't resolve a player, drop the packet. Enqueuing null UUID/name creates unusable anonymous traffic.
-        if (user == null || player == null) {
-            return;
-        }
-        
+
         // Check exemptions (same as serverbound)
         if (exemptionTracker.isExempt(player)) {
             return;
         }
-        
+
         service.tryEnqueue(new PacketRecord(
                 System.currentTimeMillis(),
                 "clientbound",
                 String.valueOf(event.getPacketType()),
-                player.getUniqueId().toString(),
-                player.getName(),
-                Collections.emptyMap()
-        ));
+                player == null ? null : player.getUniqueId().toString(),
+                player == null ? null : player.getName(),
+                Collections.emptyMap()));
     }
 
     @NotNull
@@ -100,5 +88,3 @@ final class BungeePacketCaptureListener implements PacketListener {
         return Collections.emptyMap();
     }
 }
-
-

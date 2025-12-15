@@ -9,6 +9,8 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.Writer;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,7 @@ import java.util.Map;
 public final class AsyncAnticheatConfig {
 
     private static final String DEFAULT_API_URL = "https://api.asyncanticheat.com";
+    private static final String DEFAULT_DASHBOARD_URL = "https://asyncanticheat.com";
     private static final int DEFAULT_TIMEOUT_SECONDS = 10;
     private static final int DEFAULT_FLUSH_INTERVAL_MS = 1_000;
     private static final int DEFAULT_SPOOL_MAX_MB = 256;
@@ -24,6 +27,9 @@ public final class AsyncAnticheatConfig {
     private String apiUrl = DEFAULT_API_URL;
     private String apiToken = "";
     private int timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
+
+    // Dashboard linking
+    private String dashboardUrl = DEFAULT_DASHBOARD_URL;
 
     private String spoolDirName = "spool";
     private int spoolMaxMb = DEFAULT_SPOOL_MAX_MB;
@@ -54,6 +60,8 @@ public final class AsyncAnticheatConfig {
         final File configFile = new File(dataFolder, "config.yml");
         final AsyncAnticheatConfig config = new AsyncAnticheatConfig();
         if (!configFile.exists()) {
+            // Generate a per-server secret token on first install.
+            config.apiToken = generateToken();
             config.save(configFile, logger);
             return config;
         }
@@ -67,6 +75,13 @@ public final class AsyncAnticheatConfig {
         } catch (Exception e) {
             logger.error("[AsyncAnticheat] Failed to load config.yml", e);
         }
+
+        // If the user deleted the token (or an old config had none), regenerate once and persist.
+        if (config.apiToken == null || config.apiToken.isBlank()) {
+            config.apiToken = generateToken();
+            logger.warn("[AsyncAnticheat] api.token was empty; generated a new token and saved config.yml. You must re-link this server on the dashboard.");
+            config.save(configFile, logger);
+        }
         return config;
     }
 
@@ -77,6 +92,11 @@ public final class AsyncAnticheatConfig {
             apiUrl = getString(api, "url", apiUrl);
             apiToken = getString(api, "token", apiToken);
             timeoutSeconds = getInt(api, "timeout_seconds", timeoutSeconds);
+        }
+
+        final Map<String, Object> dashboard = (Map<String, Object>) data.get("dashboard");
+        if (dashboard != null) {
+            dashboardUrl = getString(dashboard, "url", dashboardUrl);
         }
 
         final Map<String, Object> spool = (Map<String, Object>) data.get("spool");
@@ -127,6 +147,16 @@ public final class AsyncAnticheatConfig {
         api.put("token", apiToken);
         api.put("timeout_seconds", timeoutSeconds);
         root.put("api", api);
+
+        final Map<String, Object> dashboard = new LinkedHashMap<>();
+        dashboard.put("url", dashboardUrl);
+        // Convenience: a copy/paste link (contains the secret token in the query string).
+        // Treat it like a password.
+        final String dashBase = dashboardUrl.trim().endsWith("/")
+                ? dashboardUrl.trim().substring(0, dashboardUrl.trim().length() - 1)
+                : dashboardUrl.trim();
+        dashboard.put("link", dashBase + "/register-server?token=" + (apiToken == null ? "" : apiToken));
+        root.put("dashboard", dashboard);
 
         final Map<String, Object> spool = new LinkedHashMap<>();
         spool.put("dir", spoolDirName);
@@ -226,6 +256,7 @@ public final class AsyncAnticheatConfig {
     @NotNull public String getApiUrl() { return apiUrl; }
     @NotNull public String getApiToken() { return apiToken; }
     public int getTimeoutSeconds() { return timeoutSeconds; }
+    @NotNull public String getDashboardUrl() { return dashboardUrl; }
 
     @NotNull public String getSpoolDirName() { return spoolDirName; }
     public int getSpoolMaxMb() { return spoolMaxMb; }
@@ -244,6 +275,14 @@ public final class AsyncAnticheatConfig {
     public int getDevDefaultToggleSeconds() { return devDefaultToggleSeconds; }
     
     @NotNull public ExemptionConfig getExemptionConfig() { return exemptionConfig; }
+
+    @NotNull
+    private static String generateToken() {
+        // 32 bytes => 256-bit random token, URL-safe, no padding.
+        final byte[] buf = new byte[32];
+        new SecureRandom().nextBytes(buf);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(buf);
+    }
 }
 
 

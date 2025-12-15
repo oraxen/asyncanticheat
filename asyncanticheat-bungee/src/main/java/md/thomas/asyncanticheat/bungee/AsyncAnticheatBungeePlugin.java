@@ -44,6 +44,7 @@ public final class AsyncAnticheatBungeePlugin extends Plugin {
         devMode = new BungeeDevModeManager(this, ProxyServer.getInstance(), service);
         final PluginManager pm = ProxyServer.getInstance().getPluginManager();
         pm.registerCommand(this, new BungeeDevModeCommand(devMode, service));
+        pm.registerCommand(this, new BungeeLinkCommand(service));
 
         service.start();
         logger.info("[AsyncAnticheat] Player exemption tracking enabled (Bedrock detection, grace periods)");

@@ -18,6 +18,10 @@ commands:
     description: AsyncAnticheat dev mode (labeled packet recording)
     usage: /aacdev <start|stop|status> ...
     permission: asyncanticheat.dev
+  aac:
+    description: AsyncAnticheat dashboard linking / status
+    usage: /aac
+    aliases: [asyncanticheat]
 
 permissions:
   asyncanticheat.dev:

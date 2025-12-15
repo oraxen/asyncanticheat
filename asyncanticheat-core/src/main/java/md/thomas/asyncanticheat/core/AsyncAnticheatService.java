@@ -52,6 +52,16 @@ public final class AsyncAnticheatService {
     public void start() {
         executor.scheduleWithFixedDelay(this::flushAndUploadSafe, config.getFlushIntervalMs(), config.getFlushIntervalMs(), TimeUnit.MILLISECONDS);
         logger.info("[AsyncAnticheat] Started. server_id=" + serverIdentity.getServerId() + " session_id=" + sessionId);
+
+        // Fire a startup handshake so the API can respond "waiting_for_registration" immediately.
+        // Runs on the uploader executor to avoid blocking the server thread.
+        try {
+            executor.execute(uploader::handshake);
+        } catch (Exception ignored) {}
+
+        // Always print the claim URL on startup for first-time installs.
+        // This is the primary "copy/paste" flow for linking a server to the dashboard.
+        logger.warn("[AsyncAnticheat] Dashboard link: " + getClaimUrl());
     }
 
     public void stop() {
@@ -133,6 +143,23 @@ public final class AsyncAnticheatService {
     @NotNull
     public AsyncAnticheatConfig getConfig() {
         return config;
+    }
+
+    /**
+     * URL that links this server to the dashboard account.
+     * Contains the server's secret token in the query string; treat it like a password.
+     */
+    @NotNull
+    public String getClaimUrl() {
+        return uploader.getClaimUrl();
+    }
+
+    public boolean isDashboardRegistered() {
+        return uploader.getRegistrationState() == HttpUploader.REG_REGISTERED;
+    }
+
+    public boolean isWaitingForDashboardRegistration() {
+        return uploader.getRegistrationState() == HttpUploader.REG_WAITING;
     }
 }
 

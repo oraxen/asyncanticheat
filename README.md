@@ -61,23 +61,4 @@ privacy:
 - Packets are buffered in memory, written to gzipped NDJSON batch files under `spool/`, then uploaded to `async_anticheat_api`.
 - If the API is unreachable, the plugin enters a **spool-only** mode (temporary) and retries later with exponential backoff.
 
-## Platform differences (Paper/Spigot vs proxies)
-
-AsyncAnticheat runs on **Paper/Spigot (Bukkit)** as well as **Velocity** and **BungeeCord** proxies, but the **available signal differs** depending on where you install it.
-
-In short: **installing on Paper/Spigot provides the richest data and supports the most checks**, while proxy installs are best viewed as **supplemental** capture.
-
-| Capability / signal | Paper/Spigot (Bukkit) | Velocity (proxy) | BungeeCord (proxy) |
-|---|---:|---:|---:|
-| Player identity (UUID/name attached to records) | ✅ | ✅ | ✅ |
-| Serverbound movement fields (position/rotation/on-ground) | ✅ | ⚠️ limited | ⚠️ limited |
-| Server-side context (e.g., allow-flight, invulnerable, gamemode) | ✅ | ❌ | ❌ |
-| Clientbound entity sync fields (spawn/teleport/relative move) | ✅ | ❌ (not currently extracted) | ❌ (not currently extracted) |
-| Inventory interaction fields (clicks/slot changes, etc.) | ✅ | ❌ | ❌ |
-
-### Recommended setups
-
-- **Single-server (Paper/Spigot)**: install `asyncanticheat-bukkit` on the server for best results.
-- **Network with a proxy**: for best detection quality, install on the **backend Paper/Spigot servers**. Proxy installs can be useful for proxy-level visibility but do not currently provide the same depth of fields as Bukkit.
-
 

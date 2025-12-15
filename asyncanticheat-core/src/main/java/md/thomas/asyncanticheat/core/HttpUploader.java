@@ -4,13 +4,16 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.concurrent.atomic.AtomicInteger;
 
 final class HttpUploader {
 
@@ -20,6 +23,12 @@ final class HttpUploader {
     private final String sessionId;
     private final HttpClient client;
 
+    static final int REG_UNKNOWN = 0;
+    static final int REG_WAITING = 1;
+    static final int REG_REGISTERED = 2;
+
+    private final AtomicInteger registrationState = new AtomicInteger(REG_UNKNOWN);
+
     // Backoff / degraded-mode state (single-threaded: used only by AsyncAnticheatService's executor)
     private long nextAttemptAtMs = 0L;
     private long backoffMs = 1_000L;
@@ -28,6 +37,8 @@ final class HttpUploader {
     private long degradedUntilMs = 0L;
     private long lastMissingTokenWarnAtMs = 0L;
     private final long missingTokenWarnIntervalMs = 5 * 60_000L; // 5 minutes
+    private long lastRegistrationWarnAtMs = 0L;
+    private final long registrationWarnIntervalMs = 5 * 60_000L; // 5 minutes
 
     HttpUploader(@NotNull AsyncAnticheatConfig config, @NotNull AcLogger logger, @NotNull String serverId, @NotNull String sessionId) {
         this.config = config;
@@ -37,6 +48,41 @@ final class HttpUploader {
         this.client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(config.getTimeoutSeconds()))
                 .build();
+    }
+
+    int getRegistrationState() {
+        return registrationState.get();
+    }
+
+    @NotNull
+    String getClaimUrl() {
+        final String base = normalizeBaseUrl(config.getDashboardUrl());
+        final String token = config.getApiToken();
+        final String encoded = URLEncoder.encode(token == null ? "" : token, StandardCharsets.UTF_8);
+        return base + "/register-server?token=" + encoded;
+    }
+
+    void handshake() {
+        final String token = config.getApiToken();
+        if (token == null || token.isBlank()) {
+            return;
+        }
+
+        final String url = normalizeBaseUrl(config.getApiUrl()) + "/handshake";
+        final HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
+                .header("Authorization", "Bearer " + token)
+                .header("X-Server-Id", serverId)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        try {
+            final HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+            handleRegistrationStatus(resp.statusCode(), resp.body());
+        } catch (Exception e) {
+            // Ignore; uploader will retry later via normal uploads.
+        }
     }
 
     void uploadSpoolDir(@NotNull File spoolDir) {
@@ -100,7 +146,12 @@ final class HttpUploader {
             final HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() >= 200 && resp.statusCode() < 300) {
                 Files.deleteIfExists(file.toPath());
+                registrationState.set(REG_REGISTERED);
                 onSuccess();
+            } else if (handleRegistrationStatus(resp.statusCode(), resp.body())) {
+                // Server is not registered yet: keep the file, but don't spam retries.
+                // This is not a "network failure" and shouldn't trigger exponential backoff.
+                nextAttemptAtMs = System.currentTimeMillis() + 60_000L; // check again in 60s
             } else {
                 onFailure("Upload failed (" + resp.statusCode() + ") for " + file.getName());
             }
@@ -115,6 +166,25 @@ final class HttpUploader {
         String b = baseUrl.trim();
         while (b.endsWith("/")) b = b.substring(0, b.length() - 1);
         return b;
+    }
+
+    /**
+     * @return true if the response indicates "waiting_for_registration" and we handled it.
+     */
+    private boolean handleRegistrationStatus(int statusCode, String body) {
+        // The API returns 409 with a JSON body containing waiting_for_registration.
+        if (statusCode != 409) return false;
+        final String b = body == null ? "" : body;
+        if (!b.contains("waiting_for_registration")) return false;
+
+        registrationState.set(REG_WAITING);
+
+        final long now = System.currentTimeMillis();
+        if (now - lastRegistrationWarnAtMs >= registrationWarnIntervalMs) {
+            lastRegistrationWarnAtMs = now;
+            logger.warn("[AsyncAnticheat] Server is waiting for dashboard registration. Link it here: " + getClaimUrl());
+        }
+        return true;
     }
 
     private void onSuccess() {

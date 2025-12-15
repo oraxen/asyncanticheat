@@ -72,6 +72,11 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
             cmd.setTabCompleter(executor);
         }
 
+        final PluginCommand linkCmd = getCommand("aac");
+        if (linkCmd != null) {
+            linkCmd.setExecutor(new BukkitLinkCommand(service));
+        }
+
         service.start();
         logger.info("[AsyncAnticheat] Player exemption tracking enabled (NCP-style)");
     }

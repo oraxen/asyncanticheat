@@ -31,7 +31,8 @@ final class BungeeDevModeManager {
         this.service = service;
     }
 
-    boolean start(@NotNull ProxiedPlayer player, @NotNull String label, int durationSeconds, int warmupSeconds, int toggleSeconds) {
+    boolean start(@NotNull ProxiedPlayer player, @NotNull String label, int durationSeconds, int warmupSeconds,
+            int toggleSeconds) {
         stop(player, "restart");
 
         durationSeconds = Math.max(5, durationSeconds);
@@ -39,15 +40,16 @@ final class BungeeDevModeManager {
         toggleSeconds = Math.max(2, toggleSeconds);
 
         final String devSessionId = UUID.randomUUID().toString();
-        final Session s = new Session(player.getUniqueId(), devSessionId, label, durationSeconds, warmupSeconds, toggleSeconds);
+        final Session s = new Session(player.getUniqueId(), devSessionId, label, durationSeconds, warmupSeconds,
+                toggleSeconds);
         sessions.put(player.getUniqueId(), s);
 
-        send(player, ChatColor.YELLOW + "[AsyncAnticheat Dev] Recording started (" + durationSeconds + "s). Keep cheat OFF.");
+        send(player, ChatColor.YELLOW + "[AsyncAnticheat Dev] Recording started (" + durationSeconds
+                + "s). Keep cheat OFF.");
         enqueueMarker(player, devSessionId, label, "start", "off", Map.of(
                 "duration_s", durationSeconds,
                 "warmup_s", warmupSeconds,
-                "toggle_s", toggleSeconds
-        ));
+                "toggle_s", toggleSeconds));
 
         s.task = proxy.getScheduler().schedule(plugin, () -> tick(player.getUniqueId()), 1, 1, TimeUnit.SECONDS);
         return true;
@@ -55,7 +57,8 @@ final class BungeeDevModeManager {
 
     void stop(@NotNull ProxiedPlayer player, @NotNull String reason) {
         final Session s = sessions.remove(player.getUniqueId());
-        if (s == null) return;
+        if (s == null)
+            return;
         if (s.task != null) {
             s.task.cancel();
         }
@@ -64,13 +67,12 @@ final class BungeeDevModeManager {
     }
 
     void stopAll(@NotNull String reason) {
-        // Snapshot keys first: stop() / offline branch mutates sessions.
-        for (UUID id : sessions.keySet().toArray(new UUID[0])) {
+        for (UUID id : sessions.keySet()) {
             final ProxiedPlayer p = proxy.getPlayer(id);
             if (p != null) {
                 stop(p, reason);
             } else {
-                stopSilent(id);
+                sessions.remove(id);
             }
         }
     }
@@ -82,11 +84,11 @@ final class BungeeDevModeManager {
 
     private void tick(@NotNull UUID playerId) {
         final Session s = sessions.get(playerId);
-        if (s == null) return;
+        if (s == null)
+            return;
         final ProxiedPlayer player = proxy.getPlayer(playerId);
         if (player == null) {
-            // Player disconnected: cancel repeating task and remove session without emitting markers/messages.
-            stopSilent(playerId);
+            sessions.remove(playerId);
             return;
         }
 
@@ -105,7 +107,8 @@ final class BungeeDevModeManager {
             }
         }
 
-        if (s.elapsedSeconds < s.nextToggleAt) return;
+        if (s.elapsedSeconds < s.nextToggleAt)
+            return;
 
         s.cycleIndex++;
         if ("off".equalsIgnoreCase(s.cheatState)) {
@@ -120,22 +123,13 @@ final class BungeeDevModeManager {
         s.nextToggleAt = s.elapsedSeconds + s.toggleSeconds;
     }
 
-    void stopSilent(@NotNull UUID playerId) {
-        final Session s = sessions.remove(playerId);
-        if (s == null) return;
-        if (s.task != null) {
-            s.task.cancel();
-        }
-    }
-
     private void enqueueMarker(
             @NotNull ProxiedPlayer player,
             @NotNull String devSessionId,
             @NotNull String label,
             @NotNull String phase,
             @NotNull String cheatState,
-            @NotNull Map<String, Object> extra
-    ) {
+            @NotNull Map<String, Object> extra) {
         final Map<String, Object> fields = new HashMap<>();
         fields.put("dev_session_id", devSessionId);
         fields.put("dev_label", label);
@@ -148,8 +142,7 @@ final class BungeeDevModeManager {
                 "DEV_MARKER",
                 player.getUniqueId().toString(),
                 player.getName(),
-                fields
-        ));
+                fields));
     }
 
     private static void send(@NotNull ProxiedPlayer player, @NotNull String msg) {
@@ -171,7 +164,8 @@ final class BungeeDevModeManager {
         int cycleIndex = 0;
         String cheatState = "off";
 
-        Session(UUID playerId, String devSessionId, String label, int durationSeconds, int warmupSeconds, int toggleSeconds) {
+        Session(UUID playerId, String devSessionId, String label, int durationSeconds, int warmupSeconds,
+                int toggleSeconds) {
             this.playerId = playerId;
             this.devSessionId = devSessionId;
             this.label = label;
@@ -181,5 +175,3 @@ final class BungeeDevModeManager {
         }
     }
 }
-
-

@@ -284,7 +284,7 @@ public final class BukkitPlayerExemptionTracker extends PlayerExemptionTracker i
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDamage(EntityDamageEvent event) {
         if (event.getEntity() instanceof Player player) {
             if (event.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK ||
@@ -298,7 +298,7 @@ public final class BukkitPlayerExemptionTracker extends PlayerExemptionTracker i
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onToggleFlight(PlayerToggleFlightEvent event) {
         final BukkitPlayerState state = bukkitStates.get(event.getPlayer().getUniqueId());
         if (state != null) {
@@ -309,7 +309,7 @@ public final class BukkitPlayerExemptionTracker extends PlayerExemptionTracker i
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(PlayerGameModeChangeEvent event) {
         final BukkitPlayerState state = bukkitStates.get(event.getPlayer().getUniqueId());
         if (state != null) {

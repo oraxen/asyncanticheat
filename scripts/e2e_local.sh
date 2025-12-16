@@ -7,6 +7,20 @@ API_HOST="${API_HOST:-127.0.0.1}"
 API_PORT="${API_PORT:-3002}"
 API_BASE="http://${API_HOST}:${API_PORT}"
 
+MODULES_DIR="${MODULES_DIR:-${ROOT_DIR}/modules}"
+# Controls whether we attempt to launch detection modules locally.
+# - START_MODULES=auto (default): start only if MODULES_DIR looks populated
+# - START_MODULES=1: force start (errors if module dirs missing)
+# - START_MODULES=0: skip starting modules (ingest-only smoke test)
+START_MODULES="${START_MODULES:-auto}"
+if [[ "${START_MODULES}" == "auto" ]]; then
+  if [[ -d "${MODULES_DIR}/combat_module" && -d "${MODULES_DIR}/movement_module" && -d "${MODULES_DIR}/player_module" ]]; then
+    START_MODULES=1
+  else
+    START_MODULES=0
+  fi
+fi
+
 MODULE_HOST="${MODULE_HOST:-127.0.0.1}"
 COMBAT_PORT="${COMBAT_PORT:-4021}"
 MOVEMENT_PORT="${MOVEMENT_PORT:-4022}"
@@ -32,9 +46,11 @@ LOCAL_STORE_DIR="${LOCAL_STORE_DIR:-/tmp/asyncanticheat_object_store}"
 cleanup() {
   set +e
   if [[ -n "${API_PID:-}" ]]; then kill "${API_PID}" 2>/dev/null; fi
-  if [[ -n "${COMBAT_PID:-}" ]]; then kill "${COMBAT_PID}" 2>/dev/null; fi
-  if [[ -n "${MOVEMENT_PID:-}" ]]; then kill "${MOVEMENT_PID}" 2>/dev/null; fi
-  if [[ -n "${PLAYER_PID:-}" ]]; then kill "${PLAYER_PID}" 2>/dev/null; fi
+  if [[ "${START_MODULES}" == "1" ]]; then
+    if [[ -n "${COMBAT_PID:-}" ]]; then kill "${COMBAT_PID}" 2>/dev/null; fi
+    if [[ -n "${MOVEMENT_PID:-}" ]]; then kill "${MOVEMENT_PID}" 2>/dev/null; fi
+    if [[ -n "${PLAYER_PID:-}" ]]; then kill "${PLAYER_PID}" 2>/dev/null; fi
+  fi
   docker rm -f "${PG_CONTAINER}" >/dev/null 2>&1
 }
 trap cleanup EXIT
@@ -56,9 +72,13 @@ kill_listeners() {
 }
 
 kill_listeners "${API_PORT}"
-kill_listeners "${COMBAT_PORT}"
-kill_listeners "${MOVEMENT_PORT}"
-kill_listeners "${PLAYER_PORT}"
+if [[ "${START_MODULES}" == "1" ]]; then
+  kill_listeners "${COMBAT_PORT}"
+  kill_listeners "${MOVEMENT_PORT}"
+  kill_listeners "${PLAYER_PORT}"
+else
+  echo "Modules not found under ${MODULES_DIR}; running ingest-only smoke test."
+fi
 
 echo "Starting Postgres (docker) on port ${PG_PORT}..."
 docker rm -f "${PG_CONTAINER}" >/dev/null 2>&1 || true
@@ -116,44 +136,46 @@ API_LOG="${API_LOG:-/tmp/asyncanticheat_api.log}"
 ) &
 API_PID="$!"
 
-echo "Starting combat module..."
-COMBAT_LOG="${COMBAT_LOG:-/tmp/asyncanticheat_combat_module.log}"
-(
-  cd "${ROOT_DIR}/modules/combat_module"
-  HOST="${MODULE_HOST}" \
-  PORT="${COMBAT_PORT}" \
-  API_BASE="${API_BASE}" \
-  MODULE_CALLBACK_TOKEN="${MODULE_CALLBACK_TOKEN}" \
-  RUST_LOG="info,combat_module=debug" \
-  cargo run >"${COMBAT_LOG}" 2>&1
-) &
-COMBAT_PID="$!"
+if [[ "${START_MODULES}" == "1" ]]; then
+  echo "Starting combat module..."
+  COMBAT_LOG="${COMBAT_LOG:-/tmp/asyncanticheat_combat_module.log}"
+  (
+    cd "${MODULES_DIR}/combat_module"
+    HOST="${MODULE_HOST}" \
+    PORT="${COMBAT_PORT}" \
+    API_BASE="${API_BASE}" \
+    MODULE_CALLBACK_TOKEN="${MODULE_CALLBACK_TOKEN}" \
+    RUST_LOG="info,combat_module=debug" \
+    cargo run >"${COMBAT_LOG}" 2>&1
+  ) &
+  COMBAT_PID="$!"
 
-echo "Starting movement module..."
-MOVEMENT_LOG="${MOVEMENT_LOG:-/tmp/asyncanticheat_movement_module.log}"
-(
-  cd "${ROOT_DIR}/modules/movement_module"
-  HOST="${MODULE_HOST}" \
-  PORT="${MOVEMENT_PORT}" \
-  API_BASE="${API_BASE}" \
-  MODULE_CALLBACK_TOKEN="${MODULE_CALLBACK_TOKEN}" \
-  RUST_LOG="info,movement_module=debug" \
-  cargo run >"${MOVEMENT_LOG}" 2>&1
-) &
-MOVEMENT_PID="$!"
+  echo "Starting movement module..."
+  MOVEMENT_LOG="${MOVEMENT_LOG:-/tmp/asyncanticheat_movement_module.log}"
+  (
+    cd "${MODULES_DIR}/movement_module"
+    HOST="${MODULE_HOST}" \
+    PORT="${MOVEMENT_PORT}" \
+    API_BASE="${API_BASE}" \
+    MODULE_CALLBACK_TOKEN="${MODULE_CALLBACK_TOKEN}" \
+    RUST_LOG="info,movement_module=debug" \
+    cargo run >"${MOVEMENT_LOG}" 2>&1
+  ) &
+  MOVEMENT_PID="$!"
 
-echo "Starting player module..."
-PLAYER_LOG="${PLAYER_LOG:-/tmp/asyncanticheat_player_module.log}"
-(
-  cd "${ROOT_DIR}/modules/player_module"
-  HOST="${MODULE_HOST}" \
-  PORT="${PLAYER_PORT}" \
-  API_BASE="${API_BASE}" \
-  MODULE_CALLBACK_TOKEN="${MODULE_CALLBACK_TOKEN}" \
-  RUST_LOG="info,player_module=debug" \
-  cargo run >"${PLAYER_LOG}" 2>&1
-) &
-PLAYER_PID="$!"
+  echo "Starting player module..."
+  PLAYER_LOG="${PLAYER_LOG:-/tmp/asyncanticheat_player_module.log}"
+  (
+    cd "${MODULES_DIR}/player_module"
+    HOST="${MODULE_HOST}" \
+    PORT="${PLAYER_PORT}" \
+    API_BASE="${API_BASE}" \
+    MODULE_CALLBACK_TOKEN="${MODULE_CALLBACK_TOKEN}" \
+    RUST_LOG="info,player_module=debug" \
+    cargo run >"${PLAYER_LOG}" 2>&1
+  ) &
+  PLAYER_PID="$!"
+fi
 
 echo "Waiting for API /health..."
 api_ok=0
@@ -192,9 +214,11 @@ wait_health() {
   fi
 }
 
-wait_health "combat module" "${COMBAT_BASE}" "${COMBAT_LOG}"
-wait_health "movement module" "${MOVEMENT_BASE}" "${MOVEMENT_LOG}"
-wait_health "player module" "${PLAYER_BASE}" "${PLAYER_LOG}"
+if [[ "${START_MODULES}" == "1" ]]; then
+  wait_health "combat module" "${COMBAT_BASE}" "${COMBAT_LOG}"
+  wait_health "movement module" "${MOVEMENT_BASE}" "${MOVEMENT_LOG}"
+  wait_health "player module" "${PLAYER_BASE}" "${PLAYER_LOG}"
+fi
 
 echo "Sending sample batch..."
 API_BASE="${API_BASE}" INGEST_TOKEN="${INGEST_TOKEN}" SERVER_ID="${SERVER_ID}" SESSION_ID="${SESSION_ID}" \
@@ -203,15 +227,28 @@ API_BASE="${API_BASE}" INGEST_TOKEN="${INGEST_TOKEN}" SERVER_ID="${SERVER_ID}" S
 echo "Waiting for callbacks..."
 sleep 2
 
-echo "Querying findings from Postgres..."
-count="$(docker exec "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${PG_DB}" -Atc "select count(*) from public.findings where server_id='${SERVER_ID}';" | tr -d '\r')"
-echo "findings_count=${count}"
+if [[ "${START_MODULES}" == "1" ]]; then
+  echo "Querying findings from Postgres..."
+  count="$(docker exec "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${PG_DB}" -Atc "select count(*) from public.findings where server_id='${SERVER_ID}';" | tr -d '\r')"
+  echo "findings_count=${count}"
 
-if [[ "${count}" -lt 1 ]]; then
-  echo "ERROR: expected findings to be inserted" >&2
-  exit 1
+  if [[ "${count}" -lt 1 ]]; then
+    echo "ERROR: expected findings to be inserted" >&2
+    exit 1
+  fi
+
+  echo "E2E OK"
+else
+  echo "Querying batch_index from Postgres..."
+  count="$(docker exec "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${PG_DB}" -Atc "select count(*) from public.batch_index where server_id='${SERVER_ID}';" | tr -d '\r')"
+  echo "batch_index_count=${count}"
+
+  if [[ "${count}" -lt 1 ]]; then
+    echo "ERROR: expected batches to be ingested" >&2
+    exit 1
+  fi
+
+  echo "E2E OK (ingest-only)"
 fi
-
-echo "E2E OK"
 
 

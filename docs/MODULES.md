@@ -1,143 +1,105 @@
 # Detection Modules
 
-AsyncAnticheat uses a category-based module architecture for cheat detection. Each module focuses on a specific type of cheating behavior.
+AsyncAnticheat uses a **tiered module architecture** with Core and Advanced modules for each category. This follows the Pareto principle: Core modules provide 80% of detection value with 20% of the complexity.
 
 ## Module Overview
 
-| Module | Port | Description |
-|--------|------|-------------|
-| Combat Module | 4021 | Detects combat-related cheats (aimbots, autoclickers, killaura) |
-| Movement Module | 4022 | Detects movement-related cheats (fly, speed, timer) |
-| Player Module | 4023 | Detects packet abuse and action cheats (scaffold, fast break) |
+| Module | Port | Tier | Description |
+|--------|------|------|-------------|
+| Combat Core | 4021 | Core | High-signal combat cheats (CPS, reach, multi-target, noswing) |
+| Movement Core | 4022 | Core | Blatant movement cheats (flight, speed, nofall, groundspoof) |
+| Player Core | 4023 | Core | Obvious packet abuse (badpackets, fastplace, scaffold) |
+| Combat Advanced | 4024 | Advanced | Statistical combat analysis (aim, autoclicker stats) |
+| Movement Advanced | 4025 | Advanced | Subtle movement analysis (Y prediction, timer, velocity) |
+| Player Advanced | 4026 | Advanced | Complex interaction analysis (inventory, interact angles) |
 
 ---
 
-## Combat Module (Port 4021)
+## Core Modules (Pareto Tier)
 
-Located in `modules/combat_module/`
+Core modules focus on **simple, high-signal checks** that catch blatant cheating with minimal false positives.
 
-### Checks
+### Combat Core Module (Port 4021)
 
-#### KillAura
-Detects automated combat targeting.
-- **KillAuraMultiTarget**: Switching attack targets faster than humanly possible (<50ms)
-- **KillAuraPost**: Attacking multiple times in rapid succession (<5ms apart)
+**Checks:**
+- **AutoClickerCps**: Clicks per second >20 (humanly impossible)
+- **ReachCritical**: Attack distance >4.5 blocks (definite cheat)
+- **KillAuraMultiTarget**: Switching attack targets in <50ms
+- **NoSwing**: Attacking without arm animation packet
 
-#### Aim
-Detects aim modifications and aimbots.
+### Movement Core Module (Port 4022)
+
+**Checks:**
+- **FlightSustainedAscend**: Ascending for >12 ticks (obvious flight)
+- **SpeedBlatant**: Horizontal speed >1.0 b/t (5x normal)
+- **NoFallInvalidGround**: Claiming ground while falling fast
+- **GroundSpoofFalling**: Ground claim with high downward velocity
+- **GroundSpoofAscending**: Ground claim while moving upward
+
+### Player Core Module (Port 4023)
+
+**Checks:**
+- **BadPacketsPitch**: Pitch angle outside ±90°
+- **BadPacketsNaN**: NaN/Infinity in position or rotation
+- **BadPacketsAbilities**: Flying without permission flag
+- **BadPacketsSlot**: Invalid hotbar slot (outside 0-8)
+- **FastPlaceCritical**: Block placement <25ms apart
+- **FastBreakCritical**: Block breaking <25ms apart
+- **ScaffoldAirborne**: Placing blocks below while airborne
+
+---
+
+## Advanced Modules
+
+Advanced modules provide **statistical analysis and pattern detection** for subtle cheating that evades simple checks.
+
+### Combat Advanced Module (Port 4024)
+
+**Aim Checks:**
 - **AimHeadSnap**: Sudden large rotation changes (>30° in <50ms)
-- **AimPitchSpread**: Unnaturally consistent pitch variance (aimbot maintains constant pitch)
+- **AimPitchSpread**: Unnaturally consistent pitch variance
 - **AimSensitivity**: GCD mismatch indicating external aim modification
-- **AimModulo**: Rotation snapping to specific modulo values (0.25, 0.1)
-- **AimDirectionSwitch**: Instant direction reversal with large deltas (>30°)
+- **AimModulo**: Rotation snapping to specific modulo values
+- **AimDirectionSwitch**: Instant direction reversal with large deltas
 - **AimRepeatedYaw**: Identical yaw values repeated suspiciously
 
-#### AutoClicker
-Detects automated clicking.
-- **AutoClickerCps**: Clicks per second exceeding limits (>20 CPS)
+**AutoClicker Checks:**
 - **AutoClickerTiming**: Low standard deviation in click timing
 - **AutoClickerVariance**: Low variance in click intervals
 - **AutoClickerKurtosis**: Abnormal distribution of click intervals
-- **AutoClickerTickAlign**: Clicks aligned to server tick boundaries (50ms)
+- **AutoClickerTickAlign**: Clicks aligned to server tick boundaries
 
-#### Reach
-Detects attack distance exploitation.
-- **ReachDistance**: Attacking beyond vanilla limits (>3.5 blocks)
-- **ReachCritical**: Definite reach violation (>4.5 blocks)
+**Other Checks:**
+- **KillAuraPost**: Attacking multiple times too quickly (<5ms)
+- **ReachDistance**: Attack distances exceeding 3.5 blocks (accumulation)
 
-#### NoSwing
-Detects attacks without arm animation.
-- **NoSwing**: Multiple attacks without arm swing packet
+### Movement Advanced Module (Port 4025)
 
----
-
-## Movement Module (Port 4022)
-
-Located in `modules/movement_module/`
-
-### Checks
-
-#### Flight
-Detects flying without creative mode.
+**Flight Checks:**
 - **FlightYPrediction**: Y movement doesn't match gravity physics
-- **FlightSustainedAscend**: Ascending for multiple ticks without jump
 - **FlightHover**: Hovering in air with near-zero vertical movement
 
-#### Speed
-Detects horizontal speed modifications.
-- **SpeedHorizontal**: Exceeding walk speed limit (0.2873 b/t)
+**Speed Checks:**
 - **SpeedSprint**: Exceeding sprint speed limit (0.3675 b/t)
 - **SpeedSneak**: Exceeding sneak speed limit (0.0663 b/t)
 
-#### NoFall
-Detects fall damage avoidance.
-- **NoFallInvalidGround**: Claiming ground while Y position is invalid
-- **NoFallFakeDamage**: Ground claim during high-velocity fall
+**Timer Checks:**
+- **TimerFast**: Client running faster than 22 TPS
+- **TimerSlow**: Client running slower than 18 TPS
 
-#### Timer
-Detects client timer manipulation.
-- **TimerFast**: Client running faster than 20 TPS
-- **TimerSlow**: Client running slower than expected (rare)
+**Other Checks:**
+- **StepHeight**: Stepping more than 0.6 blocks while on ground
+- **NoSlowUsingItem**: Moving too fast while using items
 
-#### Step
-Detects step height modification.
-- **StepHeight**: Stepping more than 0.6 blocks while staying on ground
-- **StepNoGround**: Invalid step without proper ground transitions
+### Player Advanced Module (Port 4026)
 
-#### GroundSpoof
-Detects ground status spoofing.
-- **GroundSpoofFalling**: Claiming ground while falling fast (>0.31 velocity)
-- **GroundSpoofAscending**: Claiming ground while ascending
-
-#### Velocity
-Detects knockback/velocity ignoring.
-- **VelocityIgnored**: Not taking received velocity at all
-- **VelocityPartial**: Taking less than 50% of received velocity
-
-#### NoSlow
-Detects slowdown bypass.
-- **NoSlowUsingItem**: Moving too fast while using items (should be 0.2x speed)
-- **NoSlowSneaking**: Moving too fast while sneaking (should be 0.3x speed)
-
----
-
-## Player Module (Port 4023)
-
-Located in `modules/player_module/`
-
-### Checks
-
-#### BadPackets
-Detects invalid packet data.
-- **BadPacketsPitch**: Pitch outside valid range (>±90°)
-- **BadPacketsNaN**: NaN values in position packets
-- **BadPacketsAbilities**: Flying without permission flag
-- **BadPacketsSlot**: Invalid hotbar slot (outside 0-8)
-- **BadPacketsFlyingFlood**: Excessive flying packets per second
-
-#### Scaffold
-Detects bridging cheats.
-- **ScaffoldAirborne**: Placing block on bottom face while airborne
-- **ScaffoldSprint**: Sprinting while bridging (impossible normally)
-
-#### FastPlace
-Detects fast block placement.
-- **FastPlace**: Block placement under 50ms interval
-- **FastPlaceCritical**: Block placement under 25ms interval
-
-#### FastBreak
-Detects fast block breaking.
-- **FastBreak**: Block breaking under 50ms interval
-- **FastBreakCritical**: Block breaking under 25ms interval
-
-#### Interact
-Detects invalid interaction angles.
+**Checks:**
 - **InteractAngle**: Interaction angle >45° from look direction
-- **InteractImpossible**: Interaction angle >90° from target block
-
-#### Inventory
-Detects inventory manipulation speed.
-- **InventoryFastClick**: Rapid inventory clicks within short window
+- **InteractImpossible**: Interaction angle >90° from target
+- **InventoryFastClick**: Rapid inventory clicks <50ms apart
+- **FastPlace**: Block placement <50ms apart (accumulation)
+- **FastBreak**: Block breaking <50ms apart (accumulation)
+- **ScaffoldSprint**: Sprinting while bridging (impossible normally)
 
 ---
 
@@ -148,19 +110,10 @@ Each module accepts configuration via environment variables:
 ```bash
 # Common to all modules
 HOST=0.0.0.0
-PORT=402X                    # 4021/4022/4023
+PORT=402X                    # See port table above
 API_BASE=http://localhost:3002
 MODULE_CALLBACK_TOKEN=your_token
 MODULE_NAME=module_name
-
-# Combat Module specific
-# (uses defaults, configurable in code)
-
-# Movement Module specific
-# (uses defaults, configurable in code)
-
-# Player Module specific
-# (uses defaults, configurable in code)
 ```
 
 ---
@@ -179,28 +132,48 @@ All callbacks require `Authorization: Bearer <MODULE_CALLBACK_TOKEN>` header.
 
 ---
 
-## Building
+## Running Modules
+
+Build all modules:
 
 ```bash
-# Build all modules
-cd modules/combat_module && cargo build --release
-cd modules/movement_module && cargo build --release
-cd modules/player_module && cargo build --release
+cd modules/combat_core_module && cargo build --release
+cd modules/combat_advanced_module && cargo build --release
+cd modules/movement_core_module && cargo build --release
+cd modules/movement_advanced_module && cargo build --release
+cd modules/player_core_module && cargo build --release
+cd modules/player_advanced_module && cargo build --release
 ```
 
-## Running
-
-Each module runs as a separate HTTP service:
+Run modules (example for core tier):
 
 ```bash
-# Combat Module
-cd modules/combat_module && cargo run
+# Terminal 1: Combat Core
+PORT=4021 MODULE_NAME=combat_core ./target/release/combat_core_module
 
-# Movement Module  
-cd modules/movement_module && cargo run
+# Terminal 2: Movement Core
+PORT=4022 MODULE_NAME=movement_core ./target/release/movement_core_module
 
-# Player Module
-cd modules/player_module && cargo run
+# Terminal 3: Player Core
+PORT=4023 MODULE_NAME=player_core ./target/release/player_core_module
 ```
 
-For production, use systemd services (see deployment documentation).
+For production, use systemd services or your preferred process manager.
+
+---
+
+## Architecture Decision
+
+### Why Core + Advanced?
+
+1. **Core modules** run fast with minimal CPU/memory, catching ~80% of cheaters
+2. **Advanced modules** can be enabled selectively for high-stakes scenarios
+3. Servers can start with Core-only and add Advanced as needed
+4. Reduces false positives by separating simple checks from statistical analysis
+5. Easier to debug and tune individual check categories
+
+### Recommended Deployment
+
+- **All servers**: Enable all Core modules (4021, 4022, 4023)
+- **Competitive servers**: Add Advanced modules (4024, 4025, 4026)
+- **Development/testing**: Run specific modules as needed

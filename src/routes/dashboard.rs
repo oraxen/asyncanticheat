@@ -438,9 +438,10 @@ pub async fn get_modules(
 ) -> Result<Json<ModulesResponse>, ApiError> {
     let server_id = server_id.trim().to_string();
 
-    // Best-effort migration: replace legacy default modules (pre category split) with category modules.
+    // Best-effort migration: replace legacy modules with tiered Core/Advanced modules.
     // This keeps the dashboard accurate even before the next ingest occurs.
     if let Ok(mut tx) = state.db.begin().await {
+        // Delete old single-tier modules (ports 4011, 4012, and old combined modules on 4021-4023)
         let _ = sqlx::query(
             r#"
             delete from public.server_modules
@@ -448,6 +449,7 @@ pub async fn get_modules(
               and (
                 (base_url like 'http://127.0.0.1:4011%' or base_url like 'http://localhost:4011%')
                 or (base_url like 'http://127.0.0.1:4012%' or base_url like 'http://localhost:4012%')
+                or (name in ('Combat Module', 'Movement Module', 'Player Module'))
               )
             "#,
         )
@@ -455,13 +457,17 @@ pub async fn get_modules(
         .execute(&mut *tx)
         .await;
 
+        // Insert new tiered modules (Core + Advanced)
         let _ = sqlx::query(
             r#"
             insert into public.server_modules (server_id, name, base_url, enabled, transform, created_at, updated_at)
             values
-                ($1, 'Combat Module', 'http://127.0.0.1:4021', true, 'raw_ndjson_gz', now(), now()),
-                ($1, 'Movement Module', 'http://127.0.0.1:4022', true, 'raw_ndjson_gz', now(), now()),
-                ($1, 'Player Module', 'http://127.0.0.1:4023', true, 'raw_ndjson_gz', now(), now())
+                ($1, 'Combat Core', 'http://127.0.0.1:4021', true, 'raw_ndjson_gz', now(), now()),
+                ($1, 'Movement Core', 'http://127.0.0.1:4022', true, 'raw_ndjson_gz', now(), now()),
+                ($1, 'Player Core', 'http://127.0.0.1:4023', true, 'raw_ndjson_gz', now(), now()),
+                ($1, 'Combat Advanced', 'http://127.0.0.1:4024', true, 'raw_ndjson_gz', now(), now()),
+                ($1, 'Movement Advanced', 'http://127.0.0.1:4025', true, 'raw_ndjson_gz', now(), now()),
+                ($1, 'Player Advanced', 'http://127.0.0.1:4026', true, 'raw_ndjson_gz', now(), now())
             on conflict (server_id, name) do nothing
             "#,
         )
@@ -497,9 +503,16 @@ pub async fn get_modules(
     let mut modules = Vec::new();
     for (id, name, base_url, enabled, last_healthcheck_ok, last_error) in rows {
         // Get detection count for this module (approximation based on detector_name prefix)
-        // Category modules emit detector names like: combat_*, movement_*, player_*
+        // Tiered modules emit detector names like: combat_core_*, combat_advanced_*, etc.
         let name_lc = name.trim().to_ascii_lowercase();
         let detector_like = match name_lc.as_str() {
+            "combat core" => "combat_core_%".to_string(),
+            "combat advanced" => "combat_advanced_%".to_string(),
+            "movement core" => "movement_core_%".to_string(),
+            "movement advanced" => "movement_advanced_%".to_string(),
+            "player core" => "player_core_%".to_string(),
+            "player advanced" => "player_advanced_%".to_string(),
+            // Legacy fallback
             "combat module" | "combat" => "combat_%".to_string(),
             "movement module" | "movement" => "movement_%".to_string(),
             "player module" | "player" => "player_%".to_string(),

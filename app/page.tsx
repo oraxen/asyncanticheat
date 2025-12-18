@@ -168,11 +168,6 @@ export default function HomePage() {
               description="Offload cheat detection to cloud services. Zero impact on your server's TPS."
             />
             <FeatureCard
-              icon={RiShieldCheckLine}
-              title="NCP-style Checks"
-              description="Battle-tested detection algorithms inspired by NoCheatPlus."
-            />
-            <FeatureCard
               icon={RiPlugLine}
               title="Modular Architecture"
               description="Register external check modules that process packet data independently."
@@ -181,8 +176,8 @@ export default function HomePage() {
               icon={RiOpenSourceLine}
               title="Open Source"
               description="Fully transparent and community-driven. Inspect the code, contribute improvements."
-              link="/docs"
-              linkText="Read the docs"
+              link="https://github.com/oraxen/asyncanticheat"
+              linkText="View on GitHub"
             />
           </div>
         </section>

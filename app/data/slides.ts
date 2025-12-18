@@ -43,10 +43,10 @@ export const slides: SlideData[] = [
     chapter: "Chapter II",
     title: "Battle-Tested\nDetection",
     bullets: [
-      "<strong>NCP-style checks</strong> inspired by NoCheatPlus, refined for modern Minecraft.",
       "<strong>Combat detection:</strong> aim assistance, killaura, autoclicker, reach violations.",
       "<strong>Movement detection:</strong> fly, speed, timer, no-fall, velocity abuse.",
       "<strong>Player detection:</strong> bad packets, scaffold, fast break/place.",
+      "<strong>Two-tier system:</strong> Core checks for blatant cheats, Advanced for subtle patterns.",
     ],
     contentPosition: "left",
   },

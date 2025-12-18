@@ -580,6 +580,88 @@ pub async fn toggle_module(
     Ok(Json(ToggleModuleResponse { ok: true }))
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CreateModuleRequest {
+    pub name: String,
+    pub base_url: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreateModuleResponse {
+    pub ok: bool,
+    pub module: ModuleItem,
+}
+
+/// POST /dashboard/:server_id/modules
+///
+/// Creates or updates a module for a server.
+pub async fn create_module(
+    State(state): State<AppState>,
+    Path(server_id): Path<String>,
+    Json(req): Json<CreateModuleRequest>,
+) -> Result<Json<CreateModuleResponse>, ApiError> {
+    let server_id = server_id.trim().to_string();
+    let name = req.name.trim().to_string();
+    let base_url = req.base_url.trim().to_string();
+
+    if name.is_empty() {
+        return Err(ApiError::BadRequest("name is required".to_string()));
+    }
+    if base_url.is_empty() {
+        return Err(ApiError::BadRequest("base_url is required".to_string()));
+    }
+
+    // Ensure the server exists
+    sqlx::query(
+        r#"
+        insert into public.servers (id, first_seen_at, last_seen_at)
+        values ($1, now(), now())
+        on conflict (id) do update set last_seen_at = now()
+        "#,
+    )
+    .bind(&server_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("upsert server for module creation failed: {:?}", e);
+        ApiError::Internal
+    })?;
+
+    // Insert or update the module
+    let row: (Uuid, String, String, bool, Option<bool>, Option<String>) = sqlx::query_as(
+        r#"
+        insert into public.server_modules (server_id, name, base_url, enabled, transform, created_at, updated_at)
+        values ($1, $2, $3, true, 'raw_ndjson_gz', now(), now())
+        on conflict (server_id, name) do update set
+            base_url = excluded.base_url,
+            updated_at = now()
+        returning id, name, base_url, enabled, last_healthcheck_ok, last_error
+        "#,
+    )
+    .bind(&server_id)
+    .bind(&name)
+    .bind(&base_url)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("create module failed: {:?}", e);
+        ApiError::Internal
+    })?;
+
+    Ok(Json(CreateModuleResponse {
+        ok: true,
+        module: ModuleItem {
+            id: row.0,
+            name: row.1,
+            base_url: row.2,
+            enabled: row.3,
+            healthy: row.4.unwrap_or(true),
+            last_error: row.5,
+            detections: 0,
+        },
+    }))
+}
+
 #[derive(Debug, Serialize)]
 pub struct ServerInfo {
     pub id: String,

@@ -111,7 +111,7 @@ async fn main() -> anyhow::Result<()> {
         )
         .route(
             "/dashboard/:server_id/modules",
-            get(routes::dashboard::get_modules),
+            get(routes::dashboard::get_modules).post(routes::dashboard::create_module),
         )
         .route(
             "/dashboard/:server_id/modules/:module_id/toggle",

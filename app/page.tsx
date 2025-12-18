@@ -235,8 +235,8 @@ export default function HomePage() {
               for details.
             </FaqItem>
             <FaqItem question="Is AsyncAnticheat free?">
-              Yes, AsyncAnticheat is open source under GPL-3.0. You can
-              self-host everything.
+              Yes, AsyncAnticheat is free to use. The source code is available
+              on GitHub for transparency.
             </FaqItem>
             <FaqItem question="Where can I find documentation?">
               Full documentation is available at{" "}

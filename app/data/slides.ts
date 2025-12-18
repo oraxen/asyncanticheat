@@ -84,7 +84,7 @@ export const slides: SlideData[] = [
     title: "Built For\nProduction",
     bullets: [
       "Supports <strong>Paper, Spigot, BungeeCord, and Velocity</strong> via PacketEvents.",
-      "Fully <strong>open source</strong> under GPL-3.0—inspect the code, contribute improvements.",
+      "Fully <strong>open source</strong>—inspect the code, contribute improvements.",
       "If you want an anticheat that scales, performs, and evolves with your network, <strong>build on AsyncAnticheat</strong>.",
     ],
     contentPosition: "right",

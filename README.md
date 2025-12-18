@@ -77,4 +77,4 @@ async_anticheat_website/
 
 ## License
 
-GPL-3.0
+See [LICENSE](./LICENSE)

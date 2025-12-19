@@ -216,12 +216,12 @@ pub async fn ingest(
             ApiError::Internal
         })?;
 
-    // Ensure default modules exist for newly-seen servers.
+    // Ensure built-in module entries exist for newly-seen servers.
     // Without this, dispatch_batch is a no-op and the dashboard shows no modules/findings.
-    ensure_default_modules(&state.db, &server_id)
+    ensure_builtin_modules(&state.db, &server_id)
         .await
         .map_err(|e| {
-            tracing::error!("Failed to ensure default modules: {:?}", e);
+            tracing::error!("Failed to ensure builtin modules: {:?}", e);
             ApiError::Internal
         })?;
 
@@ -341,11 +341,13 @@ async fn upsert_server(
 ///
 /// We also perform a small best-effort migration away from the legacy default modules
 /// (pre category split) so older servers don't keep showing outdated module names in the dashboard.
-async fn ensure_default_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx::Error> {
-    // Category-based modules:
-    // - Combat Module (port 4021): KillAura, Aim, AutoClicker, Reach, NoSwing
-    // - Movement Module (port 4022): Flight, Speed, NoFall, Timer, Step, GroundSpoof, Velocity, NoSlow
-    // - Player Module (port 4023): BadPackets, Scaffold, FastPlace, FastBreak, Interact, Inventory
+async fn ensure_builtin_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx::Error> {
+    // Built-in tiered modules (Core + Advanced).
+    //
+    // IMPORTANT:
+    // - These entries are only defaults so newly-registered servers have something to dispatch to.
+    // - They must NOT recreate deprecated/legacy module names, otherwise the dashboard will keep
+    //   re-showing them forever as long as ingest happens.
     let mut tx = db.begin().await?;
 
     // Legacy defaults (pre category split) used local ports 4011/4012.
@@ -365,13 +367,29 @@ async fn ensure_default_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx
     .execute(&mut *tx)
     .await?;
 
+    // Deprecated "legacy/combined" modules (ports 4021-4023).
+    // We delete them to prevent ingest from reintroducing them for every batch.
+    sqlx::query(
+        r#"
+        delete from public.server_modules
+        where server_id = $1
+          and name in ('Combat Module', 'Movement Module', 'Player Module')
+        "#,
+    )
+    .bind(server_id)
+    .execute(&mut *tx)
+    .await?;
+
     sqlx::query(
         r#"
         insert into public.server_modules (server_id, name, base_url, enabled, transform, created_at, updated_at)
         values
-            ($1, 'Combat Module', 'http://127.0.0.1:4021', true, 'raw_ndjson_gz', now(), now()),
-            ($1, 'Movement Module', 'http://127.0.0.1:4022', true, 'raw_ndjson_gz', now(), now()),
-            ($1, 'Player Module', 'http://127.0.0.1:4023', true, 'raw_ndjson_gz', now(), now())
+            ($1, 'Movement Core', 'http://127.0.0.1:4030', true, 'raw_ndjson_gz', now(), now()),
+            ($1, 'Movement Advanced', 'http://127.0.0.1:4031', true, 'raw_ndjson_gz', now(), now()),
+            ($1, 'Combat Core', 'http://127.0.0.1:4032', true, 'raw_ndjson_gz', now(), now()),
+            ($1, 'Combat Advanced', 'http://127.0.0.1:4033', true, 'raw_ndjson_gz', now(), now()),
+            ($1, 'Player Core', 'http://127.0.0.1:4034', true, 'raw_ndjson_gz', now(), now()),
+            ($1, 'Player Advanced', 'http://127.0.0.1:4035', true, 'raw_ndjson_gz', now(), now())
         on conflict (server_id, name) do nothing
         "#,
     )

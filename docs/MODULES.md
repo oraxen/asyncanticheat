@@ -6,12 +6,12 @@ AsyncAnticheat uses a **tiered module architecture** with Core and Advanced modu
 
 | Module | Port | Tier | Description |
 |--------|------|------|-------------|
-| Combat Core | 4021 | Core | High-signal combat cheats (CPS, reach, multi-target, noswing) |
-| Movement Core | 4022 | Core | Blatant movement cheats (flight, speed, nofall, groundspoof) |
-| Player Core | 4023 | Core | Obvious packet abuse (badpackets, fastplace, scaffold) |
-| Combat Advanced | 4024 | Advanced | Statistical combat analysis (aim, autoclicker stats) |
-| Movement Advanced | 4025 | Advanced | Subtle movement analysis (Y prediction, timer, velocity) |
-| Player Advanced | 4026 | Advanced | Complex interaction analysis (inventory, interact angles) |
+| Movement Core | 4030 | Core | Blatant movement cheats (flight, speed, nofall, groundspoof) |
+| Movement Advanced | 4031 | Advanced | Subtle movement analysis (Y prediction, timer, noslow, step) |
+| Combat Core | 4032 | Core | High-signal combat cheats (CPS, reach, multi-target, noswing) |
+| Combat Advanced | 4033 | Advanced | Statistical combat analysis (aim, autoclicker stats) |
+| Player Core | 4034 | Core | Obvious packet abuse (badpackets, fastplace, scaffold) |
+| Player Advanced | 4035 | Advanced | Complex interaction analysis (inventory, interact angles) |
 
 ---
 
@@ -19,7 +19,7 @@ AsyncAnticheat uses a **tiered module architecture** with Core and Advanced modu
 
 Core modules focus on **simple, high-signal checks** that catch blatant cheating with minimal false positives.
 
-### Combat Core Module (Port 4021)
+### Combat Core Module (Port 4032)
 
 **Checks:**
 - **AutoClickerCps**: Clicks per second >20 (humanly impossible)
@@ -27,7 +27,7 @@ Core modules focus on **simple, high-signal checks** that catch blatant cheating
 - **KillAuraMultiTarget**: Switching attack targets in <50ms
 - **NoSwing**: Attacking without arm animation packet
 
-### Movement Core Module (Port 4022)
+### Movement Core Module (Port 4030)
 
 **Checks:**
 - **FlightSustainedAscend**: Ascending for >12 ticks (obvious flight)
@@ -36,7 +36,7 @@ Core modules focus on **simple, high-signal checks** that catch blatant cheating
 - **GroundSpoofFalling**: Ground claim with high downward velocity
 - **GroundSpoofAscending**: Ground claim while moving upward
 
-### Player Core Module (Port 4023)
+### Player Core Module (Port 4034)
 
 **Checks:**
 - **BadPacketsPitch**: Pitch angle outside ±90°
@@ -53,7 +53,7 @@ Core modules focus on **simple, high-signal checks** that catch blatant cheating
 
 Advanced modules provide **statistical analysis and pattern detection** for subtle cheating that evades simple checks.
 
-### Combat Advanced Module (Port 4024)
+### Combat Advanced Module (Port 4033)
 
 **Aim Checks:**
 - **AimHeadSnap**: Sudden large rotation changes (>30° in <50ms)
@@ -73,7 +73,7 @@ Advanced modules provide **statistical analysis and pattern detection** for subt
 - **KillAuraPost**: Attacking multiple times too quickly (<5ms)
 - **ReachDistance**: Attack distances exceeding 3.5 blocks (accumulation)
 
-### Movement Advanced Module (Port 4025)
+### Movement Advanced Module (Port 4031)
 
 **Flight Checks:**
 - **FlightYPrediction**: Y movement doesn't match gravity physics
@@ -91,7 +91,7 @@ Advanced modules provide **statistical analysis and pattern detection** for subt
 - **StepHeight**: Stepping more than 0.6 blocks while on ground
 - **NoSlowUsingItem**: Moving too fast while using items
 
-### Player Advanced Module (Port 4026)
+### Player Advanced Module (Port 4035)
 
 **Checks:**
 - **InteractAngle**: Interaction angle >45° from look direction
@@ -110,7 +110,7 @@ Each module accepts configuration via environment variables:
 ```bash
 # Common to all modules
 HOST=0.0.0.0
-PORT=402X                    # See port table above
+PORT=403X                    # See port table above
 API_BASE=http://localhost:3002
 MODULE_CALLBACK_TOKEN=your_token
 MODULE_NAME=module_name
@@ -148,14 +148,23 @@ cd modules/player_advanced_module && cargo build --release
 Run modules (example for core tier):
 
 ```bash
-# Terminal 1: Combat Core
-PORT=4021 MODULE_NAME=combat_core ./target/release/combat_core_module
+# Terminal 1: Movement Core
+PORT=4030 MODULE_NAME=movement_core ./target/release/movement_core_module
 
-# Terminal 2: Movement Core
-PORT=4022 MODULE_NAME=movement_core ./target/release/movement_core_module
+# Terminal 2: Movement Advanced
+PORT=4031 MODULE_NAME=movement_advanced ./target/release/movement_advanced_module
 
-# Terminal 3: Player Core
-PORT=4023 MODULE_NAME=player_core ./target/release/player_core_module
+# Terminal 3: Combat Core
+PORT=4032 MODULE_NAME=combat_core ./target/release/combat_core_module
+
+# Terminal 4: Combat Advanced
+PORT=4033 MODULE_NAME=combat_advanced ./target/release/combat_advanced_module
+
+# Terminal 5: Player Core
+PORT=4034 MODULE_NAME=player_core ./target/release/player_core_module
+
+# Terminal 6: Player Advanced
+PORT=4035 MODULE_NAME=player_advanced ./target/release/player_advanced_module
 ```
 
 For production, use systemd services or your preferred process manager.
@@ -174,6 +183,6 @@ For production, use systemd services or your preferred process manager.
 
 ### Recommended Deployment
 
-- **All servers**: Enable all Core modules (4021, 4022, 4023)
-- **Competitive servers**: Add Advanced modules (4024, 4025, 4026)
+- **All servers**: Enable all Core modules (4030, 4032, 4034)
+- **Competitive servers**: Add Advanced modules (4031, 4033, 4035)
 - **Development/testing**: Run specific modules as needed

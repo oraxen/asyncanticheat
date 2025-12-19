@@ -4,21 +4,24 @@ Rust HTTP ingestion service for `async_anticheat` packet batches with modular ch
 
 ## Architecture
 
-The API receives packet batches from Minecraft servers and dispatches them to category-based detection modules:
+The API receives packet batches from Minecraft servers and dispatches them to tiered detection modules (Core + Advanced):
 
 ```
-Minecraft Server → Plugin → API → [Combat/Movement/Player Modules] → Findings → Dashboard
+Minecraft Server → Plugin → API → [Core/Advanced Modules] → Findings → Dashboard
 ```
 
 ## Detection Modules
 
-Three category-based modules provide comprehensive cheat detection:
+Six tiered modules provide comprehensive cheat detection:
 
-| Module | Port | Checks |
-|--------|------|--------|
-| **Combat Module** | 4021 | KillAura, Aim, AutoClicker, Reach, NoSwing |
-| **Movement Module** | 4022 | Flight, Speed, NoFall, Timer, Step, GroundSpoof, Velocity, NoSlow |
-| **Player Module** | 4023 | BadPackets, Scaffold, FastPlace, FastBreak, Interact, Inventory |
+| Module | Port | Tier | Checks |
+|--------|------|------|--------|
+| **Movement Core** | 4030 | Core | Flight (ascend), Speed (blatant), NoFall, GroundSpoof |
+| **Movement Advanced** | 4031 | Advanced | Flight (Y prediction, hover), Speed, Timer, Step, NoSlow |
+| **Combat Core** | 4032 | Core | AutoClicker (CPS), Reach (critical), KillAura (multi-target), NoSwing |
+| **Combat Advanced** | 4033 | Advanced | Aim analysis, AutoClicker statistics, KillAura (post), Reach accumulation |
+| **Player Core** | 4034 | Core | BadPackets, FastPlace/Break (critical), Scaffold (airborne) |
+| **Player Advanced** | 4035 | Advanced | Inventory, Interact angles, FastPlace/Break (accumulation), Scaffold (sprint) |
 
 See `docs/MODULES.md` for the module protocol and default ports.
 
@@ -62,8 +65,8 @@ cargo run
 
 4. Run detection modules (separate services):
 
-This repo intentionally does not version the module implementations under `modules/`.
-Point your `server_modules` entries at your module services (defaults: 4021/4022/4023).
+This repo includes module implementations under `modules/`.
+By default, the API will auto-create `server_modules` entries for the tiered modules above (4030-4035) when it first sees a server.
 
 
 ## Local end-to-end test

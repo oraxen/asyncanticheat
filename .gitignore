@@ -35,3 +35,6 @@ logs/
 
 # Local-only detection modules
 modules/
+
+# Deployment scripts (local convenience)
+scripts/

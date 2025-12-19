@@ -8,7 +8,7 @@ use tokio::net::TcpStream;
 use tokio::time::timeout;
 use uuid::Uuid;
 
-use crate::{error::ApiError, AppState};
+use crate::{builtin_modules, error::ApiError, AppState};
 
 // ============================================================================
 // Dashboard API Routes
@@ -421,12 +421,21 @@ pub struct ModuleItem {
     pub healthy: bool,
     pub last_error: Option<String>,
     pub detections: i64,
+    /// If this module is one of the built-in modules shipped with AsyncAnticheat.
+    pub builtin: bool,
+    pub tier: Option<builtin_modules::BuiltinTier>,
+    pub default_port: Option<u16>,
+    pub short_description: Option<String>,
+    pub full_description: Option<String>,
+    pub checks: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct ModulesResponse {
     pub ok: bool,
     pub modules: Vec<ModuleItem>,
+    /// Registry of built-in modules (used by the dashboard to avoid hardcoding).
+    pub builtin_modules: Vec<builtin_modules::BuiltinModuleInfo>,
 }
 
 /// GET /dashboard/:server_id/modules
@@ -461,6 +470,7 @@ pub async fn get_modules(
     })?;
 
     let mut modules = Vec::new();
+    let builtin_registry = builtin_modules::builtin_modules_info();
     for (id, name, base_url, enabled, last_healthcheck_ok, last_error) in rows {
         // Detection count based on detector_name prefix (e.g., "Combat Core" -> "combat_core_%")
         let detector_like = format!("{}_%", name.trim().to_ascii_lowercase().replace(' ', "_"));
@@ -477,7 +487,7 @@ pub async fn get_modules(
         .await
         .unwrap_or((0,));
 
-        modules.push(ModuleItem {
+        let mut item = ModuleItem {
             id,
             name,
             base_url,
@@ -485,10 +495,31 @@ pub async fn get_modules(
             healthy: last_healthcheck_ok.unwrap_or(true),
             last_error,
             detections: detections.0,
-        });
+            builtin: false,
+            tier: None,
+            default_port: None,
+            short_description: None,
+            full_description: None,
+            checks: Vec::new(),
+        };
+
+        if let Some(b) = builtin_modules::builtin_by_name(&item.name) {
+            item.builtin = true;
+            item.tier = Some(b.tier);
+            item.default_port = Some(b.default_port);
+            item.short_description = Some(b.short_description.to_string());
+            item.full_description = Some(b.full_description.to_string());
+            item.checks = b.checks.iter().map(|c| (*c).to_string()).collect();
+        }
+
+        modules.push(item);
     }
 
-    Ok(Json(ModulesResponse { ok: true, modules }))
+    Ok(Json(ModulesResponse {
+        ok: true,
+        modules,
+        builtin_modules: builtin_registry,
+    }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -596,7 +627,8 @@ pub async fn create_module(
 
     Ok(Json(CreateModuleResponse {
         ok: true,
-        module: ModuleItem {
+        module: {
+            let mut item = ModuleItem {
             id: row.0,
             name: row.1,
             base_url: row.2,
@@ -604,6 +636,24 @@ pub async fn create_module(
             healthy: row.4.unwrap_or(true),
             last_error: row.5,
             detections: 0,
+                builtin: false,
+                tier: None,
+                default_port: None,
+                short_description: None,
+                full_description: None,
+                checks: Vec::new(),
+            };
+
+            if let Some(b) = builtin_modules::builtin_by_name(&item.name) {
+                item.builtin = true;
+                item.tier = Some(b.tier);
+                item.default_port = Some(b.default_port);
+                item.short_description = Some(b.short_description.to_string());
+                item.full_description = Some(b.full_description.to_string());
+                item.checks = b.checks.iter().map(|c| (*c).to_string()).collect();
+            }
+
+            item
         },
     }))
 }

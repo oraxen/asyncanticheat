@@ -6,7 +6,7 @@ use axum::{
 };
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, QueryBuilder};
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
 use uuid::Uuid;
@@ -349,6 +349,7 @@ async fn ensure_builtin_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx
     // - They must NOT recreate deprecated/legacy module names, otherwise the dashboard will keep
     //   re-showing them forever as long as ingest happens.
     let mut tx = db.begin().await?;
+    let now = chrono::Utc::now();
 
     // Legacy defaults (pre category split) used local ports 4011/4012.
     // Remove them so the dashboard doesn't show outdated legacy module entries forever.
@@ -380,22 +381,23 @@ async fn ensure_builtin_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx
     .execute(&mut *tx)
     .await?;
 
-    sqlx::query(
-        r#"
-        insert into public.server_modules (server_id, name, base_url, enabled, transform, created_at, updated_at)
-        values
-            ($1, 'Movement Core', 'http://127.0.0.1:4030', true, 'raw_ndjson_gz', now(), now()),
-            ($1, 'Movement Advanced', 'http://127.0.0.1:4031', true, 'raw_ndjson_gz', now(), now()),
-            ($1, 'Combat Core', 'http://127.0.0.1:4032', true, 'raw_ndjson_gz', now(), now()),
-            ($1, 'Combat Advanced', 'http://127.0.0.1:4033', true, 'raw_ndjson_gz', now(), now()),
-            ($1, 'Player Core', 'http://127.0.0.1:4034', true, 'raw_ndjson_gz', now(), now()),
-            ($1, 'Player Advanced', 'http://127.0.0.1:4035', true, 'raw_ndjson_gz', now(), now())
-        on conflict (server_id, name) do nothing
-        "#,
-    )
-    .bind(server_id)
-    .execute(&mut *tx)
-    .await?;
+    {
+        let builtins = crate::builtin_modules::BUILTIN_MODULES;
+        let mut qb = QueryBuilder::new(
+            "insert into public.server_modules (server_id, name, base_url, enabled, transform, created_at, updated_at) ",
+        );
+        qb.push_values(builtins, |mut b, m| {
+            b.push_bind(server_id)
+                .push_bind(m.name)
+                .push_bind(crate::builtin_modules::default_base_url(m.default_port))
+                .push_bind(true)
+                .push_bind("raw_ndjson_gz")
+                .push_bind(now)
+                .push_bind(now);
+        });
+        qb.push(" on conflict (server_id, name) do nothing");
+        qb.build().execute(&mut *tx).await?;
+    }
 
     tx.commit().await?;
     Ok(())

@@ -1,4 +1,5 @@
 pub mod config;
+pub mod builtin_modules;
 pub mod db;
 pub mod error;
 pub mod module_pipeline;

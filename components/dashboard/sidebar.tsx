@@ -15,6 +15,7 @@ import {
   RiArrowDownSLine,
   RiLogoutBoxRLine,
   RiUserLine,
+  RiGroupLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import type { ServerWorkspace } from "@/types/supabase";
@@ -22,8 +23,9 @@ import type { User } from "@supabase/supabase-js";
 
 const navigation = [
   { name: "Overview", href: "/dashboard", icon: RiHome5Line },
-  { name: "Modules", href: "/dashboard/modules", icon: RiShieldCheckLine },
+  { name: "Players", href: "/dashboard/players", icon: RiGroupLine },
   { name: "Findings", href: "/dashboard/findings", icon: RiAlertLine },
+  { name: "Modules", href: "/dashboard/modules", icon: RiShieldCheckLine },
   { name: "Settings", href: "/dashboard/settings", icon: RiSettings4Line },
 ];
 

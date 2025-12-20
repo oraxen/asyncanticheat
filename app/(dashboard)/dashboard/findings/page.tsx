@@ -8,6 +8,7 @@ import {
   RiTimeLine,
   RiAlertLine,
   RiArrowLeftLine,
+  RiFlagLine,
 } from "@remixicon/react";
 import {
   cn,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/utils";
 import { api, type Finding } from "@/lib/api";
 import { useSelectedServer } from "@/lib/server-context";
+import { ReportFalsePositiveDialog } from "@/components/dashboard/report-false-positive-dialog";
 
 const severityColors = {
   low: "text-blue-400",
@@ -116,10 +118,12 @@ function PlayerHistoryPanel({
   playerName,
   findings,
   onClose,
+  onReportFalsePositive,
 }: {
   playerName: string;
   findings: Finding[];
   onClose: () => void;
+  onReportFalsePositive: (finding: Finding) => void;
 }) {
   // Normalize player name comparison to handle "Unknown" entries
   const playerFindings = findings.filter(
@@ -287,7 +291,7 @@ function PlayerHistoryPanel({
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 ml-2 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-transparent hover:border-white/[0.06]">
+                        <div className="flex-1 ml-2 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-transparent hover:border-white/[0.06] group/item">
                           <div className="flex items-center justify-between mb-1.5">
                             {(() => {
                               const p = parseDetectorName(finding.detector_name);
@@ -314,9 +318,21 @@ function PlayerHistoryPanel({
                                 </div>
                               );
                             })()}
-                            <span className="text-[10px] text-white/30 tabular-nums">
-                              {time}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onReportFalsePositive(finding);
+                                }}
+                                className="opacity-0 group-hover/item:opacity-100 p-1 rounded hover:bg-white/[0.08] text-white/40 hover:text-amber-400 transition-all"
+                                title="Report as false positive"
+                              >
+                                <RiFlagLine className="h-3.5 w-3.5" />
+                              </button>
+                              <span className="text-[10px] text-white/30 tabular-nums">
+                                {time}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
@@ -371,6 +387,15 @@ export default function FindingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fetchIdRef = useRef(0);
+  
+  // False positive report dialog state
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [selectedFindingForReport, setSelectedFindingForReport] = useState<Finding | null>(null);
+  
+  const handleReportFalsePositive = useCallback((finding: Finding) => {
+    setSelectedFindingForReport(finding);
+    setReportDialogOpen(true);
+  }, []);
 
   // Fetch findings from API - refetch when filter OR server changes
   useEffect(() => {
@@ -599,84 +624,96 @@ export default function FindingsPage() {
                   ? finding.occurrences
                   : null;
               return (
-                <button
+                <div
                   key={finding.id}
-                  onClick={() =>
-                    setSelectedPlayer(finding.player_name || "Unknown")
-                  }
                   className={cn(
-                    "w-full flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors text-left",
+                    "w-full flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors text-left group/row",
                     selectedPlayer === (finding.player_name || "Unknown") &&
                       "bg-white/[0.04]"
                   )}
                 >
-                  <div
-                    className={cn(
-                      "w-2 h-2 rounded-full flex-shrink-0",
-                      severityDots[finding.severity]
-                    )}
-                  />
-                  <div className="w-32 flex-shrink-0">
-                    <p className="text-sm text-white truncate">
-                      {finding.player_name || "Unknown"}
-                    </p>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {(() => {
-                      const p = parseDetectorName(finding.detector_name);
-                      const tier = formatDetectorTier(p.tier);
-                      return (
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-white/60">
-                              {formatDetectorScope(p.scope)}
-                            </span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-white/60">
-                              {formatDetectorCategory(p.category)}
-                            </span>
-                            {tier && (
-                              <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-white/50">
-                                {tier}
-                              </span>
-                            )}
-                          </div>
-                          <span
-                            className="text-[10px] text-white/30 font-mono truncate"
-                            title={finding.detector_name}
-                          >
-                            {finding.detector_name}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <div className="w-24 text-right flex-shrink-0">
-                    <div className="flex items-center justify-end gap-2">
-                      <span
-                        className={cn(
-                          "text-xs truncate max-w-[8rem]",
-                          severityColors[finding.severity]
-                        )}
-                        title={finding.title}
-                      >
-                        {finding.title}
-                      </span>
-                      {occ && (
-                        <span className="text-[10px] text-white/40 font-mono">
-                          ×{occ}
-                        </span>
+                  <button
+                    onClick={() =>
+                      setSelectedPlayer(finding.player_name || "Unknown")
+                    }
+                    className="flex items-center gap-4 flex-1 min-w-0"
+                  >
+                    <div
+                      className={cn(
+                        "w-2 h-2 rounded-full flex-shrink-0",
+                        severityDots[finding.severity]
                       )}
+                    />
+                    <div className="w-32 flex-shrink-0">
+                      <p className="text-sm text-white truncate">
+                        {finding.player_name || "Unknown"}
+                      </p>
                     </div>
-                  </div>
-                  <div className="w-20 text-right flex-shrink-0">
-                    <span className="text-[10px] text-white/30">{date}</span>
-                  </div>
-                  <div className="w-14 text-right flex-shrink-0">
-                    <span className="text-[10px] text-white/30 tabular-nums">
-                      {time}
-                    </span>
-                  </div>
-                </button>
+                    <div className="flex-1 min-w-0">
+                      {(() => {
+                        const p = parseDetectorName(finding.detector_name);
+                        const tier = formatDetectorTier(p.tier);
+                        return (
+                          <div className="flex flex-col gap-1 min-w-0">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-white/60">
+                                {formatDetectorScope(p.scope)}
+                              </span>
+                              <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-white/60">
+                                {formatDetectorCategory(p.category)}
+                              </span>
+                              {tier && (
+                                <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-white/50">
+                                  {tier}
+                                </span>
+                              )}
+                            </div>
+                            <span
+                              className="text-[10px] text-white/30 font-mono truncate"
+                              title={finding.detector_name}
+                            >
+                              {finding.detector_name}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <div className="w-24 text-right flex-shrink-0">
+                      <div className="flex items-center justify-end gap-2">
+                        <span
+                          className={cn(
+                            "text-xs truncate max-w-[8rem]",
+                            severityColors[finding.severity]
+                          )}
+                          title={finding.title}
+                        >
+                          {finding.title}
+                        </span>
+                        {occ && (
+                          <span className="text-[10px] text-white/40 font-mono">
+                            ×{occ}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="w-20 text-right flex-shrink-0">
+                      <span className="text-[10px] text-white/30">{date}</span>
+                    </div>
+                    <div className="w-14 text-right flex-shrink-0">
+                      <span className="text-[10px] text-white/30 tabular-nums">
+                        {time}
+                      </span>
+                    </div>
+                  </button>
+                  {/* Report False Positive Button */}
+                  <button
+                    onClick={() => handleReportFalsePositive(finding)}
+                    className="opacity-0 group-hover/row:opacity-100 p-2 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-amber-400 transition-all flex-shrink-0"
+                    title="Report as false positive"
+                  >
+                    <RiFlagLine className="h-4 w-4" />
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -705,9 +742,20 @@ export default function FindingsPage() {
                 setSelectedPlayer(null);
                 setSearch("");
               }}
+              onReportFalsePositive={handleReportFalsePositive}
             />
           </div>
         </>
+      )}
+      
+      {/* False Positive Report Dialog */}
+      {selectedServerId && (
+        <ReportFalsePositiveDialog
+          finding={selectedFindingForReport}
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          serverId={selectedServerId}
+        />
       )}
     </div>
   );

@@ -63,6 +63,20 @@ function formatRelativeTime(dateStr: string): string {
   return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
 }
 
+// Helper to format milliseconds to human-readable relative time
+function formatMsAgo(ms: number): string {
+  if (ms < 0) return "—";
+  if (ms < 1000) return "just now";
+  const secs = Math.floor(ms / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 // Generate pseudo-random position for globe visualization
 function generateGlobePosition(uuid: string): { lat: number; lng: number } {
   // Use uuid to generate deterministic but varied positions
@@ -958,9 +972,8 @@ export default function DashboardPage() {
                     },
                     {
                       label: "Plugin Status",
-                      ping: connectionMetrics.pluginOnline
-                        ? Math.min(connectionMetrics.pluginLastSeenMs, 9999)
-                        : null,
+                      ping: null,
+                      lastSeenMs: connectionMetrics.pluginLastSeenMs,
                       status: connectionMetrics.pluginOnline
                         ? "excellent"
                         : "offline",
@@ -973,6 +986,7 @@ export default function DashboardPage() {
                     {
                       label: "Plugin Status",
                       ping: null,
+                      lastSeenMs: -1,
                       status: "unknown",
                       isLastSeen: true,
                     },
@@ -1000,16 +1014,22 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-medium text-white tabular-nums">
-                      {conn.ping !== null && conn.ping >= 0 ? conn.ping : "—"}
-                    </span>
-                    <span className="text-[10px] text-white/40">
-                      {conn.isLastSeen
-                        ? conn.ping !== null && conn.ping >= 0
-                          ? "ms ago"
-                          : ""
-                        : "ms"}
-                    </span>
+                    {conn.isLastSeen ? (
+                      <span className="text-base font-medium text-white">
+                        {conn.lastSeenMs !== undefined && conn.lastSeenMs >= 0
+                          ? formatMsAgo(conn.lastSeenMs)
+                          : "—"}
+                      </span>
+                    ) : (
+                      <>
+                        <span className="text-lg font-medium text-white tabular-nums">
+                          {conn.ping !== null && conn.ping >= 0
+                            ? conn.ping
+                            : "—"}
+                        </span>
+                        <span className="text-[10px] text-white/40">ms</span>
+                      </>
+                    )}
                   </div>
                 </div>
               ));

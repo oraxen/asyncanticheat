@@ -39,11 +39,16 @@ jobs:
           path: build/libs/async-anticheat-${{ steps.version.outputs.version }}.jar
           if-no-files-found: error
 
+      - name: Copy JAR with stable name
+        run: cp build/libs/async-anticheat-${{ steps.version.outputs.version }}.jar build/libs/async-anticheat.jar
+
       - name: Upload JAR to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: build/libs/async-anticheat-${{ steps.version.outputs.version }}.jar
+          files: |
+            build/libs/async-anticheat-${{ steps.version.outputs.version }}.jar
+            build/libs/async-anticheat.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -2,6 +2,7 @@ name: AsyncAnticheat
 version: ${version}
 main: md.thomas.asyncanticheat.bukkit.AsyncAnticheatBukkitPlugin
 api-version: "1.21"
+folia-supported: true
 description: Async anticheat packet capture and streaming via PacketEvents
 authors:
   - th0rgal

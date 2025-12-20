@@ -41,7 +41,6 @@ allprojects {
         maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
         maven { url = uri("https://oss.sonatype.org/content/repositories/snapshots") }
         // Velocity
-        maven { url = uri("https://nexus.velocitypowered.com/repository/maven-public/") }
         // PacketEvents + bStats
         maven { url = uri("https://repo.codemc.io/repository/maven-releases/") }
         maven { url = uri("https://repo.codemc.io/repository/maven-snapshots/") }
@@ -67,28 +66,6 @@ project(":asyncanticheat-bukkit") {
     }
 }
 
-project(":asyncanticheat-bungee") {
-    dependencies {
-        compileOnly("net.md-5:bungeecord-api:1.20-R0.2")
-        compileOnly("org.jetbrains:annotations:24.0.1")
-        compileOnly(project(path = ":asyncanticheat-core", configuration = "shadow"))
-
-        // PacketEvents (BungeeCord)
-        implementation("com.github.retrooper:packetevents-bungeecord:2.11.0")
-    }
-}
-
-project(":asyncanticheat-velocity") {
-    dependencies {
-        compileOnly("com.velocitypowered:velocity-api:3.3.0-SNAPSHOT")
-        compileOnly("org.jetbrains:annotations:24.0.1")
-        compileOnly(project(path = ":asyncanticheat-core", configuration = "shadow"))
-        annotationProcessor("com.velocitypowered:velocity-api:3.3.0-SNAPSHOT")
-
-        // PacketEvents (Velocity)
-        implementation("com.github.retrooper:packetevents-velocity:2.11.0")
-    }
-}
 
 tasks.shadowJar {
     // Keep dependencies isolated from the server/proxy classpath where possible.
@@ -111,8 +88,6 @@ tasks.shadowJar {
 dependencies {
     implementation(project(path = ":asyncanticheat-core", configuration = "shadow"))
     implementation(project(path = ":asyncanticheat-bukkit", configuration = "shadow"))
-    implementation(project(path = ":asyncanticheat-bungee", configuration = "shadow"))
-    implementation(project(path = ":asyncanticheat-velocity", configuration = "shadow"))
 }
 
 tasks.build {

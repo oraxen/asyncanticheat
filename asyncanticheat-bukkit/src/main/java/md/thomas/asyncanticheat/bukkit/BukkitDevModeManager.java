@@ -54,15 +54,18 @@ final class BukkitDevModeManager {
         ));
 
         final UUID playerId = player.getUniqueId();
-        s.taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> tick(playerId), 20L, 20L);
+        // Use SchedulerUtil for Folia compatibility.
+        // On Folia, dev mode uses a global timer since it only reads player state via tryEnqueue
+        // and sends messages/titles which are thread-safe operations.
+        s.scheduledTask = SchedulerUtil.runTaskTimer(plugin, 20L, 20L, () -> tick(playerId));
         return true;
     }
 
     void stop(@NotNull Player player, @NotNull String reason) {
         final Session s = sessions.remove(player.getUniqueId());
         if (s == null) return;
-        if (s.taskId != -1) {
-            Bukkit.getScheduler().cancelTask(s.taskId);
+        if (s.scheduledTask != null) {
+            s.scheduledTask.cancel();
         }
         sendStopNotice(player, s.label, reason);
         enqueueMarker(player, s.devSessionId, s.label, "stop", s.cheatState, Map.of("reason", reason));
@@ -87,8 +90,8 @@ final class BukkitDevModeManager {
     void stopSilent(@NotNull UUID playerId) {
         final Session s = sessions.remove(playerId);
         if (s == null) return;
-        if (s.taskId != -1) {
-            Bukkit.getScheduler().cancelTask(s.taskId);
+        if (s.scheduledTask != null) {
+            s.scheduledTask.cancel();
         }
     }
 
@@ -205,7 +208,7 @@ final class BukkitDevModeManager {
         final int warmupSeconds;
         final int toggleSeconds;
 
-        int taskId = -1;
+        SchedulerUtil.ScheduledTask scheduledTask = null;
         int elapsedSeconds = 0;
         boolean startedToggles = false;
         int nextToggleAt = 0;

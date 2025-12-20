@@ -4,6 +4,7 @@ import md.thomas.asyncanticheat.core.AsyncAnticheatService;
 import md.thomas.asyncanticheat.core.PacketRecord;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
@@ -22,13 +23,22 @@ import java.util.Map;
  * 
  * <p>
  * Default interval: 10 ticks (0.5 seconds). This balances accuracy with bandwidth.
+ * 
+ * <p>
+ * <b>Folia compatibility:</b> On Folia, this task runs on the global region scheduler
+ * and dispatches per-entity tasks to safely access player state. On regular Bukkit/Paper,
+ * it runs directly on the main thread.
  */
 public final class PlayerStateTask implements Runnable {
 
+    private final Plugin plugin;
     private final AsyncAnticheatService service;
+    private final boolean isFolia;
 
-    public PlayerStateTask(@NotNull AsyncAnticheatService service) {
+    public PlayerStateTask(@NotNull Plugin plugin, @NotNull AsyncAnticheatService service) {
+        this.plugin = plugin;
         this.service = service;
+        this.isFolia = VersionUtil.isFoliaServer();
     }
 
     @Override
@@ -38,17 +48,33 @@ public final class PlayerStateTask implements Runnable {
                 continue;
             }
 
-            final Map<String, Object> fields = buildStateFields(player);
-
-            service.tryEnqueue(new PacketRecord(
-                    System.currentTimeMillis(),
-                    "synthetic",
-                    "PLAYER_STATE",
-                    player.getUniqueId().toString(),
-                    player.getName(),
-                    fields
-            ));
+            if (isFolia) {
+                // On Folia, we must access player state on the entity's owning thread.
+                // Schedule a per-entity task that captures and enqueues the state.
+                SchedulerUtil.runForEntity(plugin, player, () -> captureAndEnqueue(player), null);
+            } else {
+                // On regular Bukkit/Paper, we're already on the main thread.
+                captureAndEnqueue(player);
+            }
         }
+    }
+
+    private void captureAndEnqueue(@NotNull Player player) {
+        // Double-check player is still valid (especially important for Folia delayed execution)
+        if (!player.isOnline()) {
+            return;
+        }
+
+        final Map<String, Object> fields = buildStateFields(player);
+
+        service.tryEnqueue(new PacketRecord(
+                System.currentTimeMillis(),
+                "synthetic",
+                "PLAYER_STATE",
+                player.getUniqueId().toString(),
+                player.getName(),
+                fields
+        ));
     }
 
     @NotNull

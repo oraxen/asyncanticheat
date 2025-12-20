@@ -10,7 +10,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 
 public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
@@ -18,7 +17,7 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
     private AsyncAnticheatService service;
     private BukkitDevModeManager devMode;
     private BukkitPlayerExemptionTracker exemptionTracker;
-    private BukkitTask stateTask;
+    private SchedulerUtil.ScheduledTask stateTask;
     private boolean packetEventsInitialized = false;
 
     @Override
@@ -84,13 +83,18 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
 
         // Schedule periodic player state snapshots (every 10 ticks = 0.5s)
         // These synthetic packets provide context (swimming, climbing, etc.) to modules
-        stateTask = getServer().getScheduler().runTaskTimer(
+        //
+        // On Folia, we use a global timer that schedules per-entity tasks.
+        // On Bukkit/Paper, we use a simple repeating task.
+        final PlayerStateTask stateTaskRunner = new PlayerStateTask(this, service);
+        stateTask = SchedulerUtil.runTaskTimer(
                 this,
-                new PlayerStateTask(service),
                 20L,  // Initial delay: 1 second (let players fully load)
-                10L   // Period: 10 ticks (0.5 seconds)
+                10L,  // Period: 10 ticks (0.5 seconds)
+                stateTaskRunner
         );
-        logger.info("[AsyncAnticheat] Player state tracking enabled (10-tick interval)");
+        logger.info("[AsyncAnticheat] Player state tracking enabled (10-tick interval)" +
+                (VersionUtil.isFoliaServer() ? " [Folia mode]" : ""));
     }
 
     @Override

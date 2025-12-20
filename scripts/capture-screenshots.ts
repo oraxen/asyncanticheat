@@ -144,36 +144,52 @@ async function loginWithCredentials(page: Page, email: string, password: string)
     const emailInput = await page.$('input[type="email"], input[placeholder*="email"]');
     if (emailInput) {
       await emailInput.click({ clickCount: 3 });
-      await emailInput.type(email);
+      await emailInput.type(email, { delay: 50 });
     }
 
-    // Small delay
-    await new Promise((r) => setTimeout(r, 500));
+    // Wait for the login form to check if password is needed
+    // The form does an async check when email is entered
+    console.log("   Waiting for password field...");
+    await new Promise((r) => setTimeout(r, 2000));
 
-    // Click the "Send magic link" button
-    // Use page.evaluate to find and click button by text content
-    const clicked = await page.evaluate(() => {
-      const buttons = Array.from(document.querySelectorAll('button'));
-      const magicBtn = buttons.find(btn => 
-        btn.textContent?.toLowerCase().includes('magic link') ||
-        btn.textContent?.toLowerCase().includes('send')
-      );
-      if (magicBtn) {
-        magicBtn.click();
-        return true;
-      }
-      return false;
-    });
-
-    if (clicked) {
+    // Check if password field appeared
+    const passwordInput = await page.$('input[type="password"]');
+    
+    if (passwordInput) {
+      console.log("   Password field detected, entering password...");
+      await passwordInput.click();
+      await passwordInput.type(password, { delay: 30 });
+      
+      // Small delay then submit
+      await new Promise((r) => setTimeout(r, 300));
+      
+      // Click the sign in button
+      await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button[type="submit"]'));
+        const signInBtn = buttons.find(btn => 
+          btn.textContent?.toLowerCase().includes('sign in')
+        );
+        if (signInBtn) {
+          (signInBtn as HTMLButtonElement).click();
+        }
+      });
+      
+      console.log("   Submitted login form...");
+    } else {
+      console.log("   No password field - using magic link...");
+      // Click magic link button
+      await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button[type="submit"]'));
+        const btn = buttons.find(b => b.textContent?.toLowerCase().includes('magic'));
+        if (btn) (btn as HTMLButtonElement).click();
+      });
       console.log("📧 Magic link requested! Check your email...");
-      console.log("   (Or log in manually in the browser window)");
     }
 
-    // Wait for navigation away from login (either magic link or manual)
+    // Wait for navigation away from login
     await page.waitForFunction(
       () => !window.location.pathname.includes("/login"),
-      { timeout: 300000 } // 5 min timeout for magic link
+      { timeout: 30000 }
     );
 
     return true;

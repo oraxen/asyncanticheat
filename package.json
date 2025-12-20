@@ -8,7 +8,8 @@
     "dev": "next dev",
     "build": "next build --webpack && pagefind --site .next/server/app --output-path public/_pagefind",
     "start": "next start",
-    "lint": "eslint app components lib types"
+    "lint": "eslint app components lib types",
+    "screenshots": "bun run scripts/capture-screenshots.ts"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.2",
@@ -43,11 +44,11 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@next/eslint-plugin-next": "^16.0.7",
-    "@typescript-eslint/eslint-plugin": "^8.46.1",
-    "@typescript-eslint/parser": "^8.46.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
     "baseline-browser-mapping": "^2.9.5",
     "eslint": "^9.39.1",
     "eslint-config-next": "16.0.7",
@@ -57,6 +58,7 @@
     "pagefind": "^1.4.0",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.6.14",
+    "puppeteer": "^24.34.0",
     "typescript": "^5.9.3"
   }
 }

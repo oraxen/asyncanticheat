@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Misc
 *.pem
+
+# Documentation screenshots (generated)
+docs-screenshots/

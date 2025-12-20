@@ -1,0 +1,140 @@
+---
+description: How to self-host the AsyncAnticheat API
+title: Self-Hosted API
+---
+
+# Self-Hosted API
+
+If you want to run your own AsyncAnticheat API instead of using the managed service.
+
+## Requirements
+
+- **Rust** (latest stable)
+- **PostgreSQL** 15+
+- **S3-compatible storage** (MinIO, AWS S3, Supabase Storage, etc.)
+
+## Setup
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/oraxen/asyncanticheat-api.git
+cd asyncanticheat-api
+```
+
+### 2. Configure Environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your credentials:
+
+```bash
+# Database
+DATABASE_URL=postgres://user:pass@localhost:5432/asyncanticheat
+
+# Object Storage (S3-compatible)
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=your_access_key
+S3_SECRET_KEY=your_secret_key
+S3_BUCKET=asyncanticheat-batches
+
+# Tokens
+INGEST_TOKEN=your_secure_ingest_token
+MODULE_CALLBACK_TOKEN=your_secure_callback_token
+
+# Server
+HOST=127.0.0.1
+PORT=3002
+```
+
+### 3. Apply Database Schema
+
+```bash
+psql -d asyncanticheat -f schema.sql
+```
+
+### 4. Run the API
+
+```bash
+cargo run --release
+```
+
+The API will start on `http://127.0.0.1:3002` by default.
+
+## Plugin Configuration
+
+Configure your Minecraft plugin to use your self-hosted API:
+
+```yaml
+# plugins/AsyncAnticheat/config.yml
+api:
+  url: "https://your-api.example.com"
+  token: "your_ingest_token"
+```
+
+## Running Detection Modules
+
+Detection modules run as separate services. Start them alongside the API:
+
+```bash
+# Terminal 1: API
+cd asyncanticheat-api
+cargo run --release
+
+# Terminal 2: Movement Module
+cd asyncanticheat-api/modules/movement_module
+cargo run --release
+
+# Terminal 3: Combat Module
+cd asyncanticheat-api/modules/combat_module
+cargo run --release
+
+# Terminal 4: Player Module
+cd asyncanticheat-api/modules/player_module
+cargo run --release
+```
+
+## Production Deployment
+
+For production, we recommend:
+
+- **Systemd** or **Docker** for process management
+- **Nginx** or **Caddy** as a reverse proxy with TLS
+- **PostgreSQL** with proper backups
+- **MinIO** or **S3** for batch storage
+
+### Example Systemd Unit
+
+```ini
+[Unit]
+Description=AsyncAnticheat API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=asyncanticheat
+WorkingDirectory=/opt/asyncanticheat-api
+ExecStart=/opt/asyncanticheat-api/target/release/asyncanticheat-api
+Restart=on-failure
+RestartSec=10
+EnvironmentFile=/opt/asyncanticheat-api/.env
+
+[Install]
+WantedBy=multi-user.target
+```
+
+## Health Check
+
+Verify the API is running:
+
+```bash
+curl http://localhost:3002/health
+```
+
+Expected response:
+
+```json
+{"status":"ok","version":"0.1.0"}
+```

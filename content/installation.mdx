@@ -13,8 +13,16 @@ AsyncAnticheat consists of two components:
 ## Requirements
 
 - **Java 21** or newer
-- **Paper/Spigot 1.18+**, **BungeeCord**, or **Velocity**
+- **Paper 1.18+** or **Folia**
 - An AsyncAnticheat API instance (self-hosted or managed)
+
+## Platform Support
+
+| Platform | Support |
+|----------|---------|
+| Paper / Spigot | ✅ Full support |
+| Folia | ✅ Full support |
+| BungeeCord / Velocity | ❌ Not supported (install on backend servers) |
 
 ## Plugin Installation
 
@@ -119,16 +127,39 @@ Run `/aac` in-game or from console to verify:
 
 If your server isn't linked yet, the command will display the registration link again.
 
-## Proxy Setup
+## Network Setup (BungeeCord / Velocity)
 
-### BungeeCord / Velocity
+AsyncAnticheat does **not** support proxy-only installation. For networks using BungeeCord or Velocity, you should install the plugin on **each backend server** individually.
 
-For proxy setups, you can install the plugin on either:
+### Why install on backend servers?
 
-1. **Proxy only** — Captures packets at the proxy level (recommended for networks)
-2. **Backend servers** — Captures packets per-server with more detail
+- **Full packet visibility**: Backend servers have access to all game packets, including position, combat, and interaction data
+- **Server-side context**: The plugin can access server-side player state (swimming, flying, game mode, etc.) which is essential for accurate detection
+- **Folia compatibility**: Backend Paper/Folia servers are fully supported
 
-The plugin automatically detects the platform and uses the appropriate PacketEvents adapter.
+### Network installation steps
+
+1. Download the plugin
+2. Install on **each backend server** (e.g., Survival, SkyBlock, Factions, etc.)
+3. Link each server to your dashboard
+4. Each server will appear as a separate server in the dashboard
+
+### Per-server configuration
+
+Each backend server can have its own configuration (sample rate, exemptions, etc.) to match its specific needs. For example:
+- Creative servers might have higher exemption thresholds
+- Competitive PvP servers might use 100% sample rate
+
+## Folia Support
+
+AsyncAnticheat fully supports [Folia](https://github.com/PaperMC/Folia), Paper's multithreaded server fork. The plugin automatically detects Folia and uses the appropriate schedulers.
+
+When running on Folia:
+- Player state tracking uses per-entity scheduling for thread safety
+- Packet capture via PacketEvents works normally
+- All features are fully supported
+
+No special configuration is required — just install the plugin as normal.
 
 ## Troubleshooting
 

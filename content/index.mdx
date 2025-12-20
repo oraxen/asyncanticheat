@@ -5,7 +5,7 @@ title: Welcome to AsyncAnticheat
 
 # Welcome to AsyncAnticheat
 
-AsyncAnticheat is a multi-platform Minecraft plugin (Paper/Spigot, BungeeCord, Velocity) that captures high-signal packets and streams them to a cloud service for asynchronous analysis.
+AsyncAnticheat is a Minecraft plugin for Paper and Folia that captures high-signal packets and streams them to a cloud service for asynchronous analysis.
 
 ## What Is AsyncAnticheat?
 
@@ -15,6 +15,7 @@ Unlike traditional anticheats that run detection logic on your game server's mai
 - **Flexible detection** — Modules can use machine learning, statistical analysis, or traditional rule-based checks
 - **Easy updates** — Update detection logic without restarting your Minecraft server
 - **Cross-server analysis** — Detect ban evaders and patterns across your entire network
+- **Folia support** — Full compatibility with Paper's multithreaded server fork
 
 ## How Does It Work?
 
@@ -41,8 +42,14 @@ See the [Installation](/installation) guide for detailed instructions.
 ## Requirements
 
 - **Java 21** or newer
-- **Paper/Spigot 1.18+**, **BungeeCord**, or **Velocity**
+- **Paper 1.18+** or **Folia**
 - An AsyncAnticheat API instance (self-hosted or managed)
+
+## Network Setup
+
+For networks using BungeeCord or Velocity, install the plugin on **each backend server** individually. The plugin does not support proxy-only installation — it needs to run on the game servers to access packet data and server-side player state.
+
+See the [Installation](/installation#network-setup-bungeecord--velocity) guide for details.
 
 ## License
 

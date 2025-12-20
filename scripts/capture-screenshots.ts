@@ -63,6 +63,30 @@ const screenshots: Screenshot[] = [
       await new Promise((r) => setTimeout(r, 800));
     },
   },
+  {
+    name: "players-report-cheat",
+    path: "/dashboard/players",
+    description: "Report undetected cheat dialog",
+    waitFor: "Players",
+    actions: async (page) => {
+      // Click first player to select them
+      await page.evaluate(() => {
+        const btn = document.querySelector('button[class*="group"]') as HTMLElement;
+        if (btn) btn.click();
+      });
+      await new Promise((r) => setTimeout(r, 800));
+      // Click the "Report undetected cheat" button
+      await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll("button"));
+        const reportBtn = buttons.find((b) =>
+          b.textContent?.toLowerCase().includes("report") &&
+          b.textContent?.toLowerCase().includes("cheat")
+        );
+        if (reportBtn) reportBtn.click();
+      });
+      await new Promise((r) => setTimeout(r, 600));
+    },
+  },
 
   // Findings Page
   {
@@ -82,6 +106,29 @@ const screenshots: Screenshot[] = [
         if (btn) btn.click();
       });
       await new Promise((r) => setTimeout(r, 800));
+    },
+  },
+  {
+    name: "findings-report-false-positive",
+    path: "/dashboard/findings",
+    description: "Report false positive dialog",
+    waitFor: "Findings",
+    actions: async (page) => {
+      // Click first finding to select it
+      await page.evaluate(() => {
+        const btn = document.querySelector('button[class*="group"]') as HTMLElement;
+        if (btn) btn.click();
+      });
+      await new Promise((r) => setTimeout(r, 800));
+      // Click the "Report as false positive" button
+      await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll("button"));
+        const reportBtn = buttons.find((b) =>
+          b.textContent?.toLowerCase().includes("false positive")
+        );
+        if (reportBtn) reportBtn.click();
+      });
+      await new Promise((r) => setTimeout(r, 600));
     },
   },
 

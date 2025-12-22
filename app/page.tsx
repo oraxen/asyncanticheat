@@ -161,7 +161,7 @@ export default function HomePage() {
             </h2>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-3 max-w-3xl mx-auto">
             <FeatureCard
               icon={RiSpeedLine}
               title="Async by Design"
@@ -191,7 +191,7 @@ export default function HomePage() {
             <p className="mt-2 text-sm text-[rgb(var(--foreground-secondary))]">
               Can&apos;t find the answer?{" "}
               <Link
-                href="https://discord.gg/asyncanticheat"
+                href="https://discord.gg/2ng6q3JNQ7"
                 className="text-indigo-500 hover:text-indigo-400"
               >
                 Join our Discord

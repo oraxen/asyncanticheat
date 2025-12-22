@@ -44,7 +44,7 @@ export default async function DocsLayout({
       logo={<Logo />}
       logoLink="/docs"
       projectLink="https://github.com/oraxen/asyncanticheat"
-      chatLink="https://discord.gg/asyncanticheat"
+      chatLink="https://discord.gg/2ng6q3JNQ7"
     />
   );
   // Get only the docs page map

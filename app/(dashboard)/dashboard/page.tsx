@@ -955,6 +955,9 @@ export default function DashboardPage() {
                 return "poor";
               };
 
+              // Build connection status list
+              // Note: "API → Server" only shows if the server has a pingable address configured.
+              // Without a callback_url, we can't TCP ping and showing red is misleading.
               const connections = connectionMetrics
                 ? [
                     {
@@ -962,14 +965,19 @@ export default function DashboardPage() {
                       ping: connectionMetrics.apiLatencyMs,
                       status: getStatus(connectionMetrics.apiLatencyMs),
                     },
-                    {
-                      label: "API → Server",
-                      ping: connectionMetrics.serverPingMs,
-                      status: getStatus(
-                        connectionMetrics.serverPingMs,
-                        connectionMetrics.serverReachable
-                      ),
-                    },
+                    // Only show API → Server if we have an address to ping
+                    ...(connectionMetrics.serverAddress
+                      ? [
+                          {
+                            label: "API → Server",
+                            ping: connectionMetrics.serverPingMs,
+                            status: getStatus(
+                              connectionMetrics.serverPingMs,
+                              connectionMetrics.serverReachable
+                            ),
+                          },
+                        ]
+                      : []),
                     {
                       label: "Plugin Status",
                       ping: null,
@@ -982,7 +990,7 @@ export default function DashboardPage() {
                   ]
                 : [
                     { label: "Dashboard → API", ping: null, status: "unknown" },
-                    { label: "API → Server", ping: null, status: "unknown" },
+                    // Don't show "API → Server" when loading - it's optional anyway
                     {
                       label: "Plugin Status",
                       ping: null,

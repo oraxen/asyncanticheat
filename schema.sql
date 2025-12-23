@@ -34,6 +34,17 @@ alter table public.servers
 alter table public.servers
     add column if not exists registered_at timestamptz;
 
+-- Webhook settings for real-time Discord/Slack/HTTP notifications
+alter table public.servers
+    add column if not exists webhook_url text;
+
+alter table public.servers
+    add column if not exists webhook_enabled boolean not null default false;
+
+-- Array of severity levels to notify on: ['critical', 'high', 'medium', 'low']
+alter table public.servers
+    add column if not exists webhook_severity_levels text[] not null default array['critical', 'high']::text[];
+
 --------------------------------------------------------------------------------
 -- PLAYERS: unique player identities (by UUID)
 --------------------------------------------------------------------------------

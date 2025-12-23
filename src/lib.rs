@@ -7,6 +7,7 @@ pub mod object_store_cleanup;
 pub mod routes;
 pub mod s3;
 pub mod transforms;
+pub mod webhooks;
 
 use sqlx::PgPool;
 

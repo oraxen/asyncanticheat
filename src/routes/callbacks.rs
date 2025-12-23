@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use std::collections::HashMap;
 use chrono::{DateTime, Timelike, Utc};
 
-use crate::{error::ApiError, AppState};
+use crate::{error::ApiError, webhooks, AppState};
 
 #[derive(Debug, Deserialize)]
 pub struct FindingIn {
@@ -72,8 +72,9 @@ pub async fn post_findings(
         .and_then(|t| t.with_nanosecond(0))
         .unwrap_or(now);
 
-    // Upsert players once per request (instead of per-finding).
-    // This avoids N identical upserts for the same uuid when a noisy module sends many findings.
+    // Ensure players exist (insert if missing, skip if exists).
+    // Using DO NOTHING to avoid deadlocks from concurrent upserts.
+    // We only need the row to exist for the FK constraint; last_seen_at is updated elsewhere.
     let mut player_uuids: HashSet<Uuid> = HashSet::new();
     for f in &req.findings {
         if let Some(u) = f.player_uuid {
@@ -85,14 +86,14 @@ pub async fn post_findings(
             r#"
             insert into public.players (uuid, username, first_seen_at, last_seen_at)
             values ($1, 'unknown', now(), now())
-            on conflict (uuid) do update set last_seen_at = now()
+            on conflict (uuid) do nothing
             "#,
         )
         .bind(player_uuid)
         .execute(&mut *tx)
         .await
         .map_err(|e| {
-            tracing::error!("upsert player failed: {:?}", e);
+            tracing::error!("ensure player exists failed: {:?}", e);
             ApiError::Internal
         })?;
     }
@@ -153,7 +154,7 @@ pub async fn post_findings(
         }
     }
 
-    for ((player_uuid, detector_name), a) in agg {
+    for ((player_uuid, detector_name), a) in &agg {
         let evidence_json = a.evidence_json.as_ref().map(sqlx::types::Json);
 
         // Upsert minute-bucket row and increment occurrences.
@@ -195,9 +196,9 @@ pub async fn post_findings(
             "#,
         )
         .bind(req.server_id.trim())
-        .bind(player_uuid)
+        .bind(*player_uuid)
         .bind(req.session_id.as_deref())
-        .bind(detector_name)
+        .bind(detector_name.as_str())
         .bind(a.detector_version.as_deref())
         .bind(&a.severity)
         .bind(&a.title)
@@ -227,6 +228,53 @@ pub async fn post_findings(
         inserted = inserted,
         "callbacks/findings stored"
     );
+
+    // Send webhook notifications (fire-and-forget)
+    if inserted > 0 {
+        let server_id = req.server_id.trim().to_string();
+        if let Some(settings) = webhooks::get_webhook_settings(&state.db, &server_id).await {
+            if settings.webhook_enabled {
+                if let Some(ref webhook_url) = settings.webhook_url {
+                    // Build notifications for findings that match severity filters
+                    let notifications: Vec<webhooks::FindingNotification> = agg
+                        .iter()
+                        .filter(|((_, _), a)| webhooks::should_notify(&settings, &a.severity))
+                        .map(|((player_uuid, detector_name), a)| {
+                            webhooks::FindingNotification {
+                                server_id: server_id.clone(),
+                                player_uuid: Some(*player_uuid),
+                                player_name: None, // Would need to look up from players table
+                                detector_name: detector_name.clone(),
+                                severity: a.severity.clone(),
+                                title: a.title.clone(),
+                                description: a.description.clone(),
+                                occurrences: a.count,
+                            }
+                        })
+                        .collect();
+
+                    if !notifications.is_empty() {
+                        // Get server name for nicer webhook display
+                        let server_name: Option<String> = sqlx::query_scalar(
+                            "SELECT name FROM public.servers WHERE id = $1"
+                        )
+                        .bind(&server_id)
+                        .fetch_optional(&state.db)
+                        .await
+                        .ok()
+                        .flatten();
+
+                        webhooks::spawn_webhook_notifications(
+                            state.http.clone(),
+                            webhook_url.clone(),
+                            notifications,
+                            server_name,
+                        );
+                    }
+                }
+            }
+        }
+    }
 
     Ok(Json(PostFindingsResponse {
         ok: true,
@@ -351,19 +399,19 @@ pub async fn set_player_state(
 ) -> Result<Json<SetPlayerStateResponse>, ApiError> {
     require_callback_auth(&state, &headers)?;
 
-    // Ensure player exists
+    // Ensure player exists (DO NOTHING to avoid deadlocks)
     sqlx::query(
         r#"
         insert into public.players (uuid, username, first_seen_at, last_seen_at)
         values ($1, 'unknown', now(), now())
-        on conflict (uuid) do update set last_seen_at = now()
+        on conflict (uuid) do nothing
         "#,
     )
     .bind(req.player_uuid)
     .execute(&state.db)
     .await
     .map_err(|e| {
-        tracing::error!("upsert player failed: {:?}", e);
+        tracing::error!("ensure player exists failed: {:?}", e);
         ApiError::Internal
     })?;
 
@@ -461,19 +509,19 @@ pub async fn batch_set_player_states(
 
     let mut updated = 0usize;
     for entry in &req.states {
-        // Ensure player exists
+        // Ensure player exists (DO NOTHING to avoid deadlocks)
         sqlx::query(
             r#"
             insert into public.players (uuid, username, first_seen_at, last_seen_at)
             values ($1, 'unknown', now(), now())
-            on conflict (uuid) do update set last_seen_at = now()
+            on conflict (uuid) do nothing
             "#,
         )
         .bind(entry.player_uuid)
         .execute(&mut *tx)
         .await
         .map_err(|e| {
-            tracing::error!("upsert player failed: {:?}", e);
+            tracing::error!("ensure player exists failed: {:?}", e);
             ApiError::Internal
         })?;
 

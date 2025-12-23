@@ -121,6 +121,11 @@ async fn main() -> anyhow::Result<()> {
             "/dashboard/:server_id/status",
             get(routes::dashboard::get_status),
         )
+        // Observation submission endpoint (from plugin)
+        .route(
+            "/observations",
+            axum::routing::post(routes::observations::create_observation),
+        )
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());

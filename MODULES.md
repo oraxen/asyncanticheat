@@ -194,6 +194,39 @@ nohup env HOST=0.0.0.0 PORT=30XX \
 
 ## Module Communication
 
+### Packet Format
+
+All modules receive packets in the following plugin format:
+
+```json
+{
+  "ts": 1734889081309,
+  "uuid": "player-uuid",
+  "pkt": "PACKET_TYPE",
+  "fields": {
+    "field1": "value1",
+    "field2": 123
+  }
+}
+```
+
+**Important packet type mappings** (plugin sends → module should accept):
+
+| Plugin Sends | Packet Category |
+|--------------|-----------------|
+| `PLAYER_POSITION` | Position only |
+| `PLAYER_POSITION_AND_ROTATION` | Position + look |
+| `PLAYER_ROTATION` | Look only |
+| `PLAYER_FLYING` | Flying/ground status |
+| `INTERACT_ENTITY` | Combat attacks |
+| `ANIMATION` | Arm swing |
+| `PLAYER_DIGGING` | Block dig |
+| `PLAYER_BLOCK_PLACEMENT` | Block place |
+| `HELD_ITEM_CHANGE` | Slot change |
+| `CLICK_WINDOW` | Inventory click |
+| `ENTITY_ACTION` | Sprint/sneak/etc |
+| `PLAYER_ABILITIES` | Flight capabilities |
+
 ### API → Module (Ingest)
 
 ```
@@ -241,7 +274,7 @@ Response:
 {
   "ok": true,
   "name": "movement_module",
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
 ```
 

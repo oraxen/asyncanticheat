@@ -260,3 +260,23 @@ create table if not exists public.module_global_state (
 
 create index if not exists idx_module_global_state_lookup
     on public.module_global_state (server_id, module_name);
+
+--------------------------------------------------------------------------------
+-- FALSE_POSITIVE_REPORTS: user reports for findings marked as false positives
+--------------------------------------------------------------------------------
+create table if not exists public.false_positive_reports (
+    id uuid primary key default gen_random_uuid(),
+    created_at timestamptz not null default now(),
+    finding_id uuid not null references public.findings(id) on delete cascade,
+    server_id text not null references public.servers(id) on delete cascade,
+    reporter_user_id uuid,                       -- auth.users.id (nullable if anonymous)
+    player_activity text,                        -- what was the player doing
+    suspected_cause text,                        -- suspected cause of false positive
+    additional_context text                      -- any other info
+);
+
+create index if not exists idx_false_positive_reports_finding
+    on public.false_positive_reports (finding_id);
+
+create index if not exists idx_false_positive_reports_server
+    on public.false_positive_reports (server_id, created_at desc);

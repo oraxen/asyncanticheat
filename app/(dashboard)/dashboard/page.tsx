@@ -111,7 +111,7 @@ function PlayerDetailPanel({
     severityColors.low;
 
   return (
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-96 animate-fade-in">
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-96 animate-fade-in">
       <div className="glass-panel rounded-xl shadow-2xl overflow-hidden backdrop-blur-2xl bg-[#0a0a0f]/80">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
@@ -734,9 +734,9 @@ export default function DashboardPage() {
 
   if (!selectedServerId) {
     return (
-      <div className="h-[calc(100vh-3rem)] flex items-center justify-center -m-6 p-6">
-        <div className="max-w-xl w-full glass-panel rounded-2xl p-8 border border-white/[0.08]">
-          <h1 className="text-xl font-semibold text-white">
+      <div className="min-h-[calc(100vh-5rem)] lg:h-[calc(100vh-3rem)] flex items-center justify-center -m-4 lg:-m-6 p-4 lg:p-6">
+        <div className="max-w-xl w-full glass-panel rounded-2xl p-6 lg:p-8 border border-white/[0.08]">
+          <h1 className="text-lg lg:text-xl font-semibold text-white">
             No server linked yet
           </h1>
           <p className="mt-2 text-sm text-white/50">
@@ -758,9 +758,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-screen flex gap-6 -m-6 overflow-hidden">
-      {/* Globe Section - Left */}
-      <div className="flex-1 relative">
+    <div className="min-h-screen lg:h-screen flex flex-col lg:flex-row gap-4 lg:gap-6 -m-4 lg:-m-6 overflow-x-hidden">
+      {/* Globe Section - Left on desktop, top on mobile */}
+      <div className="flex-1 relative h-[50vh] lg:h-auto min-h-[300px]">
         <AnimatedGlobe
           players={players}
           activePlayers={activePlayers}
@@ -776,19 +776,19 @@ export default function DashboardPage() {
         )}
 
         {/* Overlay HUD elements */}
-        <div className="absolute top-6 left-6 right-6 z-10">
+        <div className="absolute top-4 left-4 right-4 lg:top-6 lg:left-6 lg:right-6 z-10">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-medium text-white/90">
+              <h1 className="text-base lg:text-lg font-medium text-white/90">
                 Global Monitor
               </h1>
-              <p className="text-xs text-white/40">
+              <p className="text-[10px] lg:text-xs text-white/40">
                 Real-time threat detection
               </p>
             </div>
-            <div className="glass-panel px-3 py-1.5 rounded-full">
-              <span className="text-[10px] text-emerald-400 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="glass-panel px-2 py-1 lg:px-3 lg:py-1.5 rounded-full">
+              <span className="text-[9px] lg:text-[10px] text-emerald-400 flex items-center gap-1 lg:gap-1.5">
+                <span className="w-1 h-1 lg:w-1.5 lg:h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 LIVE
               </span>
             </div>
@@ -803,15 +803,15 @@ export default function DashboardPage() {
         )}
 
         {error && (
-          <div className="absolute bottom-20 left-6 right-6 z-20">
+          <div className="absolute bottom-20 lg:bottom-20 left-4 right-4 lg:left-6 lg:right-6 z-20">
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
               {error}
             </div>
           </div>
         )}
 
-        {/* Bottom stats bar */}
-        <div className="absolute bottom-6 left-6 right-6">
+        {/* Bottom stats bar - hidden on mobile, shown below globe on desktop */}
+        <div className="hidden lg:block absolute bottom-6 left-6 right-6">
           <div className="grid grid-cols-4 gap-4">
             <StatPanel
               label="Detections"
@@ -841,8 +841,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Right Panel */}
-      <div className="w-72 flex flex-col gap-3 pt-[52px] pb-6 pr-6">
+      {/* Right Panel - below globe on mobile, right side on desktop */}
+      <div className="w-full lg:w-72 flex flex-col gap-3 px-4 pb-4 lg:px-0 lg:pt-[52px] lg:pb-6 lg:pr-6">
         {/* Recent Findings - 50% */}
         <div className="glass-panel rounded-xl flex-1 flex flex-col">
           <div className="px-4 py-3 border-b border-white/[0.06]">
@@ -1070,6 +1070,34 @@ export default function DashboardPage() {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Mobile stats grid - shown only on mobile */}
+        <div className="lg:hidden grid grid-cols-2 gap-3">
+          <StatPanel
+            label="Detections"
+            value={stats?.total_findings?.toLocaleString() ?? "—"}
+            trend={
+              stats?.findings_today
+                ? `+${stats.findings_today} today`
+                : undefined
+            }
+          />
+          <StatPanel
+            label="Modules"
+            value={stats?.active_modules ?? "—"}
+            suffix="active"
+          />
+          <StatPanel
+            label="Players"
+            value={stats?.players_monitored ?? "—"}
+            trend="with findings"
+          />
+          <StatPanel
+            label="Latency"
+            value={connectionMetrics?.apiLatencyMs ?? "—"}
+            suffix="ms"
+          />
         </div>
       </div>
     </div>

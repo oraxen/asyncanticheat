@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   RiHome5Line,
   RiShieldCheckLine,
@@ -16,6 +16,8 @@ import {
   RiLogoutBoxRLine,
   RiUserLine,
   RiGroupLine,
+  RiMenuLine,
+  RiCloseLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import type { ServerWorkspace } from "@/types/supabase";
@@ -46,12 +48,65 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const selectedServer = servers.find((s) => s.id === selectedServerId);
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+
   return (
     <>
-      <aside className="fixed left-0 top-0 z-40 flex h-screen w-56 flex-col glass border-r border-white/[0.06]">
+      {/* Mobile header bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between px-4 glass border-b border-white/[0.06] lg:hidden">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500">
+            <span className="text-xs font-bold text-white">A</span>
+          </div>
+          <span className="text-sm font-semibold text-white">AsyncAC</span>
+        </Link>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-lg hover:bg-white/[0.08] transition-colors"
+        >
+          {mobileMenuOpen ? (
+            <RiCloseLine className="h-6 w-6 text-white" />
+          ) : (
+            <RiMenuLine className="h-6 w-6 text-white" />
+          )}
+        </button>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar - desktop: fixed, mobile: drawer */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 flex h-screen w-56 flex-col glass border-r border-white/[0.06]",
+          "lg:translate-x-0 transition-transform duration-200 ease-out",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}
+      >
         {/* Logo */}
         <div className="flex h-14 items-center px-4">
           <Link href="/" className="flex items-center gap-2.5">
@@ -136,6 +191,7 @@ export function Sidebar({
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                     isActive

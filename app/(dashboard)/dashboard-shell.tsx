@@ -117,8 +117,8 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
   if (!mounted) {
     return (
       <div className="flex min-h-screen surface-0">
-        <div className="w-56 glass border-r border-white/[0.06]" />
-        <main className="flex-1 p-6" />
+        <div className="hidden lg:block w-56 glass border-r border-white/[0.06]" />
+        <main className="flex-1 p-4 pt-[72px] lg:pt-6 lg:p-6" />
       </div>
     );
   }
@@ -133,7 +133,8 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
           user={user}
           onSignOut={handleSignOut}
         />
-        <main className="flex-1 ml-56 p-6">{children}</main>
+        {/* Mobile: no margin, add top padding for header. Desktop: margin-left for sidebar */}
+        <main className="flex-1 p-4 pt-[72px] lg:ml-56 lg:pt-6 lg:p-6">{children}</main>
       </div>
     </ServerProvider>
   );

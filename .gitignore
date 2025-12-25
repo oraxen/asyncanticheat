@@ -18,6 +18,9 @@ out/
 # Cursor
 .cursor/
 
+# Claude
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -31,3 +34,6 @@ logs/
 
 # Local config overrides
 local.properties
+
+# Secrets
+secrets.json

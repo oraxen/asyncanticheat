@@ -16,6 +16,9 @@ import {
   formatDetectorCategory,
   formatDetectorScope,
   formatDetectorTier,
+  getModuleName,
+  formatModuleName,
+  getModuleBgColor,
 } from "@/lib/utils";
 import { api, type Finding } from "@/lib/api";
 import { useSelectedServer } from "@/lib/server-context";
@@ -296,10 +299,11 @@ function PlayerHistoryPanel({
                             {(() => {
                               const p = parseDetectorName(finding.detector_name);
                               const tier = formatDetectorTier(p.tier);
+                              const moduleBgColor = getModuleBgColor(p.scope);
                               return (
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-white/60">
-                                    {formatDetectorScope(p.scope)}
+                                  <span className={cn("px-2 py-0.5 rounded text-[10px] border", moduleBgColor)}>
+                                    {formatModuleName(p.scope)}
                                   </span>
                                   <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-white/60">
                                     {formatDetectorCategory(p.category)}
@@ -653,11 +657,12 @@ export default function FindingsPage() {
                       {(() => {
                         const p = parseDetectorName(finding.detector_name);
                         const tier = formatDetectorTier(p.tier);
+                        const moduleBgColor = getModuleBgColor(p.scope);
                         return (
                           <div className="flex flex-col gap-1 min-w-0">
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-white/60">
-                                {formatDetectorScope(p.scope)}
+                              <span className={cn("px-2 py-0.5 rounded text-[10px] border", moduleBgColor)}>
+                                {formatModuleName(p.scope)}
                               </span>
                               <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-white/60">
                                 {formatDetectorCategory(p.category)}

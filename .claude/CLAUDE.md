@@ -75,12 +75,29 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-Get values from `secrets.json`:
+Get values from `~/minecraft/secrets.json`:
 ```bash
-jq -r '.shared.supabase.url' ../../../secrets.json
-jq -r '.shared.supabase.anon_key' ../../../secrets.json
-jq -r '.shared.supabase.service_role_key' ../../../secrets.json
+jq -r '.shared.supabase.url' ~/minecraft/secrets.json
+jq -r '.shared.supabase.anon_key' ~/minecraft/secrets.json
+jq -r '.shared.supabase.service_role_key' ~/minecraft/secrets.json
 ```
+
+## Development Authentication
+
+The dashboard requires authentication. For local development:
+
+**Dev User Credentials** (from `~/minecraft/secrets.json`):
+```bash
+# Email
+jq -r '.projects.asyncanticheat.website.dev_user.email' ~/minecraft/secrets.json
+# Password
+jq -r '.projects.asyncanticheat.website.dev_user.pass' ~/minecraft/secrets.json
+```
+
+To login during development:
+1. Navigate to `http://localhost:3000/login`
+2. Use email login with the dev user credentials above
+3. Access protected routes like `/dashboard/findings`
 
 ## Conventions
 

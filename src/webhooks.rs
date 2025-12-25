@@ -247,7 +247,11 @@ pub fn spawn_webhook_notifications(
     let mut grouped: HashMap<(String, String), FindingNotification> = HashMap::new();
     for f in findings {
         let key = (f.detector_name.clone(), f.severity.clone());
-        let entry = grouped.entry(key).or_insert_with(|| f.clone());
+        let entry = grouped.entry(key).or_insert_with(|| {
+            let mut base = f.clone();
+            base.occurrences = 0; // Start at 0, will be incremented below
+            base
+        });
         entry.occurrences += f.occurrences;
     }
 

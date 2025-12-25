@@ -352,6 +352,7 @@ async fn ensure_builtin_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx
     let now = chrono::Utc::now();
 
     // Legacy defaults (pre category split) used local ports 4011/4012.
+    // Intermediate tiered modules used ports 4021-4026.
     // Remove them so the dashboard doesn't show outdated legacy module entries forever.
     // (If you intentionally run custom modules on these ports, re-register them under a new name.)
     sqlx::query(
@@ -361,6 +362,12 @@ async fn ensure_builtin_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx
           and (
             (base_url like 'http://127.0.0.1:4011%' or base_url like 'http://localhost:4011%')
             or (base_url like 'http://127.0.0.1:4012%' or base_url like 'http://localhost:4012%')
+            or (base_url like 'http://127.0.0.1:4021%' or base_url like 'http://localhost:4021%')
+            or (base_url like 'http://127.0.0.1:4022%' or base_url like 'http://localhost:4022%')
+            or (base_url like 'http://127.0.0.1:4023%' or base_url like 'http://localhost:4023%')
+            or (base_url like 'http://127.0.0.1:4024%' or base_url like 'http://localhost:4024%')
+            or (base_url like 'http://127.0.0.1:4025%' or base_url like 'http://localhost:4025%')
+            or (base_url like 'http://127.0.0.1:4026%' or base_url like 'http://localhost:4026%')
           )
         "#,
     )
@@ -370,11 +377,16 @@ async fn ensure_builtin_modules(db: &PgPool, server_id: &str) -> Result<(), sqlx
 
     // Deprecated "legacy/combined" modules (ports 4021-4023).
     // We delete them to prevent ingest from reintroducing them for every batch.
+    // Only delete if they're pointing to the legacy localhost ports, not custom hosts.
     sqlx::query(
         r#"
         delete from public.server_modules
         where server_id = $1
           and name in ('Combat Module', 'Movement Module', 'Player Module')
+          and (
+            base_url like 'http://127.0.0.1:402%'
+            or base_url like 'http://localhost:402%'
+          )
         "#,
     )
     .bind(server_id)

@@ -581,6 +581,9 @@ pub async fn create_module(
     let name = req.name.trim().to_string();
     let base_url = req.base_url.trim().to_string();
 
+    if server_id.is_empty() {
+        return Err(ApiError::BadRequest("server_id is required".to_string()));
+    }
     if name.is_empty() {
         return Err(ApiError::BadRequest("name is required".to_string()));
     }
@@ -625,17 +628,31 @@ pub async fn create_module(
         ApiError::Internal
     })?;
 
+    // Query actual detection count for this module
+    let detector_like = format!("{}_%", name.to_ascii_lowercase().replace(' ', "_"));
+    let detections: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COALESCE(SUM(occurrences), 0) FROM public.findings
+        WHERE server_id = $1 AND detector_name LIKE $2
+        "#,
+    )
+    .bind(&server_id)
+    .bind(&detector_like)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or((0,));
+
     Ok(Json(CreateModuleResponse {
         ok: true,
         module: {
             let mut item = ModuleItem {
-            id: row.0,
-            name: row.1,
-            base_url: row.2,
-            enabled: row.3,
-            healthy: row.4.unwrap_or(true),
-            last_error: row.5,
-            detections: 0,
+                id: row.0,
+                name: row.1,
+                base_url: row.2,
+                enabled: row.3,
+                healthy: row.4.unwrap_or(true),
+                last_error: row.5,
+                detections: detections.0,
                 builtin: false,
                 tier: None,
                 default_port: None,

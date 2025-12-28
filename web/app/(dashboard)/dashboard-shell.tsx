@@ -45,11 +45,16 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
       const remoteServers = await api.getServers();
       if (remoteServers.length === 0) {
         // API reachable but user has no linked servers yet.
+        // Clear localStorage to prevent stale entries from reappearing
+        saveServerWorkspaces([]);
         setServers([]);
         setSelectedServerId(null);
         setSelectedWorkspaceId("");
         return;
       } else {
+        // Build server list from remote API, merging with local metadata (names, created_at)
+        // but NOT keeping purely-local entries that don't exist in the API.
+        // This ensures deleted servers don't reappear from stale localStorage.
         const merged: ServerWorkspace[] = remoteServers.map((s) => {
           const local = list.find((l) => l.id === s.id);
           return {
@@ -61,13 +66,6 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
             created_at: local?.created_at || s.last_seen_at || new Date().toISOString(),
           };
         });
-
-        // Keep any purely-local entries that aren't in the remote list (optional)
-        for (const local of list) {
-          if (!merged.some((m) => m.id === local.id)) {
-            merged.push(local);
-          }
-        }
 
         list = merged;
         saveServerWorkspaces(list);

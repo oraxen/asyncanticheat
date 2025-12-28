@@ -23,9 +23,11 @@ Unnatural block placement patterns.
 **Example Finding:**
 ```json
 {
-  "check": "scaffold.pattern",
-  "vl": 35.0,
-  "details": {
+  "detector_name": "player_core_scaffold_pattern",
+  "severity": "high",
+  "title": "Scaffold: 15 placements while moving",
+  "description": "Automated bridge building pattern detected",
+  "evidence_json": {
     "placements_while_moving": 15,
     "average_placement_interval_ms": 45,
     "look_direction_changes": 0
@@ -67,9 +69,11 @@ Breaking blocks too quickly.
 **Example Finding:**
 ```json
 {
-  "check": "nuker.speed",
-  "vl": 50.0,
-  "details": {
+  "detector_name": "player_core_nuker_speed",
+  "severity": "critical",
+  "title": "Nuker: 50ms break time (expected 750ms)",
+  "description": "Block broken significantly faster than possible",
+  "evidence_json": {
     "break_time_ms": 50,
     "expected_time_ms": 750,
     "block_type": "stone",
@@ -103,9 +107,11 @@ Placing blocks faster than allowed.
 **Example Finding:**
 ```json
 {
-  "check": "fastplace.rate",
-  "vl": 25.0,
-  "details": {
+  "detector_name": "player_advanced_fastplace_rate",
+  "severity": "medium",
+  "title": "FastPlace: 25 blocks/sec",
+  "description": "Block placement rate exceeds maximum allowed",
+  "evidence_json": {
     "placements_per_second": 25,
     "max_allowed": 20
   }
@@ -137,9 +143,11 @@ Unnatural inventory click patterns.
 **Example Finding:**
 ```json
 {
-  "check": "inventory.pattern",
-  "vl": 30.0,
-  "details": {
+  "detector_name": "player_advanced_inventory_pattern",
+  "severity": "high",
+  "title": "Inventory: 35 CPS across 20 slots",
+  "description": "Unnatural inventory click pattern detected",
+  "evidence_json": {
     "clicks_per_second": 35,
     "unique_slots_clicked": 20,
     "time_window_ms": 100
@@ -174,9 +182,11 @@ Game running faster than normal.
 **Example Finding:**
 ```json
 {
-  "check": "timer.speed",
-  "vl": 40.0,
-  "details": {
+  "detector_name": "movement_advanced_timer_speed",
+  "severity": "high",
+  "title": "Timer: 1.25x speed",
+  "description": "Game running faster than normal tick rate",
+  "evidence_json": {
     "packets_per_second": 25,
     "expected": 20,
     "speed_multiplier": 1.25

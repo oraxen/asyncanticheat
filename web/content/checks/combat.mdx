@@ -29,9 +29,11 @@ Attack reach beyond vanilla limits.
 **Example Finding:**
 ```json
 {
-  "check": "reach.attack",
-  "vl": 35.0,
-  "details": {
+  "detector_name": "combat_core_reach_attack",
+  "severity": "high",
+  "title": "Reach: 4.2 blocks",
+  "description": "Attack distance exceeded maximum allowed reach",
+  "evidence_json": {
     "distance": 4.2,
     "max_allowed": 3.0,
     "attacker_pos": {"x": 100, "y": 64, "z": 200},
@@ -65,9 +67,11 @@ Unnatural attack patterns.
 **Example Finding:**
 ```json
 {
-  "check": "killaura.pattern",
-  "vl": 45.0,
-  "details": {
+  "detector_name": "combat_core_killaura_pattern",
+  "severity": "critical",
+  "title": "Killaura: 18.5 APS, 5 targets",
+  "description": "Detected automated attack pattern with rapid target switching",
+  "evidence_json": {
     "attacks_per_second": 18.5,
     "target_switches": 5,
     "average_interval_ms": 54
@@ -109,9 +113,11 @@ Horizontal knockback reduction/cancellation.
 **Example Finding:**
 ```json
 {
-  "check": "velocity.horizontal",
-  "vl": 40.0,
-  "details": {
+  "detector_name": "combat_advanced_velocity_horizontal",
+  "severity": "high",
+  "title": "Velocity: 87.5% reduction",
+  "description": "Horizontal knockback significantly reduced",
+  "evidence_json": {
     "expected_kb": 0.4,
     "actual_kb": 0.05,
     "reduction_percent": 87.5
@@ -152,9 +158,11 @@ Clicks per second analysis.
 **Example Finding:**
 ```json
 {
-  "check": "autoclicker.cps",
-  "vl": 30.0,
-  "details": {
+  "detector_name": "combat_advanced_autoclicker_cps",
+  "severity": "high",
+  "title": "AutoClicker: 22.5 CPS",
+  "description": "Click rate exceeds human capability with low variance",
+  "evidence_json": {
     "cps": 22.5,
     "variance": 0.3,
     "sample_duration_ms": 5000

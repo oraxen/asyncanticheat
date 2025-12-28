@@ -118,6 +118,10 @@ async fn main() -> anyhow::Result<()> {
             "/dashboard/:server_id/status",
             get(routes::dashboard::get_status),
         )
+        .route(
+            "/dashboard/:server_id/modules/audit",
+            get(routes::dashboard::get_module_audit),
+        )
         .layer(middleware::from_fn_with_state(
             state.clone(),
             routes::auth::require_dashboard,

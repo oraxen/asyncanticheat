@@ -541,6 +541,37 @@ pub async fn toggle_module(
     Json(req): Json<ToggleModuleRequest>,
 ) -> Result<Json<ToggleModuleResponse>, ApiError> {
     let server_id = server_id.trim().to_string();
+
+    // Log the toggle request for debugging
+    tracing::info!(
+        server_id = %server_id,
+        module_id = %module_id,
+        new_enabled = %req.enabled,
+        "toggle_module called via dashboard API"
+    );
+
+    // First, get the current state for logging
+    let current: Option<(bool, String)> = sqlx::query_as(
+        "SELECT enabled, name FROM public.server_modules WHERE id = $1 AND server_id = $2",
+    )
+    .bind(module_id)
+    .bind(&server_id)
+    .fetch_optional(&state.db)
+    .await
+    .ok()
+    .flatten();
+
+    if let Some((old_enabled, module_name)) = &current {
+        tracing::info!(
+            server_id = %server_id,
+            module_id = %module_id,
+            module_name = %module_name,
+            old_enabled = %old_enabled,
+            new_enabled = %req.enabled,
+            "module enabled state change"
+        );
+    }
+
     sqlx::query(
         "UPDATE public.server_modules SET enabled = $1, updated_at = NOW() WHERE id = $2 AND server_id = $3",
     )
@@ -904,4 +935,107 @@ pub async fn get_status(
             server_address,
         },
     }))
+}
+
+// ============================================================================
+// Module Audit Log Endpoint
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+pub struct ModuleAuditEntry {
+    pub id: String,
+    pub created_at: String,
+    pub module_id: String,
+    pub module_name: String,
+    pub old_enabled: Option<bool>,
+    pub new_enabled: Option<bool>,
+    pub operation: String,
+    pub application_name: Option<String>,
+    pub client_addr: Option<String>,
+    pub query_preview: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ModuleAuditResponse {
+    pub ok: bool,
+    pub entries: Vec<ModuleAuditEntry>,
+}
+
+/// GET /dashboard/:server_id/modules/audit
+///
+/// Returns recent audit log entries for module enabled changes.
+pub async fn get_module_audit(
+    State(state): State<AppState>,
+    Path(server_id): Path<String>,
+) -> Result<Json<ModuleAuditResponse>, ApiError> {
+    let server_id = server_id.trim().to_string();
+
+    let rows: Vec<(
+        Uuid,
+        chrono::DateTime<chrono::Utc>,
+        Uuid,
+        String,
+        Option<bool>,
+        Option<bool>,
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    )> = sqlx::query_as(
+        r#"
+        SELECT
+            id,
+            created_at,
+            module_id,
+            module_name,
+            old_enabled,
+            new_enabled,
+            operation,
+            application_name,
+            client_addr,
+            query_preview
+        FROM public.module_enabled_audit
+        WHERE server_id = $1
+        ORDER BY created_at DESC
+        LIMIT 100
+        "#,
+    )
+    .bind(&server_id)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("get module audit failed: {:?}", e);
+        ApiError::Internal
+    })?;
+
+    let entries = rows
+        .into_iter()
+        .map(
+            |(
+                id,
+                created_at,
+                module_id,
+                module_name,
+                old_enabled,
+                new_enabled,
+                operation,
+                application_name,
+                client_addr,
+                query_preview,
+            )| ModuleAuditEntry {
+                id: id.to_string(),
+                created_at: created_at.to_rfc3339(),
+                module_id: module_id.to_string(),
+                module_name,
+                old_enabled,
+                new_enabled,
+                operation,
+                application_name,
+                client_addr,
+                query_preview,
+            },
+        )
+        .collect();
+
+    Ok(Json(ModuleAuditResponse { ok: true, entries }))
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   RiSearchLine,
@@ -18,10 +18,10 @@ import {
   getModuleName,
   getModuleColorClass,
 } from "@/lib/utils";
-import { api, type Finding } from "@/lib/api";
+import { type Finding } from "@/lib/api";
 import { useSelectedServer } from "@/lib/server-context";
 import { ReportFalsePositiveDialog } from "@/components/dashboard/report-false-positive-dialog";
-import { createClient } from "@/lib/supabase/client";
+import { useFindings, useFalsePositiveReports } from "@/lib/hooks/use-dashboard-data";
 
 const severityColors = {
   low: "text-blue-400",
@@ -171,9 +171,10 @@ function PlayerHistoryPanel({
     <div className="flex flex-col h-full animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-4 p-5 border-b border-white/[0.06]">
+        {/* cursor-pointer: Ensures pointer cursor on clickable buttons for better UX */}
         <button
           onClick={onClose}
-          className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors group"
+          className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors group cursor-pointer"
         >
           <RiArrowLeftLine className="w-4 h-4 text-white/40 group-hover:text-white/80 transition-colors" />
         </button>
@@ -183,7 +184,7 @@ function PlayerHistoryPanel({
         </div>
         <button
           onClick={onClose}
-          className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors group"
+          className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors group cursor-pointer"
         >
           <RiCloseLine className="w-4 h-4 text-white/40 group-hover:text-white/80 transition-colors" />
         </button>
@@ -342,7 +343,7 @@ function PlayerHistoryPanel({
                                     e.stopPropagation();
                                     onReportFalsePositive(finding);
                                   }}
-                                  className="opacity-0 group-hover/item:opacity-100 p-1 rounded hover:bg-white/[0.08] text-white/40 hover:text-amber-400 transition-all"
+                                  className="opacity-0 group-hover/item:opacity-100 p-1 rounded hover:bg-white/[0.08] text-white/40 hover:text-amber-400 transition-all cursor-pointer"
                                   title="Report as false positive"
                                 >
                                   <RiFlagLine className="h-3.5 w-3.5" />
@@ -407,17 +408,23 @@ export default function FindingsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
-  const [findings, setFindings] = useState<Finding[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const fetchIdRef = useRef(0);
-  const fpFetchIdRef = useRef(0);
+
+  // Use SWR hooks for cached data fetching
+  const {
+    findings,
+    error,
+    isLoading: loading,
+  } = useFindings(selectedServerId, {
+    severity: filter || undefined,
+    player: deepLinkPlayer || undefined,
+    limit: 100,
+  });
+
+  const { reportedFindingIds, addReport } = useFalsePositiveReports(selectedServerId);
 
   // False positive report dialog state
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedFindingForReport, setSelectedFindingForReport] = useState<Finding | null>(null);
-  // Track finding IDs that have been reported as false positives
-  const [reportedFindingIds, setReportedFindingIds] = useState<Set<string>>(new Set());
 
   const handleReportFalsePositive = useCallback((finding: Finding) => {
     setSelectedFindingForReport(finding);
@@ -426,101 +433,8 @@ export default function FindingsPage() {
 
   // Handle successful false positive report submission
   const handleReportSuccess = useCallback((findingId: string) => {
-    setReportedFindingIds(prev => new Set([...prev, findingId]));
-  }, []);
-
-  // Fetch findings from API - refetch when filter OR server changes
-  useEffect(() => {
-    // If there's no server selected (e.g., server removed), don't get stuck loading
-    if (!selectedServerId) {
-      setFindings([]);
-      setSelectedPlayer(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-
-    // Capture serverId for async closures (TypeScript narrowing)
-    const serverId = selectedServerId;
-    
-    const fetchId = ++fetchIdRef.current;
-
-    async function fetchFindings() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const params: { severity?: string; player?: string; limit?: number } = {
-          limit: 100,
-        };
-        if (filter) params.severity = filter;
-        if (deepLinkPlayer) params.player = deepLinkPlayer;
-
-        const { findings: data } = await api.getFindings(
-          serverId,
-          params
-        );
-
-        // Guard against stale responses from out-of-order requests
-        if (fetchId !== fetchIdRef.current) return;
-
-        setFindings(data);
-      } catch (err) {
-        // Guard against stale error handling
-        if (fetchId !== fetchIdRef.current) return;
-
-        console.error("Failed to fetch findings:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load findings"
-        );
-      } finally {
-        // Guard against stale loading state
-        if (fetchId === fetchIdRef.current) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchFindings();
-  }, [filter, selectedServerId, deepLinkPlayer]);
-
-  // Fetch existing false positive reports for the current server
-  useEffect(() => {
-    if (!selectedServerId) {
-      setReportedFindingIds(new Set());
-      return;
-    }
-
-    const fetchId = ++fpFetchIdRef.current;
-
-    async function fetchReportedFindings() {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("false_positive_reports")
-          .select("finding_id")
-          .eq("server_id", selectedServerId);
-
-        // Guard against stale responses from out-of-order requests
-        if (fetchId !== fpFetchIdRef.current) return;
-
-        if (error) {
-          console.error("Failed to fetch false positive reports:", error);
-          return;
-        }
-
-        if (data) {
-          setReportedFindingIds(new Set(data.map((r) => r.finding_id)));
-        }
-      } catch (err) {
-        // Guard against stale error handling
-        if (fetchId !== fpFetchIdRef.current) return;
-        console.error("Failed to fetch false positive reports:", err);
-      }
-    }
-
-    fetchReportedFindings();
-  }, [selectedServerId]);
+    addReport(findingId);
+  }, [addReport]);
 
   // Check for player query param on mount
   useEffect(() => {
@@ -643,14 +557,14 @@ export default function FindingsPage() {
             />
           </div>
 
-          {/* Filters */}
+          {/* Filters - cursor-pointer ensures proper hover cursor on filter buttons */}
           <div className="flex items-center gap-1 p-1 rounded-lg bg-white/[0.02]">
             {[null, "low", "medium", "high", "critical"].map((s) => (
               <button
                 key={s ?? "all"}
                 onClick={() => setFilter(s)}
                 className={cn(
-                  "px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize",
+                  "px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize cursor-pointer",
                   filter === s
                     ? "bg-white/[0.08] text-white"
                     : "text-white/40 hover:text-white/60"
@@ -667,7 +581,7 @@ export default function FindingsPage() {
       {error && (
         <div className="m-5">
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
-            {error}
+            {error?.message || "An error occurred"}
           </div>
         </div>
       )}
@@ -708,8 +622,20 @@ export default function FindingsPage() {
       {!loading && !error && (
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 && (
-            <div className="flex items-center justify-center h-full text-white/40 text-sm">
-              No findings found
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              {findings.length === 0 ? (
+                <>
+                  <RiAlertLine className="w-12 h-12 text-white/20" />
+                  <div className="text-center">
+                    <p className="text-white/50 text-sm font-medium">No findings yet</p>
+                    <p className="text-white/30 text-xs mt-1">
+                      Findings will appear here when detections occur
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-white/40 text-sm">No findings match your filters</p>
+              )}
             </div>
           )}
           <div className="divide-y divide-white/[0.04]">
@@ -734,7 +660,7 @@ export default function FindingsPage() {
                     onClick={() =>
                       setSelectedPlayer(finding.player_name || "Unknown")
                     }
-                    className="flex items-center gap-4 flex-1 min-w-0"
+                    className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
                   >
                     <div
                       className={cn(
@@ -819,7 +745,7 @@ export default function FindingsPage() {
                   ) : (
                     <button
                       onClick={() => handleReportFalsePositive(finding)}
-                      className="opacity-0 group-hover/row:opacity-100 p-2 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-amber-400 transition-all flex-shrink-0"
+                      className="opacity-0 group-hover/row:opacity-100 p-2 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-amber-400 transition-all flex-shrink-0 cursor-pointer"
                       title="Report as false positive"
                     >
                       <RiFlagLine className="h-4 w-4" />

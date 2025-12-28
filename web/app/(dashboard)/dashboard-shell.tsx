@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { ServerProvider } from "@/lib/server-context";
@@ -35,79 +35,83 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
     router.refresh();
   };
 
+  // Fetch and sync server list from API
+  const refreshServers = useCallback(async () => {
+    let list = loadServerWorkspaces();
+
+    // Prefer servers discovered from the API (real plugin server_id values).
+    // Fallback to local storage when API is unavailable.
+    try {
+      const remoteServers = await api.getServers();
+      if (remoteServers.length === 0) {
+        // API reachable but user has no linked servers yet.
+        // Clear localStorage to prevent stale entries from reappearing
+        saveServerWorkspaces([]);
+        setServers([]);
+        setSelectedServerId(null);
+        setSelectedWorkspaceId("");
+        return;
+      } else {
+        // Build server list from remote API, merging with local metadata (names, created_at)
+        // but NOT keeping purely-local entries that don't exist in the API.
+        // This ensures deleted servers don't reappear from stale localStorage.
+        const merged: ServerWorkspace[] = remoteServers.map((s) => {
+          const local = list.find((l) => l.id === s.id);
+          return {
+            id: s.id,
+            name:
+              local?.name ||
+              s.name ||
+              `Server ${s.id.slice(0, 8)}`,
+            created_at: local?.created_at || s.last_seen_at || new Date().toISOString(),
+          };
+        });
+
+        list = merged;
+        saveServerWorkspaces(list);
+      }
+    } catch {
+      // API unavailable: keep local list; if empty, create a demo/default entry.
+      if (list.length === 0) {
+        const defaultServer: ServerWorkspace = {
+          id: newWorkspaceId(),
+          name: "My Server",
+          created_at: new Date().toISOString(),
+        };
+        list = [defaultServer];
+        saveServerWorkspaces(list);
+        setSelectedWorkspaceId(defaultServer.id);
+      }
+    }
+
+    setServers(list);
+    // Verify stored selection exists in list, fallback to first server
+    const storedId = getSelectedWorkspaceId();
+    const validId =
+      storedId && list.some((s) => s.id === storedId)
+        ? storedId
+        : (list[0]?.id ?? null);
+    setSelectedServerId(validId);
+    if (validId) {
+      setSelectedWorkspaceId(validId);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
     async function init() {
-      let list = loadServerWorkspaces();
-
-      // Prefer servers discovered from the API (real plugin server_id values).
-      // Fallback to local storage when API is unavailable.
-      try {
-        const remoteServers = await api.getServers();
-        if (remoteServers.length === 0) {
-          // API reachable but user has no linked servers yet.
-          if (cancelled) return;
-          setServers([]);
-          setSelectedServerId(null);
-          setSelectedWorkspaceId("");
-          setMounted(true);
-          return;
-        } else {
-          const merged: ServerWorkspace[] = remoteServers.map((s) => {
-            const local = list.find((l) => l.id === s.id);
-            return {
-              id: s.id,
-              name:
-                local?.name ||
-                s.name ||
-                `Server ${s.id.slice(0, 8)}`,
-              created_at: local?.created_at || s.last_seen_at || new Date().toISOString(),
-            };
-          });
-
-          // Keep any purely-local entries that aren't in the remote list (optional)
-          for (const local of list) {
-            if (!merged.some((m) => m.id === local.id)) {
-              merged.push(local);
-            }
-          }
-
-          list = merged;
-          saveServerWorkspaces(list);
-        }
-      } catch {
-        // API unavailable: keep local list; if empty, create a demo/default entry.
-        if (list.length === 0) {
-          const defaultServer: ServerWorkspace = {
-            id: newWorkspaceId(),
-            name: "My Server",
-            created_at: new Date().toISOString(),
-          };
-          list = [defaultServer];
-          saveServerWorkspaces(list);
-          setSelectedWorkspaceId(defaultServer.id);
-        }
+      await refreshServers();
+      if (!cancelled) {
+        setMounted(true);
       }
-
-      if (cancelled) return;
-
-      setServers(list);
-      // Verify stored selection exists in list, fallback to first server
-      const storedId = getSelectedWorkspaceId();
-      const validId =
-        storedId && list.some((s) => s.id === storedId)
-          ? storedId
-          : (list[0]?.id ?? null);
-      setSelectedServerId(validId);
-      setMounted(true);
     }
 
     init();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshServers]);
 
   const handleServerSelect = (id: string) => {
     setSelectedServerId(id);
@@ -124,7 +128,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
   }
 
   return (
-    <ServerProvider selectedServerId={selectedServerId}>
+    <ServerProvider selectedServerId={selectedServerId} refreshServers={refreshServers}>
       <div className="flex min-h-screen surface-0">
         <Sidebar
           servers={servers}

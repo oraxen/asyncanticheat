@@ -208,7 +208,16 @@ pub async fn ingest(
     let payload_bytes: i32 = body.len().try_into().unwrap_or(i32::MAX);
 
     // Generate the S3 key upfront (deterministic, doesn't require upload)
-    let s3_key = crate::s3::ObjectStore::batch_key(&server_id, &session_id, &batch_id);
+    // Returns None if server_id or session_id sanitizes to empty (e.g., malicious "../../../")
+    let s3_key = crate::s3::ObjectStore::batch_key(&server_id, &session_id, &batch_id)
+        .ok_or_else(|| {
+            tracing::warn!(
+                server_id = %server_id,
+                session_id = %session_id,
+                "Invalid server_id or session_id: sanitizes to empty string"
+            );
+            ApiError::BadRequest("Invalid server_id or session_id: sanitizes to empty string".into())
+        })?;
 
     // --- DB operations FIRST to avoid orphaned S3 objects on failure ---
     // Upsert server identity (registered servers only reach this point).

@@ -53,6 +53,9 @@ pub async fn upsert_module(
 ) -> Result<Json<ServerModule>, ApiError> {
     require_ingest_auth(&state, &headers)?;
 
+    // Normalize server_id once to ensure consistent usage
+    let server_id = server_id.trim();
+
     // Ensure the server exists so FK constraints don't block module registration.
     sqlx::query(
         r#"
@@ -61,7 +64,7 @@ pub async fn upsert_module(
         on conflict (id) do update set last_seen_at = now()
         "#,
     )
-    .bind(server_id.trim())
+    .bind(server_id)
     .execute(&state.db)
     .await
     .map_err(|e| {

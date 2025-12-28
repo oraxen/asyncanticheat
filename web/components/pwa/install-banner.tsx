@@ -55,7 +55,7 @@ export function PWAInstallBanner() {
           </div>
           <button
             onClick={update}
-            className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-medium transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-medium transition-colors cursor-pointer"
           >
             Update
           </button>
@@ -97,13 +97,13 @@ export function PWAInstallBanner() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={handleInstall}
-            className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium transition-colors cursor-pointer"
           >
             Install
           </button>
           <button
             onClick={handleDismiss}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors cursor-pointer"
             aria-label="Dismiss"
           >
             <RiCloseLine className="h-4 w-4" />

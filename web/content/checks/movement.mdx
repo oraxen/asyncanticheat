@@ -30,9 +30,11 @@ Horizontal speed while on the ground.
 **Example Finding:**
 ```json
 {
-  "check": "speed.ground",
-  "vl": 25.5,
-  "details": {
+  "detector_name": "movement_core_speed_ground",
+  "severity": "high",
+  "title": "Ground speed: 0.85 b/tick",
+  "description": "Moving faster than max allowed speed on ground",
+  "evidence_json": {
     "distance": 0.85,
     "max_allowed": 0.52,
     "has_speed_effect": true,
@@ -75,9 +77,11 @@ Flying in survival/adventure mode.
 **Example Finding:**
 ```json
 {
-  "check": "fly.survival",
-  "vl": 50.0,
-  "details": {
+  "detector_name": "movement_core_fly_survival",
+  "severity": "critical",
+  "title": "Survival flight: 120 ticks airborne",
+  "description": "Sustained flight detected without elytra or creative mode",
+  "evidence_json": {
     "airtime_ticks": 120,
     "average_y_delta": 0.001,
     "expected": "falling"
@@ -119,9 +123,11 @@ Spoofing on_ground flag to avoid damage.
 **Example Finding:**
 ```json
 {
-  "check": "nofall.ground",
-  "vl": 30.0,
-  "details": {
+  "detector_name": "movement_core_nofall_ground",
+  "severity": "high",
+  "title": "NoFall: 15.5 block fall without damage",
+  "description": "Player claimed on_ground during significant fall",
+  "evidence_json": {
     "claimed_ground": true,
     "fall_distance": 15.5,
     "y_position": 64.0
@@ -167,9 +173,11 @@ Stepping up more than allowed.
 **Example Finding:**
 ```json
 {
-  "check": "step.height",
-  "vl": 20.0,
-  "details": {
+  "detector_name": "movement_advanced_step_height",
+  "severity": "medium",
+  "title": "Step height: 1.5 blocks",
+  "description": "Stepped up more than maximum allowed height",
+  "evidence_json": {
     "step_height": 1.5,
     "max_allowed": 0.6,
     "on_ground_before": true

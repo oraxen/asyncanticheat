@@ -72,7 +72,7 @@ def process_batch_async(batch_id, server_id, session_id, packets):
     
     # Submit findings
     if findings:
-        submit_findings(batch_id, server_id, findings)
+        submit_findings(batch_id, server_id, session_id, findings)
 ```
 
 ## Step 3: Analyze Packets
@@ -93,26 +93,37 @@ def analyze_player(uuid, packets):
     for i in range(1, len(movements)):
         prev = movements[i-1]
         curr = movements[i]
-        
+
         dx = curr['data']['x'] - prev['data']['x']
         dz = curr['data']['z'] - prev['data']['z']
         distance = (dx**2 + dz**2) ** 0.5
-        
+
         # Maximum vanilla sprint speed is ~0.28 blocks/tick
         # With 50ms between packets, max is ~0.56
         if distance > 0.7 and curr['data'].get('on_ground', True):
+            # Determine severity based on how egregious the violation is
+            if distance > 2.0:
+                severity = 'critical'
+            elif distance > 1.2:
+                severity = 'high'
+            elif distance > 0.9:
+                severity = 'medium'
+            else:
+                severity = 'low'
+
             findings.append({
                 'player_uuid': uuid,
-                'player_name': curr['player']['name'],
-                'check': 'speed.ground',
-                'vl': distance * 10,
-                'details': {
+                'detector_name': 'speed_ground',
+                'detector_version': '1.0.0',
+                'severity': severity,
+                'title': f'Speed violation: {distance:.2f} blocks/tick',
+                'description': 'Player moving faster than allowed threshold on ground',
+                'evidence_json': {
                     'distance': distance,
                     'expected_max': 0.56
-                },
-                'timestamp': curr['timestamp']
+                }
             })
-    
+
     return findings
 ```
 
@@ -123,7 +134,7 @@ Send findings to the API callback:
 ```python
 import requests
 
-def submit_findings(batch_id, server_id, findings):
+def submit_findings(batch_id, server_id, session_id, findings):
     response = requests.post(
         'https://api.asyncanticheat.com/callbacks/findings',
         headers={
@@ -131,8 +142,9 @@ def submit_findings(batch_id, server_id, findings):
             'Content-Type': 'application/json'
         },
         json={
-            'batch_id': batch_id,
             'server_id': server_id,
+            'session_id': session_id,
+            'batch_id': batch_id,
             'findings': findings
         }
     )
@@ -244,23 +256,27 @@ def process_batch(batch_id, server_id, session_id, data):
 def check_speed(uuid, packets):
     findings = []
     movements = [p for p in packets if 'POSITION' in p['type']]
-    
+
     for i in range(1, len(movements)):
         prev, curr = movements[i-1], movements[i]
         dx = curr['data']['x'] - prev['data']['x']
         dz = curr['data']['z'] - prev['data']['z']
         dist = (dx**2 + dz**2) ** 0.5
-        
+
         if dist > 0.7 and curr['data'].get('on_ground', True):
+            # Determine severity based on violation magnitude
+            severity = 'critical' if dist > 2.0 else 'high' if dist > 1.2 else 'medium' if dist > 0.9 else 'low'
+
             findings.append({
                 'player_uuid': uuid,
-                'player_name': curr['player']['name'],
-                'check': 'speed.ground',
-                'vl': dist * 10,
-                'details': {'distance': dist},
-                'timestamp': curr['timestamp']
+                'detector_name': 'speed_ground',
+                'detector_version': '1.0.0',
+                'severity': severity,
+                'title': f'Speed: {dist:.2f} b/tick',
+                'description': 'Movement speed exceeded threshold',
+                'evidence_json': {'distance': dist}
             })
-    
+
     return findings
 
 if __name__ == '__main__':

@@ -11,7 +11,8 @@ import {
   RiAlertLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
-import { useSelectedServer } from "@/lib/server-context";
+import { useSelectedServer, useRefreshServers } from "@/lib/server-context";
+import { SettingsSkeleton } from "@/components/ui/skeleton";
 
 // Toggle Switch Component
 function Toggle({
@@ -55,11 +56,32 @@ function DeleteDialog({
   onConfirm: () => void;
   loading: boolean;
 }) {
+  // Handle escape key to close dialog
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !loading) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, loading, onClose]);
+
+  // Prevent body scroll when dialog is open
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
+      <div className="absolute inset-0 bg-black/60" onClick={loading ? undefined : onClose} />
       <div className="relative z-10 w-full max-w-md rounded-lg border border-[rgb(var(--border))] surface-1 p-6 shadow-2xl">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
@@ -82,14 +104,14 @@ function DeleteDialog({
           <button
             onClick={onClose}
             disabled={loading}
-            className="rounded-md border border-[rgb(var(--border))] px-4 py-2 text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:border-[rgb(var(--border-elevated))] disabled:opacity-50 transition-colors"
+            className="rounded-md border border-[rgb(var(--border))] px-4 py-2 text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:border-[rgb(var(--border-elevated))] disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="rounded-md bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+            className="rounded-md bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
           >
             {loading && <RiLoader4Line className="h-4 w-4 animate-spin" />}
             Delete Server
@@ -109,6 +131,7 @@ interface ServerSettings {
 export default function SettingsPage() {
   const router = useRouter();
   const serverId = useSelectedServer();
+  const refreshServers = useRefreshServers();
 
   // Settings state
   const [loading, setLoading] = useState(true);
@@ -263,23 +286,11 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        // Clear local storage and redirect
-        const STORAGE_KEY = "async_anticheat_servers";
-        const SELECTED_KEY = "async_anticheat_selected_server";
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) {
-            const servers = JSON.parse(raw);
-            const filtered = servers.filter((s: { id: string }) => s.id !== serverId);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-          }
-          localStorage.removeItem(SELECTED_KEY);
-        } catch {
-          // Ignore localStorage errors
-        }
-
+        // Refresh the server list from the API - this will update the sidebar
+        // and auto-select the next available server (or clear selection if none)
+        await refreshServers();
+        // Navigate to dashboard root (will show the newly selected server or empty state)
         router.push("/dashboard");
-        router.refresh();
       }
     } catch (err) {
       console.error("Failed to delete server:", err);
@@ -291,8 +302,8 @@ export default function SettingsPage() {
 
   if (!serverId) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="rounded-lg border border-[rgb(var(--border))] surface-1 p-8 text-center">
+      <div className="h-full flex items-center justify-center">
+        <div className="rounded-lg border border-[rgb(var(--border))] surface-1 p-8 text-center max-w-md">
           <p className="text-sm text-[rgb(var(--foreground-secondary))]">
             No server selected. Please select a server from the sidebar.
           </p>
@@ -302,11 +313,7 @@ export default function SettingsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="max-w-2xl mx-auto flex items-center justify-center py-12">
-        <RiLoader4Line className="h-6 w-6 animate-spin text-[rgb(var(--foreground-secondary))]" />
-      </div>
-    );
+    return <SettingsSkeleton />;
   }
 
   return (
@@ -441,7 +448,7 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={() => setShowDeleteDialog(true)}
-              className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-colors"
+              className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
             >
               Delete Server
             </button>

@@ -96,10 +96,37 @@ Requires being logged in as `th0rgal` or having access to the `lfglabs` scope.
 - **PacketEvents**: Shaded into JAR, no separate installation needed
 
 ### API (`api/`)
-- **Build**: `cargo build --release`
 - **Database**: PostgreSQL (schema in `api/schema.sql`)
 - **Routes**: `api/src/routes/` - ingest, callbacks, dashboard
 - **Deployment**: Dedicated server at 95.216.244.60
+
+#### Build Profiles
+
+| Profile | Command | Time | Use Case |
+|---------|---------|------|----------|
+| `dev-release` | `cargo build --profile dev-release` | ~30s | Testing, iteration, quick fixes |
+| `release` | `cargo build --release` | ~5min | Production, final deployment |
+
+**When to use each:**
+- **dev-release**: Use for all development testing, debugging, and iteration. The performance difference is minimal for most workloads.
+- **release**: Use only for final production deployments or performance-critical testing.
+
+#### Deployment Commands
+
+```bash
+cd api
+
+# Fast deploy for testing (dev-release profile)
+make deploy
+
+# Production deploy (full optimization, ~5 min build)
+make deploy-prod
+
+# Other useful commands
+make restart    # Restart the service without rebuilding
+make logs       # Follow live logs
+make status     # Check service status
+```
 
 ### Web (`web/`)
 - **Build**: `bun run build`

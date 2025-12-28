@@ -15,7 +15,7 @@ A **finding** (also called a violation or detection) occurs when a detection mod
 
 - **Player** - Who triggered the detection
 - **Check** - Which specific check flagged them
-- **Severity** - How confident the system is (violation, warning, info)
+- **Severity** - How confident the system is (low, medium, high, critical)
 - **Timestamp** - When it occurred
 - **Count** - How many times this check triggered for this player
 
@@ -32,9 +32,10 @@ Findings are grouped by player and sorted by recency. Each entry shows:
 
 | Level | Color | Meaning |
 |-------|-------|---------|
-| **Violation** | Red | High confidence detection |
-| **Warning** | Amber | Moderate confidence, review recommended |
-| **Info** | Blue | Informational, low confidence |
+| **Critical** | Red | Definitive cheat detection, immediate action recommended |
+| **High** | Orange | Strong indication of cheating |
+| **Medium** | Amber | Moderate suspicion, review recommended |
+| **Low** | Blue | Minor anomaly, possibly legitimate |
 
 ## Player History Panel
 

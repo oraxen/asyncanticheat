@@ -51,36 +51,26 @@ Examples:
 - `fly.creative` - Creative-mode fly detection
 - `reach.attack` - Attack reach violation
 
-## Violation Levels (VL)
+## Severity Levels
 
-Each finding includes a **violation level (VL)** indicating severity:
+Each finding includes a **severity** indicating its seriousness:
 
-| VL Range | Severity | Typical Action |
-|----------|----------|----------------|
-| 0-10 | Low | Log only |
-| 10-25 | Medium | Warn player |
-| 25-50 | High | Kick player |
-| 50+ | Critical | Ban player |
+| Severity | Description | Typical Action |
+|----------|-------------|----------------|
+| `low` | Minor anomaly, possibly legitimate | Log only |
+| `medium` | Moderate suspicion | Warn player |
+| `high` | Strong indication of cheating | Kick player |
+| `critical` | Definitive cheat detection | Ban player |
 
-### VL Thresholds
+Modules determine severity based on the confidence and impact of the detection. Multiple low-severity findings from the same player may indicate a pattern worth investigating.
 
-Configure thresholds per check:
+### Violation Tracking
 
-```yaml
-checks:
-  speed:
-    ground:
-      warn_vl: 15
-      kick_vl: 30
-      ban_vl: 50
-```
-
-### VL Decay
-
-VLs should decay over time to account for false positives:
+Modules can track **violation levels (VL)** internally to accumulate evidence over time before emitting a finding. This is stored in the module's per-player state and decays between batches:
 
 - Typical decay: 1 VL per 10 seconds
 - No violations for 60 seconds: Reset to 0
+- When VL crosses a threshold, a finding is emitted with the appropriate severity
 
 ## Check Feasibility
 

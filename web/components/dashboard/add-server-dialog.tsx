@@ -43,9 +43,10 @@ export function AddServerDialog({ open, onOpenChange, onAdd }: AddServerDialogPr
               <p className="text-xs text-[rgb(var(--foreground-tertiary))]">Connect a Minecraft server</p>
             </div>
           </div>
+          {/* cursor-pointer: Ensures pointer cursor on clickable buttons for better UX */}
           <button
             onClick={() => onOpenChange(false)}
-            className="p-1 rounded hover:bg-white/[0.06] transition-colors"
+            className="p-1 rounded hover:bg-white/[0.06] transition-colors cursor-pointer"
           >
             <RiCloseLine className="h-4 w-4 text-[rgb(var(--foreground-muted))]" />
           </button>
@@ -71,18 +72,19 @@ export function AddServerDialog({ open, onOpenChange, onAdd }: AddServerDialogPr
             After adding, you&apos;ll receive configuration instructions for your AsyncAnticheat plugin.
           </p>
 
+          {/* cursor-pointer: Ensures pointer cursor on clickable buttons for better UX */}
           <div className="flex gap-2 pt-2">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="flex-1 rounded-md border border-[rgb(var(--border))] px-3 py-2 text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:bg-white/[0.04] transition-colors"
+              className="flex-1 rounded-md border border-[rgb(var(--border))] px-3 py-2 text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:bg-white/[0.04] transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!name.trim()}
-              className="flex-1 rounded-md bg-indigo-500 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 rounded-md bg-indigo-500 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               Add Server
             </button>

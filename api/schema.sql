@@ -280,3 +280,49 @@ create index if not exists idx_false_positive_reports_finding
 
 create index if not exists idx_false_positive_reports_server
     on public.false_positive_reports (server_id, created_at desc);
+
+--------------------------------------------------------------------------------
+-- CHEAT_OBSERVATIONS: unified observations from dashboard, in-game, or API
+--------------------------------------------------------------------------------
+-- This table stores cheat observations: recordings, undetected cheats, or
+-- false positive reports. Sources: 'dashboard', 'ingame', 'api'.
+--------------------------------------------------------------------------------
+create table if not exists public.cheat_observations (
+    id uuid primary key default gen_random_uuid(),
+    server_id text not null references public.servers(id) on delete cascade,
+    observation_type text not null check (observation_type in ('false_positive', 'undetected', 'recording')),
+    source text not null default 'dashboard' check (source in ('dashboard', 'ingame', 'api')),
+    player_uuid uuid not null,                   -- target player UUID
+    player_name text,                            -- last known username at observation time
+    cheat_type text,                             -- e.g. 'killaura', 'speed', 'fly'
+    label text,                                  -- custom label/notes
+    started_at timestamptz,                      -- when observation started
+    ended_at timestamptz,                        -- when observation ended
+    finding_id uuid references public.findings(id) on delete set null,  -- linked finding (for false_positive)
+    player_activity text,                        -- what was the player doing
+    suspected_cause text,                        -- suspected cause (for false_positive)
+    session_id text,                             -- link to sessions.session_id
+    additional_context text,                     -- any other info
+    evidence_url text,                           -- URL to video/screenshot evidence
+    reporter_user_id uuid,                       -- dashboard user who reported (auth.users.id)
+    recorded_by_uuid uuid,                       -- staff member who recorded (player UUID)
+    recorded_by_name text,                       -- staff member username
+    status text not null default 'new' check (status in ('new', 'pending', 'reviewed', 'confirmed', 'resolved', 'dismissed')),
+    admin_notes text,                            -- internal notes from reviewers
+    reviewed_at timestamptz,                     -- when observation was reviewed
+    reviewed_by uuid,                            -- auth.users.id of reviewer
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_cheat_observations_server
+    on public.cheat_observations (server_id, created_at desc);
+
+create index if not exists idx_cheat_observations_player
+    on public.cheat_observations (player_uuid, created_at desc);
+
+create index if not exists idx_cheat_observations_type
+    on public.cheat_observations (observation_type, status);
+
+create index if not exists idx_cheat_observations_finding
+    on public.cheat_observations (finding_id);

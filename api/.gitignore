@@ -1,0 +1,43 @@
+test_data
+
+# Rust
+/target/
+modules/*/target/
+**/*.rs.bk
+Cargo.lock
+
+# Environment
+.env
+.env.prod
+.env.local
+*.env.local
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Cursor
+.cursor/
+
+# Claude
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local data
+/data/
+*.db
+*.sqlite
+
+# Logs
+*.log
+logs/
+
+# Local-only detection modules
+modules/
+
+# Deployment scripts (local convenience)
+scripts/

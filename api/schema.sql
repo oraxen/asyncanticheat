@@ -158,7 +158,7 @@ create table if not exists public.findings (
     session_id text,
     detector_name text not null,               -- e.g. "speed_check", "killaura_ml"
     detector_version text,
-    severity text not null default 'info',     -- info, warning, violation, ban
+    severity text not null default 'low',       -- low, medium, high, critical
     title text not null,
     description text,
     evidence_s3_key text,                      -- optional link to relevant batch

@@ -50,9 +50,11 @@ Upload a gzipped NDJSON batch of packets.
 {
   "ok": true,
   "batch_id": "550e8400-e29b-41d4-a716-446655440000",
-  "s3_key": "servers/<server_id>/<session_id>/<batch_id>.ndjson.gz"
+  "s3_key": "events/<server_id>/<YYYY-MM-DD>/<session_id>/<batch_id>.ndjson.gz"
 }
 ```
+
+The S3 key format includes a date partition for efficient lifecycle management and prefix listing.
 
 ## List Modules
 
@@ -122,30 +124,48 @@ Module endpoint to report detected violations.
 
 ```json
 {
-  "batch_id": "550e8400-e29b-41d4-a716-446655440000",
   "server_id": "my-server",
+  "session_id": "session-uuid",
+  "batch_id": "550e8400-e29b-41d4-a716-446655440000",
   "findings": [
     {
-      "player_uuid": "player-uuid",
-      "player_name": "PlayerName",
-      "check": "speed.ground",
-      "vl": 15.5,
-      "details": {
+      "player_uuid": "123e4567-e89b-12d3-a456-426614174000",
+      "detector_name": "movement_core_speed_blatant",
+      "detector_version": "1.0.0",
+      "severity": "high",
+      "title": "Speed violation detected",
+      "description": "Player moving faster than allowed threshold",
+      "evidence_json": {
         "expected_speed": 0.2,
         "actual_speed": 0.8
-      },
-      "timestamp": "2024-01-15T10:30:00Z"
+      }
     }
   ]
 }
 ```
 
+**Fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `server_id` | Yes | Server identifier |
+| `session_id` | No | Session identifier |
+| `batch_id` | No | Batch that triggered this finding |
+| `findings[].player_uuid` | No | Player UUID |
+| `findings[].detector_name` | Yes | Check/detector name (e.g., `combat_core_killaura_multi`) |
+| `findings[].detector_version` | No | Version of the detector |
+| `findings[].severity` | No | Severity level: `low`, `medium`, `high`, `critical` (default: `low`) |
+| `findings[].title` | Yes | Short description of the finding |
+| `findings[].description` | No | Detailed description |
+| `findings[].evidence_s3_key` | No | S3 key to related batch data |
+| `findings[].evidence_json` | No | Structured evidence data |
+
 **Response:**
 
 ```json
 {
-  "status": "ok",
-  "accepted": 1
+  "ok": true,
+  "inserted": 1
 }
 ```
 

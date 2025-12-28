@@ -97,12 +97,17 @@ fn movement_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
         let on_ground = fields.get("on_ground").and_then(|x| x.as_bool());
         let (Some(x), Some(y), Some(z)) = (x, y, z) else { continue };
 
+        // Skip packets with NaN/Infinity coordinates (malicious input).
+        if !x.is_finite() || !y.is_finite() || !z.is_finite() {
+            continue;
+        }
+
         let mut obj = serde_json::Map::new();
         obj.insert("ts".to_string(), Value::Number(ts.into()));
         obj.insert("uuid".to_string(), Value::String(uuid.to_string()));
-        obj.insert("x".to_string(), Value::Number(serde_json::Number::from_f64(x).unwrap()));
-        obj.insert("y".to_string(), Value::Number(serde_json::Number::from_f64(y).unwrap()));
-        obj.insert("z".to_string(), Value::Number(serde_json::Number::from_f64(z).unwrap()));
+        obj.insert("x".to_string(), json_f64(x));
+        obj.insert("y".to_string(), json_f64(y));
+        obj.insert("z".to_string(), json_f64(z));
         if let Some(og) = on_ground {
             obj.insert("on_ground".to_string(), Value::Bool(og));
         }
@@ -114,12 +119,13 @@ fn movement_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
                 let dy = y - prev.y;
                 let dz = z - prev.z;
                 let dist = (dx * dx + dy * dy + dz * dz).sqrt();
-                let bps = dist / (dt_ms / 1000.0);
-                obj.insert("dt_ms".to_string(), Value::Number(serde_json::Number::from_f64(dt_ms).unwrap()));
-                obj.insert("dx".to_string(), Value::Number(serde_json::Number::from_f64(dx).unwrap()));
-                obj.insert("dy".to_string(), Value::Number(serde_json::Number::from_f64(dy).unwrap()));
-                obj.insert("dz".to_string(), Value::Number(serde_json::Number::from_f64(dz).unwrap()));
-                obj.insert("speed_bps".to_string(), Value::Number(serde_json::Number::from_f64(bps).unwrap()));
+                // Avoid division by zero; if dt_ms is 0, skip speed calculation.
+                let bps = if dt_ms > 0.0 { dist / (dt_ms / 1000.0) } else { 0.0 };
+                obj.insert("dt_ms".to_string(), json_f64(dt_ms));
+                obj.insert("dx".to_string(), json_f64(dx));
+                obj.insert("dy".to_string(), json_f64(dy));
+                obj.insert("dz".to_string(), json_f64(dz));
+                obj.insert("speed_bps".to_string(), json_f64(bps));
             }
         }
 

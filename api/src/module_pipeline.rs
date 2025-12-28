@@ -166,17 +166,21 @@ pub async fn healthcheck_tick(state: AppState) {
 
     for m in modules {
         let health_url = format!("{}/health", m.base_url.trim_end_matches('/'));
-        let ok = state
-            .http
-            .get(health_url)
-            .send()
-            .await
-            .map(|r| r.status().is_success())
-            .unwrap_or(false);
-        if ok {
-            mark_health(&state, &m.id, true, None).await;
-        } else {
-            mark_health(&state, &m.id, false, Some("healthcheck failed")).await;
+        let result = state.http.get(&health_url).send().await;
+        match &result {
+            Ok(r) if r.status().is_success() => {
+                tracing::debug!(module = %m.name, url = %health_url, "healthcheck passed");
+                mark_health(&state, &m.id, true, None).await;
+            }
+            Ok(r) => {
+                let status = r.status();
+                tracing::warn!(module = %m.name, url = %health_url, status = %status, "healthcheck failed with non-success status");
+                mark_health(&state, &m.id, false, Some(&format!("HTTP {}", status))).await;
+            }
+            Err(e) => {
+                tracing::warn!(module = %m.name, url = %health_url, error = %e, "healthcheck request failed");
+                mark_health(&state, &m.id, false, Some(&format!("request error: {}", e))).await;
+            }
         }
     }
 }

@@ -342,13 +342,19 @@ export default function PlayersPage() {
 
         if (playersError) throw playersError;
 
+        // Early return if no players yet
+        if (!serverPlayers || serverPlayers.length === 0) {
+          setPlayers([]);
+          return;
+        }
+
         // Fetch sessions for these players
-        const playerUuids = serverPlayers?.map((p) => p.player_uuid) ?? [];
+        const playerUuids = serverPlayers.map((p) => p.player_uuid);
         const { data: sessions, error: sessionsError } = await supabase
           .from("sessions")
           .select("*")
           .eq("server_id", serverId)
-          .in("player_uuid", playerUuids.length > 0 ? playerUuids : ["none"])
+          .in("player_uuid", playerUuids)
           .order("started_at", { ascending: false });
 
         if (sessionsError) throw sessionsError;
@@ -358,7 +364,7 @@ export default function PlayersPage() {
           .from("findings")
           .select("player_uuid, severity")
           .eq("server_id", serverId)
-          .in("player_uuid", playerUuids.length > 0 ? playerUuids : ["none"]);
+          .in("player_uuid", playerUuids);
 
         if (findingsError) throw findingsError;
 
@@ -434,7 +440,14 @@ export default function PlayersPage() {
         setPlayers(playerStats);
       } catch (err) {
         console.error("Failed to fetch players:", err);
-        setError(err instanceof Error ? err.message : "Failed to load players");
+        // Don't show error for permission/RLS issues when there's just no data
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        if (errorMessage.includes("permission") || errorMessage.includes("RLS")) {
+          // Likely no data available yet, treat as empty
+          setPlayers([]);
+        } else {
+          setError(errorMessage);
+        }
       } finally {
         setLoading(false);
       }
@@ -571,10 +584,20 @@ export default function PlayersPage() {
       {!loading && !error && (
         <div className="flex-1 overflow-y-auto">
           {filteredPlayers.length === 0 && (
-            <div className="flex items-center justify-center h-full text-white/40 text-sm">
-              {players.length === 0
-                ? "No players found"
-                : "No players match your filters"}
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              {players.length === 0 ? (
+                <>
+                  <RiUserLine className="w-12 h-12 text-white/20" />
+                  <div className="text-center">
+                    <p className="text-white/50 text-sm font-medium">No players yet</p>
+                    <p className="text-white/30 text-xs mt-1">
+                      Players will appear here once they join your server
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-white/40 text-sm">No players match your filters</p>
+              )}
             </div>
           )}
 

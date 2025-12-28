@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -35,14 +35,35 @@ export function DeleteFindingDialog({
   const [deleted, setDeleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset state when dialog opens or finding changes
+  // Store timeout IDs so we can clear them when finding changes or component unmounts
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const resetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Reset state and clear pending timeouts when dialog opens or finding changes
   useEffect(() => {
     if (open) {
+      // Clear any pending timeouts from previous deletion
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
+        resetTimeoutRef.current = null;
+      }
       setDeleting(false);
       setDeleted(false);
       setError(null);
     }
   }, [open, finding?.id]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+    };
+  }, []);
 
   const handleDelete = async () => {
     if (!finding) return;
@@ -80,10 +101,10 @@ export function DeleteFindingDialog({
       invalidateAll();
 
       setDeleted(true);
-      setTimeout(() => {
+      closeTimeoutRef.current = setTimeout(() => {
         onOpenChange(false);
         // Reset state after dialog closes
-        setTimeout(() => {
+        resetTimeoutRef.current = setTimeout(() => {
           setDeleted(false);
         }, 200);
       }, 1000);

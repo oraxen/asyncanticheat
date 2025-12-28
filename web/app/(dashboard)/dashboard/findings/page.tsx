@@ -717,7 +717,8 @@ export default function FindingsPage() {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
+                      // Only handle if the event originated from this element, not nested buttons
+                      if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
                         e.preventDefault();
                         setSelectedPlayer(finding.player_name || "Unknown");
                       }

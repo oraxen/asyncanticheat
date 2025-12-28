@@ -74,9 +74,14 @@ export function Sidebar({
       {/* Mobile header bar */}
       <div className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between px-4 glass border-b border-white/[0.06] lg:hidden">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500">
-            <span className="text-xs font-bold text-white">A</span>
-          </div>
+          <Image
+            src="/logo.png"
+            alt="AsyncAnticheat"
+            width={28}
+            height={28}
+            className="[image-rendering:pixelated]"
+            unoptimized
+          />
           <span className="text-sm font-semibold text-white">AsyncAC</span>
         </Link>
         <button
@@ -110,9 +115,14 @@ export function Sidebar({
         {/* Logo */}
         <div className="flex h-14 items-center px-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500">
-              <span className="text-xs font-bold text-white">A</span>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="AsyncAnticheat"
+              width={28}
+              height={28}
+              className="[image-rendering:pixelated]"
+              unoptimized
+            />
             <span className="text-sm font-semibold text-white">AsyncAC</span>
           </Link>
         </div>

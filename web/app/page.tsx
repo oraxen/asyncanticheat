@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import {
   RiShieldCheckLine,
@@ -92,9 +93,14 @@ export default function HomePage() {
       <header className="sticky top-0 z-50 glass border-b border-[rgb(var(--border))]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-500">
-              <span className="text-xs font-semibold text-white">A</span>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="AsyncAnticheat"
+              width={28}
+              height={28}
+              className="[image-rendering:pixelated]"
+              unoptimized
+            />
             <span className="text-sm font-medium text-[rgb(var(--foreground))]">
               AsyncAnticheat
             </span>

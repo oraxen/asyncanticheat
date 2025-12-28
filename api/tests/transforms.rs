@@ -32,5 +32,3 @@ fn movement_events_v1_includes_on_ground_when_present() {
     assert!(text.contains(r#""on_ground":true"#));
     assert!(text.contains(r#""on_ground":false"#));
 }
-
-

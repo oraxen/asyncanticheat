@@ -32,7 +32,14 @@ pub async fn cleanup_tick(state: AppState) {
 
     // 1) Object store cleanup (raw batches)
     let mut stats = match &state.object_store {
-        ObjectStore::Local { root } => cleanup_local_store(root.clone(), object_cutoff, state.object_store_cleanup_dry_run).await,
+        ObjectStore::Local { root } => {
+            cleanup_local_store(
+                root.clone(),
+                object_cutoff,
+                state.object_store_cleanup_dry_run,
+            )
+            .await
+        }
         ObjectStore::S3 { .. } => {
             // For S3/R2/etc. the preferred approach is bucket lifecycle rules.
             tracing::info!(
@@ -46,7 +53,13 @@ pub async fn cleanup_tick(state: AppState) {
 
     // 2) DB cleanup (batch_index rows)
     // Keep this aligned with object retention to avoid the DB growing unbounded.
-    match cleanup_batch_index(&state, batch_index_cutoff, state.object_store_cleanup_dry_run).await {
+    match cleanup_batch_index(
+        &state,
+        batch_index_cutoff,
+        state.object_store_cleanup_dry_run,
+    )
+    .await
+    {
         Ok(rows) => {
             if let Ok(ref mut s) = stats {
                 s.db_rows_deleted = rows;
@@ -83,13 +96,12 @@ async fn cleanup_batch_index(
     dry_run: bool,
 ) -> anyhow::Result<u64> {
     if dry_run {
-        let (count,): (i64,) = sqlx::query_as(
-            "select count(*) from public.batch_index where received_at < $1",
-        )
-        .bind(cutoff)
-        .fetch_one(&state.db)
-        .await
-        .unwrap_or((0,));
+        let (count,): (i64,) =
+            sqlx::query_as("select count(*) from public.batch_index where received_at < $1")
+                .bind(cutoff)
+                .fetch_one(&state.db)
+                .await
+                .unwrap_or((0,));
         return Ok(count.max(0) as u64);
     }
 
@@ -180,5 +192,3 @@ fn cleanup_local_store_blocking(
     let _ = recurse_dir(&events_root, cutoff, dry_run, &mut stats)?;
     Ok(stats)
 }
-
-

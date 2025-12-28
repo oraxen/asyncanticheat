@@ -1,4 +1,4 @@
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::time::Duration;
 
 pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
@@ -53,5 +53,3 @@ pub async fn migrate(db: &PgPool) -> Result<(), sqlx::Error> {
 
     Ok(())
 }
-
-

@@ -7,6 +7,7 @@ pub struct Config {
     pub database_url: String,
     pub ingest_token: String,
     pub module_callback_token: String,
+    pub dashboard_token: Option<String>,
     pub module_healthcheck_interval_seconds: u64,
     pub max_body_bytes: usize,
     // Object store cleanup (TTL)
@@ -25,6 +26,8 @@ pub struct Config {
     pub s3_secret_key: Option<String>,
     // Local object storage fallback (used when S3_BUCKET is empty)
     pub local_store_dir: String,
+    // CORS
+    pub cors_allow_origins: Vec<String>,
 }
 
 fn parse_bool_env(key: &str, default: bool) -> bool {
@@ -49,6 +52,9 @@ impl Config {
         let database_url = env::var("DATABASE_URL").unwrap_or_default();
         let ingest_token = env::var("INGEST_TOKEN").unwrap_or_default();
         let module_callback_token = env::var("MODULE_CALLBACK_TOKEN").unwrap_or_default();
+        let dashboard_token = env::var("DASHBOARD_TOKEN")
+            .ok()
+            .filter(|v| !v.trim().is_empty());
 
         let module_healthcheck_interval_seconds = env::var("MODULE_HEALTHCHECK_INTERVAL_SECONDS")
             .ok()
@@ -64,10 +70,11 @@ impl Config {
         // Defaults are conservative: disabled unless explicitly enabled.
         let object_store_cleanup_enabled = parse_bool_env("OBJECT_STORE_CLEANUP_ENABLED", false);
         let object_store_cleanup_dry_run = parse_bool_env("OBJECT_STORE_CLEANUP_DRY_RUN", true);
-        let object_store_cleanup_interval_seconds = env::var("OBJECT_STORE_CLEANUP_INTERVAL_SECONDS")
-            .ok()
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(60 * 60); // hourly
+        let object_store_cleanup_interval_seconds =
+            env::var("OBJECT_STORE_CLEANUP_INTERVAL_SECONDS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .unwrap_or(60 * 60); // hourly
 
         // TTL in days for raw objects and batch_index metadata.
         // If not provided, defaults to 7 days (reasonable for local disk).
@@ -104,12 +111,23 @@ impl Config {
         let local_store_dir =
             env::var("LOCAL_STORE_DIR").unwrap_or_else(|_| "./data/object_store".to_string());
 
+        // Comma-separated list of allowed origins. Empty => permissive (dev) CORS.
+        let cors_allow_origins = env::var("CORS_ALLOW_ORIGINS")
+            .map(|v| {
+                v.split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+
         Self {
             host,
             port,
             database_url,
             ingest_token,
             module_callback_token,
+            dashboard_token,
             module_healthcheck_interval_seconds,
             max_body_bytes,
             object_store_cleanup_enabled,
@@ -125,6 +143,7 @@ impl Config {
             s3_access_key,
             s3_secret_key,
             local_store_dir,
+            cors_allow_origins,
         }
     }
 }

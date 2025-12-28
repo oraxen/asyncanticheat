@@ -127,7 +127,10 @@ pub async fn get_webhook_settings(db: &PgPool, server_id: &str) -> Option<Webhoo
 pub fn should_notify(settings: &WebhookSettings, severity: &str) -> bool {
     settings.webhook_enabled
         && settings.webhook_url.is_some()
-        && settings.webhook_severity_levels.iter().any(|s| s == severity)
+        && settings
+            .webhook_severity_levels
+            .iter()
+            .any(|s| s == severity)
 }
 
 /// Send webhook notification for a finding (fire-and-forget, logs errors)
@@ -152,11 +155,7 @@ pub async fn send_finding_notification(
                 severity_emoji(&finding.severity),
                 finding.severity.to_uppercase()
             ),
-            description: format!(
-                "**{}**: {}",
-                finding.detector_name,
-                finding.title
-            ),
+            description: format!("**{}**: {}", finding.detector_name, finding.title),
             color: severity_color(&finding.severity),
             fields: vec![
                 DiscordField {

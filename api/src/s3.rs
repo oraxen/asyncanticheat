@@ -33,7 +33,7 @@ impl ObjectStore {
         }
 
         let use_path_style = cfg.s3_endpoint.is_some(); // Only use path-style for custom endpoints (MinIO, etc.)
-        
+
         let region = if let Some(ref endpoint) = cfg.s3_endpoint {
             Region::Custom {
                 region: cfg.s3_region.clone(),

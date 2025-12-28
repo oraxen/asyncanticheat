@@ -1,5 +1,5 @@
-pub mod config;
 pub mod builtin_modules;
+pub mod config;
 pub mod db;
 pub mod error;
 pub mod module_pipeline;
@@ -19,6 +19,7 @@ pub struct AppState {
     pub object_store: ObjectStore,
     pub ingest_token: String,
     pub module_callback_token: String,
+    pub dashboard_token: Option<String>,
     pub http: reqwest::Client,
     pub max_body_bytes: usize,
     // Cleanup config
@@ -30,5 +31,3 @@ pub struct AppState {
     pub batch_index_ttl_days: i64,
     pub batch_index_ttl_seconds_override: Option<i64>,
 }
-
-

@@ -155,4 +155,3 @@ pub fn builtin_modules_info() -> Vec<BuiltinModuleInfo> {
 pub fn builtin_by_name(name: &str) -> Option<&'static BuiltinModuleDef> {
     BUILTIN_MODULES.iter().find(|m| m.name == name)
 }
-

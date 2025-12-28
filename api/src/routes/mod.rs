@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod callbacks;
 pub mod dashboard;
 pub mod handshake;

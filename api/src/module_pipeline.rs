@@ -39,7 +39,7 @@ pub async fn dispatch_batch(
         from public.server_modules
         where server_id = $1 and enabled = true
         order by name asc
-        "#
+        "#,
     )
     .bind(&server_id)
     .fetch_all(&state.db)
@@ -155,16 +155,24 @@ pub async fn healthcheck_tick(state: AppState) {
         from public.server_modules
         where enabled = true
         order by server_id asc, name asc
-        "#
+        "#,
     )
     .fetch_all(&state.db)
     .await;
 
-    let Ok(modules) = modules else { return; };
+    let Ok(modules) = modules else {
+        return;
+    };
 
     for m in modules {
         let health_url = format!("{}/health", m.base_url.trim_end_matches('/'));
-        let ok = state.http.get(health_url).send().await.map(|r| r.status().is_success()).unwrap_or(false);
+        let ok = state
+            .http
+            .get(health_url)
+            .send()
+            .await
+            .map(|r| r.status().is_success())
+            .unwrap_or(false);
         if ok {
             mark_health(&state, &m.id, true, None).await;
         } else {
@@ -242,5 +250,3 @@ async fn mark_health(state: &AppState, module_id: &Uuid, ok: bool, err: Option<&
         mark_module_failure(state, module_id, err.unwrap_or("healthcheck failed")).await;
     }
 }
-
-

@@ -9,5 +9,3 @@ pub struct HealthResponse {
 pub async fn health() -> Json<HealthResponse> {
     Json(HealthResponse { ok: true })
 }
-
-

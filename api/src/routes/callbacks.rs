@@ -1,10 +1,10 @@
 use axum::{extract::State, http::HeaderMap, Json};
+use chrono::{DateTime, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use uuid::Uuid;
-use std::collections::HashSet;
 use std::collections::HashMap;
-use chrono::{DateTime, Timelike, Utc};
+use std::collections::HashSet;
+use uuid::Uuid;
 
 use crate::{error::ApiError, webhooks, AppState};
 
@@ -123,7 +123,9 @@ pub async fn post_findings(
 
     let mut agg: HashMap<(Uuid, String), Agg> = HashMap::new();
     for f in &req.findings {
-        let Some(player_uuid) = f.player_uuid else { continue };
+        let Some(player_uuid) = f.player_uuid else {
+            continue;
+        };
         let detector_name = f.detector_name.trim();
         if detector_name.is_empty() || f.title.trim().is_empty() {
             continue;
@@ -142,7 +144,10 @@ pub async fn post_findings(
         });
 
         entry.count += 1;
-        entry.detector_version = f.detector_version.clone().or(entry.detector_version.clone());
+        entry.detector_version = f
+            .detector_version
+            .clone()
+            .or(entry.detector_version.clone());
 
         // Keep the "strongest" severity/title/desc in the bucket.
         if sev_rank(&sev) >= sev_rank(&entry.severity) {
@@ -255,14 +260,13 @@ pub async fn post_findings(
 
                     if !notifications.is_empty() {
                         // Get server name for nicer webhook display
-                        let server_name: Option<String> = sqlx::query_scalar(
-                            "SELECT name FROM public.servers WHERE id = $1"
-                        )
-                        .bind(&server_id)
-                        .fetch_optional(&state.db)
-                        .await
-                        .ok()
-                        .flatten();
+                        let server_name: Option<String> =
+                            sqlx::query_scalar("SELECT name FROM public.servers WHERE id = $1")
+                                .bind(&server_id)
+                                .fetch_optional(&state.db)
+                                .await
+                                .ok()
+                                .flatten();
 
                         webhooks::spawn_webhook_notifications(
                             state.http.clone(),
@@ -276,10 +280,7 @@ pub async fn post_findings(
         }
     }
 
-    Ok(Json(PostFindingsResponse {
-        ok: true,
-        inserted,
-    }))
+    Ok(Json(PostFindingsResponse { ok: true, inserted }))
 }
 
 // ============================================================================
@@ -554,4 +555,3 @@ pub async fn batch_set_player_states(
 
     Ok(Json(BatchSetPlayerStatesResponse { ok: true, updated }))
 }
-

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import { Layout, Navbar } from "nextra-theme-docs";
 import { getPageMap } from "nextra/page-map";
 import "nextra-theme-docs/style.css";
@@ -8,19 +9,14 @@ import "./docs.css";
 function Logo() {
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-      <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 8,
-          backgroundColor: "rgb(99, 102, 241)", // Indigo-500
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <span style={{ color: "white", fontSize: 12, fontWeight: 700 }}>A</span>
-      </div>
+      <Image
+        src="/logo.png"
+        alt="AsyncAnticheat"
+        width={28}
+        height={28}
+        style={{ imageRendering: "pixelated" }}
+        unoptimized
+      />
       <span
         style={{
           fontWeight: 600,

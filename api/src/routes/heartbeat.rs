@@ -58,7 +58,9 @@ pub async fn heartbeat(
         .to_string();
 
     if server_id.is_empty() {
-        return Err(ApiError::BadRequest("X-Server-Id header is required".to_string()));
+        return Err(ApiError::BadRequest(
+            "X-Server-Id header is required".to_string(),
+        ));
     }
 
     // Extract and validate token
@@ -72,17 +74,16 @@ pub async fn heartbeat(
     let token_hash = sha256_hex(&token);
 
     // Verify token matches the server's registered token
-    let server_exists: Option<(String,)> = sqlx::query_as(
-        "SELECT id FROM public.servers WHERE id = $1 AND auth_token_hash = $2",
-    )
-    .bind(&server_id)
-    .bind(&token_hash)
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|e| {
-        tracing::error!("heartbeat token lookup failed: {:?}", e);
-        ApiError::Internal
-    })?;
+    let server_exists: Option<(String,)> =
+        sqlx::query_as("SELECT id FROM public.servers WHERE id = $1 AND auth_token_hash = $2")
+            .bind(&server_id)
+            .bind(&token_hash)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("heartbeat token lookup failed: {:?}", e);
+                ApiError::Internal
+            })?;
 
     if server_exists.is_none() {
         // Either server doesn't exist or token doesn't match

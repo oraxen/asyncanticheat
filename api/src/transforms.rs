@@ -1,5 +1,5 @@
 //! Standard batch transforms applied by the ingest API before dispatching to modules.
-//! 
+//!
 //! Transforms convert raw packet data into higher-level event streams optimized for
 //! specific types of anticheat checks.
 //!
@@ -69,9 +69,13 @@ fn movement_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
 
         // First line: pass through, but annotate transform.
         if line_no == 1 {
-            let mut meta: Value = serde_json::from_str(line).unwrap_or(Value::Object(Default::default()));
+            let mut meta: Value =
+                serde_json::from_str(line).unwrap_or(Value::Object(Default::default()));
             if let Some(obj) = meta.as_object_mut() {
-                obj.insert("transform".to_string(), Value::String("movement_events_v1".to_string()));
+                obj.insert(
+                    "transform".to_string(),
+                    Value::String("movement_events_v1".to_string()),
+                );
             }
             writeln!(encoder, "{}", serde_json::to_string(&meta)?)?;
             continue;
@@ -95,7 +99,9 @@ fn movement_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
         let y = fields.get("y").and_then(|x| x.as_f64());
         let z = fields.get("z").and_then(|x| x.as_f64());
         let on_ground = fields.get("on_ground").and_then(|x| x.as_bool());
-        let (Some(x), Some(y), Some(z)) = (x, y, z) else { continue };
+        let (Some(x), Some(y), Some(z)) = (x, y, z) else {
+            continue;
+        };
 
         // Skip packets with NaN/Infinity coordinates (malicious input).
         if !x.is_finite() || !y.is_finite() || !z.is_finite() {
@@ -120,7 +126,11 @@ fn movement_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
                 let dz = z - prev.z;
                 let dist = (dx * dx + dy * dy + dz * dz).sqrt();
                 // Avoid division by zero; if dt_ms is 0, skip speed calculation.
-                let bps = if dt_ms > 0.0 { dist / (dt_ms / 1000.0) } else { 0.0 };
+                let bps = if dt_ms > 0.0 {
+                    dist / (dt_ms / 1000.0)
+                } else {
+                    0.0
+                };
                 obj.insert("dt_ms".to_string(), json_f64(dt_ms));
                 obj.insert("dx".to_string(), json_f64(dx));
                 obj.insert("dy".to_string(), json_f64(dy));
@@ -188,9 +198,13 @@ fn combat_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
 
         // First line: pass through, but annotate transform.
         if line_no == 1 {
-            let mut meta: Value = serde_json::from_str(line).unwrap_or(Value::Object(Default::default()));
+            let mut meta: Value =
+                serde_json::from_str(line).unwrap_or(Value::Object(Default::default()));
             if let Some(obj) = meta.as_object_mut() {
-                obj.insert("transform".to_string(), Value::String("combat_events_v1".to_string()));
+                obj.insert(
+                    "transform".to_string(),
+                    Value::String("combat_events_v1".to_string()),
+                );
             }
             writeln!(encoder, "{}", serde_json::to_string(&meta)?)?;
             continue;
@@ -200,14 +214,14 @@ fn combat_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
             Ok(v) => v,
             Err(_) => continue,
         };
-        
+
         let uuid = v
             .get("uuid")
             .and_then(|x| x.as_str())
             .and_then(|s| Uuid::parse_str(s).ok());
         let ts = v.get("ts").and_then(|x| x.as_u64());
         let pkt = v.get("pkt").and_then(|x| x.as_str()).unwrap_or("");
-        
+
         let Some(uuid) = uuid else { continue };
         let Some(ts) = ts else { continue };
 
@@ -221,15 +235,18 @@ fn combat_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
                 let z = fields.get("z").and_then(|v| v.as_f64());
                 let yaw = fields.get("yaw").and_then(|v| v.as_f64());
                 let pitch = fields.get("pitch").and_then(|v| v.as_f64());
-                
+
                 if let Some(prev) = last_pos.get(&uuid).copied() {
-                    last_pos.insert(uuid, (
-                        x.unwrap_or(prev.0),
-                        y.unwrap_or(prev.1),
-                        z.unwrap_or(prev.2),
-                        yaw.unwrap_or(prev.3),
-                        pitch.unwrap_or(prev.4),
-                    ));
+                    last_pos.insert(
+                        uuid,
+                        (
+                            x.unwrap_or(prev.0),
+                            y.unwrap_or(prev.1),
+                            z.unwrap_or(prev.2),
+                            yaw.unwrap_or(prev.3),
+                            pitch.unwrap_or(prev.4),
+                        ),
+                    );
                 } else if let (Some(x), Some(y), Some(z)) = (x, y, z) {
                     last_pos.insert(uuid, (x, y, z, yaw.unwrap_or(0.0), pitch.unwrap_or(0.0)));
                 }
@@ -248,8 +265,14 @@ fn combat_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
             continue;
         }
 
-        let entity_id = fields.get("entity_id").and_then(|x| x.as_i64()).unwrap_or(-1);
-        let sneaking = fields.get("sneaking").and_then(|x| x.as_bool()).unwrap_or(false);
+        let entity_id = fields
+            .get("entity_id")
+            .and_then(|x| x.as_i64())
+            .unwrap_or(-1);
+        let sneaking = fields
+            .get("sneaking")
+            .and_then(|x| x.as_bool())
+            .unwrap_or(false);
 
         let mut obj = serde_json::Map::new();
         obj.insert("ts".to_string(), Value::Number(ts.into()));
@@ -270,7 +293,7 @@ fn combat_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
         if let Some(prev) = last_attacks.get(&uuid).cloned() {
             let dt_ms = ts.saturating_sub(prev.ts) as f64;
             obj.insert("dt_ms".to_string(), json_f64(dt_ms));
-            
+
             // Attacks per second based on this interval
             if dt_ms > 0.0 {
                 let aps = 1000.0 / dt_ms;
@@ -282,19 +305,24 @@ fn combat_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
             obj.insert("target_switched".to_string(), Value::Bool(target_changed));
 
             // Yaw difference (critical for angle check)
-            if let (Some(prev_yaw), Some((_, _, _, curr_yaw, _))) = (prev.yaw, last_pos.get(&uuid).copied()) {
+            if let (Some(prev_yaw), Some((_, _, _, curr_yaw, _))) =
+                (prev.yaw, last_pos.get(&uuid).copied())
+            {
                 let yaw_diff = yaw_difference(curr_yaw, prev_yaw);
                 obj.insert("yaw_diff".to_string(), json_f64(yaw_diff));
             }
         }
 
         // Store this attack as the new "last attack"
-        last_attacks.insert(uuid, LastAttack {
-            ts,
-            target_entity_id: entity_id,
-            yaw: last_pos.get(&uuid).map(|p| p.3),
-            pitch: last_pos.get(&uuid).map(|p| p.4),
-        });
+        last_attacks.insert(
+            uuid,
+            LastAttack {
+                ts,
+                target_entity_id: entity_id,
+                yaw: last_pos.get(&uuid).map(|p| p.3),
+                pitch: last_pos.get(&uuid).map(|p| p.4),
+            },
+        );
 
         writeln!(encoder, "{}", Value::Object(obj))?;
     }
@@ -304,7 +332,9 @@ fn combat_events_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
 }
 
 fn json_f64(v: f64) -> serde_json::Value {
-    serde_json::Value::Number(serde_json::Number::from_f64(v).unwrap_or_else(|| serde_json::Number::from(0)))
+    serde_json::Value::Number(
+        serde_json::Number::from_f64(v).unwrap_or_else(|| serde_json::Number::from(0)),
+    )
 }
 
 /// Calculate the absolute yaw difference, handling wraparound at 360°
@@ -381,9 +411,13 @@ fn ncp_fight_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
 
         // First line: pass through, but annotate transform.
         if line_no == 1 {
-            let mut meta: Value = serde_json::from_str(line).unwrap_or(Value::Object(Default::default()));
+            let mut meta: Value =
+                serde_json::from_str(line).unwrap_or(Value::Object(Default::default()));
             if let Some(obj) = meta.as_object_mut() {
-                obj.insert("transform".to_string(), Value::String("ncp_fight_v1".to_string()));
+                obj.insert(
+                    "transform".to_string(),
+                    Value::String("ncp_fight_v1".to_string()),
+                );
             }
             writeln!(encoder, "{}", serde_json::to_string(&meta)?)?;
             continue;
@@ -442,7 +476,9 @@ fn ncp_fight_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
         }
 
         // --- Track player pose from serverbound movement packets ---
-        if dir == "serverbound" && (pkt.contains("POSITION") || pkt.contains("ROTATION") || pkt.contains("FLYING")) {
+        if dir == "serverbound"
+            && (pkt.contains("POSITION") || pkt.contains("ROTATION") || pkt.contains("FLYING"))
+        {
             let uuid = v
                 .get("uuid")
                 .and_then(|x| x.as_str())
@@ -460,23 +496,29 @@ fn ncp_fight_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
             // Avoid seeding bogus (0,0,0) positions from rotation-only packets
             if let Some(prev) = player_pose.get(&uuid).copied() {
                 // Update with new values, keeping old ones for missing fields
-                player_pose.insert(uuid, PlayerPose {
-                    x: x.unwrap_or(prev.x),
-                    y: y.unwrap_or(prev.y),
-                    z: z.unwrap_or(prev.z),
-                    yaw: yaw.unwrap_or(prev.yaw),
-                    pitch: pitch.unwrap_or(prev.pitch),
-                });
+                player_pose.insert(
+                    uuid,
+                    PlayerPose {
+                        x: x.unwrap_or(prev.x),
+                        y: y.unwrap_or(prev.y),
+                        z: z.unwrap_or(prev.z),
+                        yaw: yaw.unwrap_or(prev.yaw),
+                        pitch: pitch.unwrap_or(prev.pitch),
+                    },
+                );
             } else if let (Some(x), Some(y), Some(z)) = (x, y, z) {
                 // First pose - only create if we have actual position coordinates
                 // This prevents seeding (0,0,0) from rotation-only packets
-                player_pose.insert(uuid, PlayerPose {
-                    x,
-                    y,
-                    z,
-                    yaw: yaw.unwrap_or(0.0),
-                    pitch: pitch.unwrap_or(0.0),
-                });
+                player_pose.insert(
+                    uuid,
+                    PlayerPose {
+                        x,
+                        y,
+                        z,
+                        yaw: yaw.unwrap_or(0.0),
+                        pitch: pitch.unwrap_or(0.0),
+                    },
+                );
             }
             // If no previous pose and no position coords, skip - don't seed bogus values
             continue;
@@ -493,7 +535,9 @@ fn ncp_fight_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
                 .and_then(|x| x.as_str())
                 .and_then(|s| Uuid::parse_str(s).ok());
             let entity_id = fields.get("entity_id").and_then(|x| x.as_i64());
-            let (Some(uuid), Some(entity_id)) = (uuid, entity_id) else { continue };
+            let (Some(uuid), Some(entity_id)) = (uuid, entity_id) else {
+                continue;
+            };
 
             let pose = player_pose.get(&uuid).copied();
             if pose.is_none() {
@@ -547,7 +591,8 @@ fn ncp_fight_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
                     y: r.z * d.x - r.x * d.z,
                     z: r.x * d.y - r.y * d.x,
                 };
-                let off = ((cross.x * cross.x + cross.y * cross.y + cross.z * cross.z).sqrt()) / d_len;
+                let off =
+                    ((cross.x * cross.x + cross.y * cross.y + cross.z * cross.z).sqrt()) / d_len;
                 obj.insert("aim_off".to_string(), json_f64(off));
             }
 
@@ -558,4 +603,3 @@ fn ncp_fight_v1(raw_gz_ndjson: &[u8]) -> anyhow::Result<Vec<u8>> {
     encoder.finish()?;
     Ok(out)
 }
-

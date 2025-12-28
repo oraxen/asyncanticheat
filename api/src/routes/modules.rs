@@ -77,9 +77,7 @@ pub async fn upsert_module(
     }
 
     let enabled = req.enabled.unwrap_or(true);
-    let transform = req
-        .transform
-        .unwrap_or_else(|| "raw_ndjson_gz".to_string());
+    let transform = req.transform.unwrap_or_else(|| "raw_ndjson_gz".to_string());
 
     let rec = sqlx::query_as::<_, ServerModule>(
         r#"
@@ -101,7 +99,7 @@ pub async fn upsert_module(
             transform,
             last_healthcheck_ok,
             last_error
-        "#
+        "#,
     )
     .bind(server_id)
     .bind(req.name.trim())
@@ -140,7 +138,7 @@ pub async fn list_modules(
         from public.server_modules
         where server_id = $1
         order by name asc
-        "#
+        "#,
     )
     .bind(server_id)
     .fetch_all(&state.db)
@@ -152,5 +150,3 @@ pub async fn list_modules(
 
     Ok(Json(recs))
 }
-
-

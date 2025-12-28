@@ -71,7 +71,9 @@ pub async fn create_observation(
         .to_string();
 
     if server_id.is_empty() {
-        return Err(ApiError::BadRequest("missing X-Server-Id header".to_string()));
+        return Err(ApiError::BadRequest(
+            "missing X-Server-Id header".to_string(),
+        ));
     }
 
     // --- Auth (per-server token) ---
@@ -195,4 +197,3 @@ pub async fn create_observation(
         }),
     ))
 }
-

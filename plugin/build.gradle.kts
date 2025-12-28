@@ -47,7 +47,7 @@ allprojects {
     }
 }
 
-project(":asyncanticheat-core") {
+project(":core") {
     dependencies {
         implementation("com.google.code.gson:gson:2.10.1")
         implementation("org.yaml:snakeyaml:2.2")
@@ -55,11 +55,11 @@ project(":asyncanticheat-core") {
     }
 }
 
-project(":asyncanticheat-bukkit") {
+project(":bukkit") {
     dependencies {
         compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
         compileOnly("org.jetbrains:annotations:24.0.1")
-        implementation(project(path = ":asyncanticheat-core", configuration = "shadow"))
+        implementation(project(path = ":core", configuration = "shadow"))
 
         // PacketEvents (Spigot/Paper)
         implementation("com.github.retrooper:packetevents-spigot:2.11.0")
@@ -86,8 +86,8 @@ tasks.shadowJar {
 }
 
 dependencies {
-    implementation(project(path = ":asyncanticheat-core", configuration = "shadow"))
-    implementation(project(path = ":asyncanticheat-bukkit", configuration = "shadow"))
+    implementation(project(path = ":core", configuration = "shadow"))
+    implementation(project(path = ":bukkit", configuration = "shadow"))
 }
 
 tasks.build {

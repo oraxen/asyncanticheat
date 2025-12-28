@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR, { SWRConfiguration } from "swr";
+import useSWR, { SWRConfiguration, useSWRConfig } from "swr";
 import {
   api,
   type DashboardStats,
@@ -122,6 +122,17 @@ export function useFindings(
     isLoading: isLoading && !data,
     isValidating,
     mutate,
+    // Helper to remove a finding from the local cache
+    removeFinding: (findingId: string) => {
+      mutate((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          findings: current.findings.filter((f: Finding) => f.id !== findingId),
+          total: Math.max(0, current.total - 1),
+        };
+      }, false);
+    },
   };
 }
 
@@ -362,6 +373,40 @@ export function useFalsePositiveReports(serverId: string | null) {
         newSet.add(findingId);
         return newSet;
       }, false);
+    },
+    // Helper to remove a report from the local cache
+    removeReport: (findingId: string) => {
+      mutate((current) => {
+        const newSet = new Set(current);
+        newSet.delete(findingId);
+        return newSet;
+      }, false);
+    },
+  };
+}
+
+/**
+ * Hook to invalidate all finding-related caches
+ * Use this after deleting a finding to ensure all views update
+ */
+export function useInvalidateFindingsCache(serverId: string | null) {
+  const { mutate } = useSWRConfig();
+
+  return {
+    invalidateAll: () => {
+      if (!serverId) return;
+      // Invalidate all caches that might contain finding data
+      // Using a matcher function to find keys that start with the prefix and contain the serverId
+      mutate(
+        (key) =>
+          typeof key === "string" &&
+          (key.startsWith(`findings:${serverId}`) ||
+            key.startsWith(`recent-findings:${serverId}`) ||
+            key.startsWith(`players:${serverId}`) ||
+            key.startsWith(`dashboard-stats:${serverId}`)),
+        undefined,
+        { revalidate: true }
+      );
     },
   };
 }

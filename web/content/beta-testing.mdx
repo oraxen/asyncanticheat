@@ -1,0 +1,110 @@
+---
+description: Information for AsyncAnticheat beta testers
+title: Beta Testing Guide
+---
+
+# Beta Testing Guide
+
+Thank you for participating in the AsyncAnticheat beta! Your feedback is invaluable in helping us improve cheat detection accuracy and reduce false positives.
+
+## What to Expect
+
+### Current Capabilities
+
+During the beta phase, AsyncAnticheat focuses on **detection only**:
+
+- ✅ **Detects cheaters** - Movement hacks, combat modifications, and packet abuse
+- ✅ **Records findings** - All detections are logged with full context
+- ✅ **Real-time dashboard** - Monitor your server's activity live
+- ✅ **Player history** - Track suspicious players across sessions
+
+### Current Limitations
+
+- ❌ **No automatic actions** - The plugin does not kick, ban, or punish players automatically
+- ❌ **No in-game alerts** - Staff are not notified in-game (dashboard only)
+- ❌ **Detection tuning ongoing** - Some checks may produce false positives
+
+This is intentional! We want to gather data and fine-tune detection before enabling automatic actions.
+
+## Your Role as a Beta Tester
+
+### 1. Monitor the Dashboard
+
+Check the [dashboard](./dashboard) regularly to see:
+
+- **Findings** - Players flagged for suspicious behavior
+- **Players** - Session history and activity patterns
+- **Modules** - Which detection modules are active
+
+![Dashboard Overview](/docs/dashboard-overview.webp)
+
+### 2. Report False Positives
+
+If a legitimate player is flagged incorrectly, **report it as a false positive**. This helps us tune the detection thresholds.
+
+See [Reporting False Positives](./reporting#false-positives) for instructions.
+
+### 3. Report Missed Detections
+
+If you know a player is cheating but they weren't detected, **report the missed detection**. Include:
+
+- What cheat they were using
+- Approximate time of the incident
+- Any video evidence if available
+
+See [Reporting Missed Detections](./reporting#missed-detections) for instructions.
+
+### 4. Provide General Feedback
+
+Let us know about:
+
+- Dashboard usability issues
+- Confusing check names or descriptions
+- Performance concerns
+- Feature requests
+
+## Detection Modules
+
+AsyncAnticheat uses a modular detection system. Each module focuses on a specific category of cheats:
+
+| Module | Tier | Focus |
+|--------|------|-------|
+| **Movement Core** | Core | Blatant flight, speed, nofall |
+| **Movement Advanced** | Advanced | Timer, step, noslow bypass |
+| **Combat Core** | Core | High CPS, reach, killaura |
+| **Combat Advanced** | Advanced | Aim patterns, autoclicker timing |
+| **Player Core** | Core | Invalid packets, fast place/break |
+| **Player Advanced** | Advanced | Interaction angles, inventory |
+
+**Core modules** catch obvious cheats with minimal false positives.
+**Advanced modules** use statistical analysis and may require tuning.
+
+## FAQ
+
+### Will players be banned automatically?
+
+Not during the beta. All detections are logged but no actions are taken. You can manually review and act on findings.
+
+### Can I disable specific modules?
+
+Yes! Go to the [Modules](./dashboard/modules) page and toggle off any modules you don't want.
+
+### How do I know if the plugin is working?
+
+Check the [dashboard overview](./dashboard). The "Plugin Status" indicator shows when your server last sent data. It should update every few seconds while players are online.
+
+### What data is collected?
+
+The plugin captures:
+- Player movement packets
+- Combat interactions
+- Block interactions
+- Inventory actions
+
+No chat messages, personal information, or server configuration is collected.
+
+## Getting Help
+
+- **Discord**: Join our Discord server for real-time support
+- **GitHub Issues**: Report bugs at [github.com/oraxen/asyncanticheat](https://github.com/oraxen/asyncanticheat/issues)
+- **Email**: Contact us at support@asyncanticheat.com

@@ -1,0 +1,125 @@
+---
+description: AsyncAnticheat API authentication methods
+title: Authentication
+---
+
+# Authentication
+
+AsyncAnticheat uses automatic token-based authentication. No manual configuration needed!
+
+## For Server Owners
+
+### Linking Your Server (Managed Service)
+
+The AsyncAnticheat plugin automatically handles authentication:
+
+1. **Install the plugin** - Drop the JAR into your `/plugins/` folder
+2. **Start your server** - The plugin generates a unique server token
+3. **Click the link** - A registration link appears in console
+4. **Sign in** - Log in with GitHub, Discord, or Email
+5. **Done!** - Your server is linked and authenticated
+
+The plugin automatically:
+- Generates a secure server token
+- Stores it locally
+- Uses it to authenticate all API requests
+- Handles token rotation if needed
+
+### Dashboard Authentication
+
+Access your dashboard at [asyncanticheat.com](https://asyncanticheat.com) using:
+
+- **GitHub** (recommended for developers)
+- **Discord** (recommended for server owners)
+- **Email** (magic link or password)
+
+Once signed in, you'll see all servers you've linked.
+
+## For Self-Hosted APIs
+
+If you're self-hosting the AsyncAnticheat API, you'll need to manage tokens manually.
+
+### Ingest Token
+
+Used by the Minecraft plugin to upload packet batches.
+
+```http
+Authorization: Bearer <INGEST_TOKEN>
+```
+
+Configure in your plugin's `config.yml`:
+
+```yaml
+api:
+  url: "https://your-api.example.com"
+  token: "your_ingest_token"
+```
+
+### Module Callback Token
+
+Used by detection modules to submit findings.
+
+```http
+Authorization: Bearer <MODULE_CALLBACK_TOKEN>
+```
+
+This is configured in the API's environment:
+
+```bash
+MODULE_CALLBACK_TOKEN="your_module_callback_token"
+```
+
+### Generating Tokens
+
+Generate secure random tokens:
+
+```bash
+# Using openssl
+openssl rand -hex 32
+
+# Using Python
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Add to your `.env`:
+
+```bash
+INGEST_TOKEN="generated_token_here"
+MODULE_CALLBACK_TOKEN="another_generated_token"
+```
+
+## Security Best Practices
+
+1. **Never commit tokens** - Use environment variables or secrets management
+2. **Rotate tokens periodically** - Especially after team member changes
+3. **Use separate tokens** - Different tokens for different environments (dev/staging/prod)
+4. **Monitor usage** - Check for unusual API patterns
+
+## Error Responses
+
+### 401 Unauthorized
+
+```json
+{
+  "error": "Invalid or missing authorization token",
+  "code": "UNAUTHORIZED"
+}
+```
+
+**Causes:**
+- Missing `Authorization` header
+- Invalid token
+- Expired token
+
+### 403 Forbidden
+
+```json
+{
+  "error": "Token does not have permission for this resource",
+  "code": "FORBIDDEN"
+}
+```
+
+**Causes:**
+- Using ingest token for module callback endpoint
+- Using module token for ingest endpoint

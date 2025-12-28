@@ -1,0 +1,95 @@
+---
+description: Understanding and managing findings in AsyncAnticheat
+title: Findings
+---
+
+# Findings Page
+
+The Findings page displays all detections from your server's detection modules.
+
+![Findings List](/docs/findings-list.webp)
+
+## What is a Finding?
+
+A **finding** (also called a violation or detection) occurs when a detection module identifies suspicious behavior. Each finding includes:
+
+- **Player** - Who triggered the detection
+- **Check** - Which specific check flagged them
+- **Severity** - How confident the system is (violation, warning, info)
+- **Timestamp** - When it occurred
+- **Count** - How many times this check triggered for this player
+
+## Finding List
+
+Findings are grouped by player and sorted by recency. Each entry shows:
+
+- **Player name** and avatar
+- **Check name** (e.g., `movement_timer_slow`)
+- **Severity badge** - Color-coded by confidence level
+- **Count** - Total triggers for this check
+
+## Severity Levels
+
+| Level | Color | Meaning |
+|-------|-------|---------|
+| **Violation** | Red | High confidence detection |
+| **Warning** | Amber | Moderate confidence, review recommended |
+| **Info** | Blue | Informational, low confidence |
+
+## Player History Panel
+
+Click a finding to open the player history panel:
+
+![Findings Detail](/docs/findings-detail.webp)
+
+The panel shows:
+
+- **Player info** - Name, UUID, online status
+- **All findings** - Every detection for this player
+- **Timeline** - Chronological view of detections
+- **Sessions** - Play sessions with finding counts
+
+## Reporting False Positives
+
+If a detection is incorrect:
+
+1. Find the finding in the list
+2. Click the **flag icon** (🚩)
+3. Fill out the false positive report
+
+
+**What to include:**
+
+- What the player was actually doing
+- Why you believe it's a false positive
+- Any relevant context (ping, server conditions)
+
+See [Reporting Issues](../reporting#false-positives) for details.
+
+## Understanding Check Names
+
+Check names follow a pattern: `category_tier_checkname`
+
+Examples:
+- `movement_core_flight_ascend` - Core movement check for upward flight
+- `combat_advanced_aim_headsnap` - Advanced combat check for suspicious aim
+
+See [Detection Checks](../checks) for a full reference.
+
+## Filtering and Search
+
+Use the search box to filter findings by:
+
+- Player name
+- Check name
+- UUID
+
+## Taking Action
+
+During the beta, AsyncAnticheat does **not** automatically punish players. You must manually review findings and take action through your existing moderation tools.
+
+Future versions will support:
+
+- Automatic kick/ban based on thresholds
+- Webhook notifications
+- In-game staff alerts

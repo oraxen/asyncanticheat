@@ -1,0 +1,104 @@
+---
+description: Managing detection modules in AsyncAnticheat
+title: Modules
+---
+
+# Modules Page
+
+The Modules page lets you view and configure the detection modules running on your server.
+
+![Modules List](/docs/modules-list.webp)
+
+## What are Modules?
+
+**Modules** are independent detection services that analyze player behavior. Each module specializes in a specific category of cheats:
+
+| Module | Focus | Tier |
+|--------|-------|------|
+| **Movement Core** | Blatant flight, speed, nofall | Core |
+| **Movement Advanced** | Timer, step, noslow | Advanced |
+| **Combat Core** | High CPS, reach, killaura | Core |
+| **Combat Advanced** | Aim patterns, autoclicker timing | Advanced |
+| **Player Core** | Invalid packets, fast place/break | Core |
+| **Player Advanced** | Interaction angles, inventory | Advanced |
+
+## Module Tiers
+
+### Core Modules
+
+Core modules use straightforward checks that catch obvious cheaters with minimal false positives. These are safe to run on any server.
+
+### Advanced Modules
+
+Advanced modules use statistical analysis and machine learning. They can catch subtle cheats but may require tuning for your specific server environment.
+
+## Module Status
+
+Each module card shows:
+
+- **Name** and description
+- **Status** - Active (green) or Inactive (gray)
+- **Checks** - List of individual checks in this module
+- **Toggle** - Enable/disable the module
+
+## Enabling/Disabling Modules
+
+Click the toggle switch on any module to enable or disable it:
+
+- **Enabled** - Module receives packet data and produces findings
+- **Disabled** - Module is skipped, no findings generated
+
+Changes take effect immediately. No server restart required.
+
+## Module Details
+
+Click a module card to view its details:
+
+![Module Detail](/docs/modules-detail.webp)
+
+The detail panel shows:
+
+- **Full description** - What the module detects
+- **Checks list** - Individual checks with names
+- **Status** - Current enabled state
+
+## Best Practices
+
+### Starting Out
+
+1. Enable all **Core** modules first
+2. Monitor for a few days
+3. Review any false positives
+4. Gradually enable **Advanced** modules
+
+### High-Traffic Servers
+
+If you have many players:
+
+- Start with Core modules only
+- Advanced modules add more analysis overhead
+- Monitor the "Plugin Status" latency
+
+### Competitive/PvP Servers
+
+Combat-focused servers should prioritize:
+
+- Combat Core (essential)
+- Combat Advanced (for subtle aimbot detection)
+- Movement Core (prevent speed/flight in combat)
+
+### Survival/Creative Servers
+
+Focus on movement and interaction:
+
+- Movement Core
+- Player Core (prevent fast break exploits)
+- Movement Advanced (if false positives are low)
+
+## Default Configuration
+
+When you first register a server, all 6 built-in modules are enabled by default. This gives you comprehensive coverage out of the box.
+
+## Custom Modules
+
+Developers can create custom detection modules. See [Module Development](../modules) for details.

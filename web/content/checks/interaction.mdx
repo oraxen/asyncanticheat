@@ -1,0 +1,241 @@
+---
+description: Interaction-related cheat detection checks
+title: Interaction Checks
+---
+
+# Interaction Checks
+
+Interaction checks detect scaffold, nuker, and other block/item interaction cheats.
+
+## Scaffold
+
+Detects automated bridge building.
+
+### scaffold.pattern
+
+Unnatural block placement patterns.
+
+**Detection:**
+- Track block placements while moving
+- Analyze placement timing and positions
+- Detect impossible placement angles
+
+**Example Finding:**
+```json
+{
+  "check": "scaffold.pattern",
+  "vl": 35.0,
+  "details": {
+    "placements_while_moving": 15,
+    "average_placement_interval_ms": 45,
+    "look_direction_changes": 0
+  }
+}
+```
+
+### scaffold.angle
+
+Placing blocks at impossible angles.
+
+**Detection:**
+- Compare player look direction to block placement
+- Track cursor position on placed block
+- Flag placements without proper aim
+
+### scaffold.timing
+
+Perfect placement timing detection.
+
+**Detection:**
+- Analyze interval between placements
+- Detect inhuman consistency
+- Compare to server tick timing
+
+## Nuker
+
+Detects fast block breaking.
+
+### nuker.speed
+
+Breaking blocks too quickly.
+
+**Detection:**
+- Track time between dig start and complete
+- Compare to block break time with tool
+- Flag instant or near-instant breaks
+
+**Example Finding:**
+```json
+{
+  "check": "nuker.speed",
+  "vl": 50.0,
+  "details": {
+    "break_time_ms": 50,
+    "expected_time_ms": 750,
+    "block_type": "stone",
+    "tool": "diamond_pickaxe"
+  }
+}
+```
+
+### nuker.pattern
+
+Breaking multiple blocks impossibly fast.
+
+**Detection:**
+- Track break locations and timing
+- Detect multi-block breaks in single tick
+- Flag impossible break patterns
+
+## FastPlace
+
+Detects rapid block placement.
+
+### fastplace.rate
+
+Placing blocks faster than allowed.
+
+**Detection:**
+- Count placements per time window
+- Maximum vanilla is ~4 blocks/tick
+- Flag excessive placement rates
+
+**Example Finding:**
+```json
+{
+  "check": "fastplace.rate",
+  "vl": 25.0,
+  "details": {
+    "placements_per_second": 25,
+    "max_allowed": 20
+  }
+}
+```
+
+## Inventory
+
+Detects inventory manipulation cheats.
+
+### inventory.instant
+
+Instant inventory interactions.
+
+**Detection:**
+- Track time between inventory open and clicks
+- Detect superhuman click speeds
+- Flag instant item transfers
+
+### inventory.pattern
+
+Unnatural inventory click patterns.
+
+**Detection:**
+- Analyze click sequences
+- Detect automated sorting patterns
+- Flag impossible click combinations
+
+**Example Finding:**
+```json
+{
+  "check": "inventory.pattern",
+  "vl": 30.0,
+  "details": {
+    "clicks_per_second": 35,
+    "unique_slots_clicked": 20,
+    "time_window_ms": 100
+  }
+}
+```
+
+### inventory.steal
+
+Chest stealing detection.
+
+**Detection:**
+- Track container interactions
+- Detect instant chest emptying
+- Flag superhuman transfer speeds
+
+## Timer
+
+Detects game speed modification.
+
+### timer.speed
+
+Game running faster than normal.
+
+**Detection:**
+- Compare packet rate to expected rate
+- Track packet timestamps
+- Flag accelerated game speed
+
+**Note:** Timer detection is challenging in async mode due to network jitter. Best results come from analyzing patterns over longer periods.
+
+**Example Finding:**
+```json
+{
+  "check": "timer.speed",
+  "vl": 40.0,
+  "details": {
+    "packets_per_second": 25,
+    "expected": 20,
+    "speed_multiplier": 1.25
+  }
+}
+```
+
+## Configuration
+
+Example interaction check configuration:
+
+```json
+{
+  "interaction": {
+    "scaffold": {
+      "enabled": true,
+      "min_placements_for_detection": 5,
+      "max_placement_speed": 50
+    },
+    "nuker": {
+      "enabled": true,
+      "instant_break_threshold_ms": 100
+    },
+    "fastplace": {
+      "enabled": true,
+      "max_placements_per_second": 20
+    },
+    "inventory": {
+      "enabled": true,
+      "max_clicks_per_second": 30,
+      "min_interaction_delay_ms": 50
+    },
+    "timer": {
+      "enabled": true,
+      "max_speed_multiplier": 1.05,
+      "sample_window_seconds": 10
+    }
+  }
+}
+```
+
+## Limitations
+
+### World State Dependency
+
+Many interaction checks benefit from world state:
+
+- Block break times depend on block type and tool
+- Placement validity requires knowing adjacent blocks
+- Some cheats only detectable with server-side info
+
+**Workaround:** Include block type hints in packet data when available.
+
+### Async Timing Challenges
+
+Interaction timing is affected by:
+
+- Network latency variations
+- Packet batching delays
+- Clock skew between client and server
+
+Use statistical analysis over time windows rather than single-event detection.

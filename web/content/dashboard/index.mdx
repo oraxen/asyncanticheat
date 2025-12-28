@@ -1,0 +1,73 @@
+---
+description: Overview of the AsyncAnticheat dashboard
+title: Dashboard Overview
+---
+
+# Dashboard Overview
+
+The AsyncAnticheat dashboard provides real-time visibility into cheat detection on your Minecraft server.
+
+![Dashboard Overview](/docs/dashboard-overview.webp)
+
+## Accessing the Dashboard
+
+1. Go to [asyncanticheat.com/dashboard](https://asyncanticheat.com/dashboard)
+2. Sign in with your account
+3. Select your server from the dropdown
+
+## Main Components
+
+### Global Monitor
+
+The central visualization shows your server's activity in real-time:
+
+- **Player positions** appear as dots on the radar
+- **Active findings** pulse to draw attention
+- **LIVE indicator** confirms real-time data flow
+
+### Stats Panel
+
+Quick metrics at the bottom:
+
+| Metric | Description |
+|--------|-------------|
+| **Detections** | Total findings, with today's count highlighted |
+| **Modules** | Number of active detection modules |
+| **Players** | Players with at least one finding |
+| **Latency** | Round-trip time to the API |
+
+### Recent Findings
+
+The right panel shows the latest detections:
+
+- Click any finding to see player details
+- **View all →** opens the full Findings page
+
+### Connection Status
+
+Monitor your infrastructure health:
+
+| Status | Meaning |
+|--------|---------|
+| **Dashboard → API** | Latency from your browser to our API |
+| **API → Server** | Ping from API to your Minecraft server |
+| **Plugin Status** | Time since last data from your plugin |
+
+
+## Navigation
+
+Use the sidebar to access different sections:
+
+- **Overview** - Main dashboard (this page)
+- **[Players](./players)** - View player sessions and history
+- **[Findings](./findings)** - Browse all detections
+- **[Modules](./modules)** - Configure detection modules
+- **[Settings](./settings)** - Server configuration
+
+## Server Selector
+
+If you have multiple servers, use the dropdown at the top of the sidebar to switch between them.
+
+## Real-Time Updates
+
+The dashboard automatically refreshes data every few seconds. You don't need to manually refresh the page to see new findings or player activity.

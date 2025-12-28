@@ -800,6 +800,15 @@ fn extract_host_port(raw: &str) -> Option<(String, u16)> {
         }
     }
 
+    // Detect bare IPv6 addresses (multiple colons, no brackets).
+    // These are invalid input; require bracketed form [::1]:port instead.
+    let colon_count = authority.chars().filter(|&c| c == ':').count();
+    if colon_count > 1 {
+        // More than one colon without brackets = bare IPv6, reject it.
+        return None;
+    }
+
+    // Now safe to split by single colon: host:port or just host.
     let mut parts = authority.split(':');
     let host = parts.next().unwrap_or("").trim();
     if host.is_empty() {

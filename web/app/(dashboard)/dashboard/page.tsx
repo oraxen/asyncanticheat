@@ -597,19 +597,24 @@ function StatPanel({
   suffix?: string;
   trend?: string;
 }) {
+  // Check if value is actually available (not placeholder)
+  const hasValue = value !== "—" && value !== null && value !== undefined;
+
   return (
-    <div className="relative p-4 rounded-xl overflow-hidden backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] select-none">
+    <div className="relative p-4 rounded-xl overflow-hidden backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] select-none min-w-0">
       <div className="relative z-10">
-        <p className="text-[10px] uppercase tracking-wider text-indigo-400 mb-1">
+        <p className="text-[10px] uppercase tracking-wider text-indigo-400 mb-1 truncate">
           {label}
         </p>
-        <p className="text-2xl font-light text-white tabular-nums">
+        <p className="text-2xl font-light text-white tabular-nums truncate">
           {value}
-          {suffix && (
+          {suffix && hasValue && (
             <span className="text-sm text-white/50 ml-0.5">{suffix}</span>
           )}
         </p>
-        {trend && <p className="text-[10px] text-emerald-400 mt-1">{trend}</p>}
+        {trend && hasValue && (
+          <p className="text-[10px] text-emerald-400 mt-1 truncate">{trend}</p>
+        )}
       </div>
     </div>
   );
@@ -947,6 +952,9 @@ export default function DashboardPage() {
               // Build connection status list
               // Note: "API → Server" only shows if the server has a pingable address configured.
               // Without a callback_url, we can't TCP ping and showing red is misleading.
+              // When we have metrics but pluginLastSeenMs is -1, it means we couldn't reach the API
+              const apiReachable = connectionMetrics && connectionMetrics.apiLatencyMs > 0;
+
               const connections = connectionMetrics
                 ? [
                     {
@@ -973,7 +981,9 @@ export default function DashboardPage() {
                       lastSeenMs: connectionMetrics.pluginLastSeenMs,
                       status: connectionMetrics.pluginOnline
                         ? "excellent"
-                        : "offline",
+                        : apiReachable
+                          ? "offline"
+                          : "unknown",
                       isLastSeen: true,
                     },
                   ]
@@ -1003,10 +1013,11 @@ export default function DashboardPage() {
                           ? "bg-emerald-400"
                           : conn.status === "good"
                             ? "bg-amber-400"
-                            : conn.status === "offline" ||
-                                conn.status === "unknown"
-                              ? "bg-red-400"
-                              : "bg-orange-400"
+                            : conn.status === "unknown"
+                              ? "bg-white/30"
+                              : conn.status === "offline"
+                                ? "bg-red-400"
+                                : "bg-orange-400"
                       )}
                     />
                   </div>
@@ -1037,26 +1048,52 @@ export default function DashboardPage() {
           <div className="pt-3 mt-auto border-t border-white/[0.06]">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-white/40">All Systems</span>
-              <span
-                className={cn(
-                  "text-xs",
-                  connectionMetrics?.pluginOnline &&
-                    connectionMetrics?.serverReachable
-                    ? "text-emerald-400"
-                    : connectionMetrics?.pluginOnline ||
-                        connectionMetrics?.serverReachable
-                      ? "text-amber-400"
-                      : "text-red-400"
-                )}
-              >
-                {connectionMetrics?.pluginOnline &&
-                connectionMetrics?.serverReachable
-                  ? "Operational"
-                  : connectionMetrics?.pluginOnline ||
-                      connectionMetrics?.serverReachable
-                    ? "Partial"
-                    : "Offline"}
-              </span>
+              {(() => {
+                // Determine overall status based on available metrics
+                // If no server address is configured, don't require serverReachable
+                const hasServerAddress = !!connectionMetrics?.serverAddress;
+                const pluginOk = connectionMetrics?.pluginOnline ?? false;
+                const serverOk = connectionMetrics?.serverReachable ?? false;
+                // Check if we actually have metrics (API is reachable)
+                const apiOk = connectionMetrics && connectionMetrics.apiLatencyMs > 0;
+
+                let status: "operational" | "partial" | "offline" | "unknown";
+                if (!connectionMetrics || !apiOk) {
+                  // No metrics available - API unreachable
+                  status = "unknown";
+                } else if (hasServerAddress) {
+                  // Both plugin and server ping matter
+                  if (pluginOk && serverOk) status = "operational";
+                  else if (pluginOk || serverOk) status = "partial";
+                  else status = "offline";
+                } else {
+                  // No server address configured - only plugin status matters
+                  status = pluginOk ? "operational" : "offline";
+                }
+
+                return (
+                  <span
+                    className={cn(
+                      "text-xs",
+                      status === "operational"
+                        ? "text-emerald-400"
+                        : status === "partial"
+                          ? "text-amber-400"
+                          : status === "unknown"
+                            ? "text-white/40"
+                            : "text-red-400"
+                    )}
+                  >
+                    {status === "operational"
+                      ? "Operational"
+                      : status === "partial"
+                        ? "Partial"
+                        : status === "unknown"
+                          ? "Unknown"
+                          : "Offline"}
+                  </span>
+                );
+              })()}
             </div>
           </div>
         </div>

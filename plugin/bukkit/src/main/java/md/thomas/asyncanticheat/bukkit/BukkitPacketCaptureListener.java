@@ -94,14 +94,16 @@ final class BukkitPacketCaptureListener implements PacketListener {
         // but can be useful for context (e.g., teleports, entity positions).
         // For now, we capture minimal data to reduce bandwidth.
         final Player player = event.getPlayer();
-        
-        // Check exemptions (same as serverbound)
-        // Note: We might want different rules for clientbound in the future
-        if (exemptionTracker.isExempt(player)) {
+        final String packetName = String.valueOf(event.getPacketType());
+
+        // IMPORTANT: Always allow PLAYER_ABILITIES packets through even for exempt players.
+        // This mirrors the serverbound handling - we need to capture when the server tells
+        // a player their flying ability state changes (allow_flying/flying flags).
+        // Without this, modules can't correlate flight permission changes with movement.
+        if (!"PLAYER_ABILITIES".equals(packetName) && exemptionTracker.isExempt(player)) {
             return;
         }
-        
-        final String packetName = String.valueOf(event.getPacketType());
+
         final Map<String, Object> fields = extractClientBoundFields(event);
         service.tryEnqueue(new PacketRecord(
                 System.currentTimeMillis(),
@@ -440,53 +442,54 @@ final class BukkitPacketCaptureListener implements PacketListener {
 
     /**
      * Best-effort extraction for modern "use item on block" packets on newer Minecraft versions.
-     * We intentionally avoid directly referencing PacketEvents wrapper classes that may not exist
-     * in all supported builds, and instead extract by reflection.
+     * Tries WrapperPlayClientPlayerBlockPlacement first (1.12-1.18), then falls back to
+     * WrapperPlayClientUseItem for basic hand/sequence/rotation data (1.19+).
      */
     @NotNull
     private static Map<String, Object> extractUseItemOnLike(@NotNull PacketReceiveEvent event) {
         final Map<String, Object> m = new HashMap<>();
+
+        // Try block placement wrapper first (works for 1.12-1.18 style packets)
+        boolean hasBlockData = false;
         try {
-            final Object wrapper = new WrapperPlayClientUseItem(event);
-            // Fallback: at least capture hand/sequence/yaw/pitch when available.
-            m.put("hand", ((WrapperPlayClientUseItem) wrapper).getHand().name());
-            m.put("sequence", ((WrapperPlayClientUseItem) wrapper).getSequence());
-            m.put("yaw", ((WrapperPlayClientUseItem) wrapper).getYaw());
-            m.put("pitch", ((WrapperPlayClientUseItem) wrapper).getPitch());
-        } catch (Throwable ignored) {
-            // ignore
+            final WrapperPlayClientPlayerBlockPlacement w = new WrapperPlayClientPlayerBlockPlacement(event);
+            final Vector3i pos = w.getBlockPosition();
+            if (pos != null) {
+                m.put("x", pos.getX());
+                m.put("y", pos.getY());
+                m.put("z", pos.getZ());
+                hasBlockData = true;
+            }
+            if (w.getFace() != null) {
+                m.put("face", w.getFace().name());
+            }
+            if (w.getHand() != null) {
+                m.put("hand", w.getHand().name());
+            }
+            if (w.getCursorPosition() != null) {
+                m.put("cursor_x", w.getCursorPosition().getX());
+                m.put("cursor_y", w.getCursorPosition().getY());
+                m.put("cursor_z", w.getCursorPosition().getZ());
+            }
+            m.put("inside_block", w.getInsideBlock());
+            m.put("sequence", w.getSequence());
+        } catch (Throwable e) {
+            // Block placement wrapper not compatible - try use item wrapper below
         }
 
-        // Try extracting block interaction fields via reflection (position/face/cursor/inside_block)
-        try {
-            // Attempt to construct WrapperPlayClientPlayerBlockPlacement against this event if compatible.
+        // If no block data, try the use item wrapper for basic hand/rotation data
+        if (!hasBlockData) {
             try {
-                final WrapperPlayClientPlayerBlockPlacement w = new WrapperPlayClientPlayerBlockPlacement(event);
-                final Vector3i pos = w.getBlockPosition();
-                if (pos != null) {
-                    m.put("x", pos.getX());
-                    m.put("y", pos.getY());
-                    m.put("z", pos.getZ());
-                }
-                if (w.getFace() != null) {
-                    m.put("face", w.getFace().name());
-                }
-                if (w.getHand() != null) {
-                    m.put("hand", w.getHand().name());
-                }
-                if (w.getCursorPosition() != null) {
-                    m.put("cursor_x", w.getCursorPosition().getX());
-                    m.put("cursor_y", w.getCursorPosition().getY());
-                    m.put("cursor_z", w.getCursorPosition().getZ());
-                }
-                m.put("inside_block", w.getInsideBlock());
-                m.put("sequence", w.getSequence());
-            } catch (Throwable ignored) {
-                // If wrapper construction isn't compatible, just keep partial fields.
+                final WrapperPlayClientUseItem wrapper = new WrapperPlayClientUseItem(event);
+                m.put("hand", wrapper.getHand().name());
+                m.put("sequence", wrapper.getSequence());
+                m.put("yaw", wrapper.getYaw());
+                m.put("pitch", wrapper.getPitch());
+            } catch (Throwable e) {
+                // Neither wrapper works - return what we have (possibly empty)
             }
-        } catch (Throwable ignored) {
-            // ignore
         }
+
         return m;
     }
 

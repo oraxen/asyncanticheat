@@ -6,35 +6,11 @@
 use axum::{extract::State, http::HeaderMap, Json};
 use serde::Serialize;
 
-use crate::{error::ApiError, AppState};
+use crate::{auth, error::ApiError, AppState};
 
 #[derive(Serialize)]
 pub struct HeartbeatResponse {
     pub ok: bool,
-}
-
-fn parse_bearer_token(headers: &HeaderMap) -> Option<String> {
-    let auth = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .trim();
-    let prefix = "bearer ";
-    if auth.len() <= prefix.len() {
-        return None;
-    }
-    if !auth[..prefix.len()].eq_ignore_ascii_case(prefix) {
-        return None;
-    }
-    Some(auth[prefix.len()..].trim().to_string())
-}
-
-fn sha256_hex(input: &str) -> String {
-    use sha2::Digest;
-    let mut h = sha2::Sha256::new();
-    h.update(input.as_bytes());
-    let out = h.finalize();
-    hex::encode(out)
 }
 
 /// POST /heartbeat
@@ -64,20 +40,19 @@ pub async fn heartbeat(
     }
 
     // Extract and validate token
-    let token = parse_bearer_token(&headers)
+    let token = auth::parse_bearer_token(&headers)
         .ok_or_else(|| ApiError::BadRequest("Authorization header is required".to_string()))?;
 
     if token.is_empty() {
         return Err(ApiError::Unauthorized);
     }
 
-    let token_hash = sha256_hex(&token);
+    let token_hash = auth::sha256_hex(&token);
 
-    // Verify token matches the server's registered token
-    let server_exists: Option<(String,)> =
-        sqlx::query_as("SELECT id FROM public.servers WHERE id = $1 AND auth_token_hash = $2")
+    // Fetch stored token hash for constant-time comparison
+    let stored_hash: Option<(Option<String>,)> =
+        sqlx::query_as("SELECT auth_token_hash FROM public.servers WHERE id = $1")
             .bind(&server_id)
-            .bind(&token_hash)
             .fetch_optional(&state.db)
             .await
             .map_err(|e| {
@@ -85,9 +60,21 @@ pub async fn heartbeat(
                 ApiError::Internal
             })?;
 
-    if server_exists.is_none() {
-        // Either server doesn't exist or token doesn't match
-        return Err(ApiError::Unauthorized);
+    // Verify token using constant-time comparison
+    match stored_hash {
+        None => {
+            // Server doesn't exist
+            return Err(ApiError::Unauthorized);
+        }
+        Some((None,)) => {
+            // Server exists but has no token stored - reject
+            return Err(ApiError::Unauthorized);
+        }
+        Some((Some(stored),)) => {
+            if !auth::validate_token_hash(&token_hash, &stored) {
+                return Err(ApiError::Unauthorized);
+            }
+        }
     }
 
     // Update last_seen_at

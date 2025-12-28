@@ -12,7 +12,7 @@ use std::io::{BufRead, BufReader};
 use uuid::Uuid;
 
 use crate::module_pipeline;
-use crate::{error::ApiError, AppState};
+use crate::{auth, error::ApiError, AppState};
 
 #[derive(Serialize)]
 pub struct IngestResponse {
@@ -26,30 +26,6 @@ pub struct WaitingForRegistrationResponse {
     pub ok: bool,
     pub status: String,
     pub server_id: String,
-}
-
-fn parse_bearer_token(headers: &HeaderMap) -> Option<String> {
-    let auth = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .trim();
-    let prefix = "bearer ";
-    if auth.len() <= prefix.len() {
-        return None;
-    }
-    if !auth[..prefix.len()].eq_ignore_ascii_case(prefix) {
-        return None;
-    }
-    Some(auth[prefix.len()..].trim().to_string())
-}
-
-fn sha256_hex(input: &str) -> String {
-    use sha2::Digest;
-    let mut h = sha2::Sha256::new();
-    h.update(input.as_bytes());
-    let out = h.finalize();
-    hex::encode(out)
 }
 
 /// POST /ingest
@@ -93,14 +69,17 @@ pub async fn ingest(
     }
 
     // --- Auth (per-server token) ---
-    let token = parse_bearer_token(&headers).ok_or(ApiError::Unauthorized)?;
-    let token_hash = sha256_hex(&token);
+    let token = auth::parse_bearer_token(&headers).ok_or(ApiError::Unauthorized)?;
+    let token_hash = auth::sha256_hex(&token);
 
     // --- Optional metadata from headers ---
     let platform = headers
         .get("x-server-platform")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
+
+    // Extract server address for ping feature (explicit header > forwarded-for > real-ip)
+    let server_address = auth::extract_server_address(&headers);
 
     // --- Registration gate ---
     // We store the server + token hash the first time we see it, but we do not accept payloads
@@ -130,17 +109,19 @@ pub async fn ingest(
             sqlx::query(
                 r#"
                 insert into public.servers
-                    (id, platform, first_seen_at, last_seen_at, auth_token_hash, auth_token_first_seen_at)
+                    (id, platform, first_seen_at, last_seen_at, auth_token_hash, auth_token_first_seen_at, callback_url)
                 values
-                    ($1, $2, now(), now(), $3, now())
+                    ($1, $2, now(), now(), $3, now(), $4)
                 on conflict (id) do update set
                     platform = coalesce(excluded.platform, servers.platform),
-                    last_seen_at = now()
+                    last_seen_at = now(),
+                    callback_url = coalesce(excluded.callback_url, servers.callback_url)
                 "#,
             )
             .bind(&server_id)
             .bind(platform.as_deref())
             .bind(&token_hash)
+            .bind(server_address.as_deref())
             .execute(&state.db)
             .await
             .map_err(|e| {
@@ -161,17 +142,26 @@ pub async fn ingest(
         Some((stored_hash_opt, owner_user_id, registered_at)) => {
             // Validate token FIRST before updating any state.
             // This prevents attackers from spoofing last_seen_at with invalid tokens.
+            // Uses constant-time comparison to prevent timing attacks.
             if let Some(stored_hash) = &stored_hash_opt {
-                if stored_hash != &token_hash {
+                if !auth::validate_token_hash(&token_hash, stored_hash) {
                     return Err(ApiError::Unauthorized);
                 }
             }
 
-            // Token is valid (or no token stored yet) - now update last_seen_at.
-            let _ = sqlx::query("update public.servers set last_seen_at = now() where id = $1")
-                .bind(&server_id)
-                .execute(&state.db)
-                .await;
+            // Token is valid (or no token stored yet) - now update last_seen_at and callback_url.
+            let _ = sqlx::query(
+                r#"
+                update public.servers
+                set last_seen_at = now(),
+                    callback_url = coalesce($2, callback_url)
+                where id = $1
+                "#,
+            )
+            .bind(&server_id)
+            .bind(server_address.as_deref())
+            .execute(&state.db)
+            .await;
 
             // First time we see a token for an existing row: store it.
             if stored_hash_opt.is_none() {

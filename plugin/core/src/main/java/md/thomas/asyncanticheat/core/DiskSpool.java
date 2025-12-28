@@ -44,8 +44,11 @@ final class DiskSpool {
     File writeBatch(@NotNull List<PacketRecord> records, @NotNull String serverId, @NotNull String sessionId) {
         enforceMaxSize();
 
-        final String name = "batch-" + Instant.now().toEpochMilli() + "-" + UUID.randomUUID() + ".ndjson.gz";
-        final File out = new File(spoolDir, name);
+        // Write to a temp file first, then atomically rename to final name.
+        // This prevents corrupt/partial files from being picked up by the uploader.
+        final String baseName = "batch-" + Instant.now().toEpochMilli() + "-" + UUID.randomUUID();
+        final File tempFile = new File(spoolDir, baseName + ".tmp");
+        final File finalFile = new File(spoolDir, baseName + ".ndjson.gz");
 
         // NOTE: Map.of rejects null values; PacketRecord fields may be null (e.g., Bungee can enqueue nulls).
         final Map<String, Object> meta = new HashMap<>();
@@ -54,7 +57,8 @@ final class DiskSpool {
         meta.put("created_at_ms", System.currentTimeMillis());
         meta.put("event_count", records.size());
 
-        try (FileOutputStream fos = new FileOutputStream(out);
+        boolean success = false;
+        try (FileOutputStream fos = new FileOutputStream(tempFile);
              GZIPOutputStream gzip = new GZIPOutputStream(fos);
              BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(gzip, StandardCharsets.UTF_8))) {
 
@@ -75,11 +79,37 @@ final class DiskSpool {
                 writer.write("\n");
             }
             writer.flush();
-            return out;
+            success = true;
         } catch (Exception e) {
-            logger.error("[AsyncAnticheat] Failed to write spool batch: " + out.getAbsolutePath(), e);
+            logger.error("[AsyncAnticheat] Failed to write spool batch: " + tempFile.getAbsolutePath(), e);
+        }
+
+        // Clean up temp file on failure, or rename to final name on success
+        if (!success) {
             try {
-                Files.deleteIfExists(out.toPath());
+                Files.deleteIfExists(tempFile.toPath());
+            } catch (Exception e) {
+                logger.warn("[AsyncAnticheat] Failed to delete temp file: " + tempFile.getAbsolutePath());
+            }
+            return null;
+        }
+
+        // Atomically rename temp file to final file
+        try {
+            if (tempFile.renameTo(finalFile)) {
+                return finalFile;
+            } else {
+                // Rename failed - try copy + delete as fallback
+                Files.copy(tempFile.toPath(), finalFile.toPath());
+                Files.deleteIfExists(tempFile.toPath());
+                return finalFile;
+            }
+        } catch (Exception e) {
+            logger.error("[AsyncAnticheat] Failed to finalize batch file: " + e.getMessage(), e);
+            // Clean up both files on failure
+            try {
+                Files.deleteIfExists(tempFile.toPath());
+                Files.deleteIfExists(finalFile.toPath());
             } catch (Exception ignored) {}
             return null;
         }

@@ -28,6 +28,9 @@ pub struct Config {
     pub local_store_dir: String,
     // CORS
     pub cors_allow_origins: Vec<String>,
+    /// Explicitly opt-in to permissive CORS (for development only).
+    /// SECURITY: Must be explicitly set to true; defaults to false.
+    pub cors_permissive_dev: bool,
 }
 
 fn parse_bool_env(key: &str, default: bool) -> bool {
@@ -111,7 +114,7 @@ impl Config {
         let local_store_dir =
             env::var("LOCAL_STORE_DIR").unwrap_or_else(|_| "./data/object_store".to_string());
 
-        // Comma-separated list of allowed origins. Empty => permissive (dev) CORS.
+        // Comma-separated list of allowed origins.
         let cors_allow_origins = env::var("CORS_ALLOW_ORIGINS")
             .map(|v| {
                 v.split(',')
@@ -120,6 +123,9 @@ impl Config {
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
+
+        // SECURITY: Permissive CORS must be explicitly enabled. Defaults to false.
+        let cors_permissive_dev = parse_bool_env("CORS_PERMISSIVE_DEV", false);
 
         Self {
             host,
@@ -144,6 +150,7 @@ impl Config {
             s3_secret_key,
             local_store_dir,
             cors_allow_origins,
+            cors_permissive_dev,
         }
     }
 }

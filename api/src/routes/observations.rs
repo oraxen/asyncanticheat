@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{error::ApiError, AppState};
+use crate::{auth, error::ApiError, AppState};
 
 #[derive(Debug, Deserialize)]
 pub struct CreateObservation {
@@ -27,30 +27,6 @@ pub struct CreateObservation {
 pub struct CreateObservationResponse {
     pub ok: bool,
     pub observation_id: Uuid,
-}
-
-fn parse_bearer_token(headers: &HeaderMap) -> Option<String> {
-    let auth = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .trim();
-    let prefix = "bearer ";
-    if auth.len() <= prefix.len() {
-        return None;
-    }
-    if !auth[..prefix.len()].eq_ignore_ascii_case(prefix) {
-        return None;
-    }
-    Some(auth[prefix.len()..].trim().to_string())
-}
-
-fn sha256_hex(input: &str) -> String {
-    use sha2::Digest;
-    let mut h = sha2::Sha256::new();
-    h.update(input.as_bytes());
-    let out = h.finalize();
-    hex::encode(out)
 }
 
 /// POST /observations
@@ -77,8 +53,8 @@ pub async fn create_observation(
     }
 
     // --- Auth (per-server token) ---
-    let token = parse_bearer_token(&headers).ok_or(ApiError::Unauthorized)?;
-    let token_hash = sha256_hex(&token);
+    let token = auth::parse_bearer_token(&headers).ok_or(ApiError::Unauthorized)?;
+    let token_hash = auth::sha256_hex(&token);
 
     // --- Validate server is registered and token matches ---
     let row: Option<(Option<String>, Option<Uuid>, Option<DateTime<Utc>>)> = sqlx::query_as(
@@ -104,9 +80,9 @@ pub async fn create_observation(
             )));
         }
         Some((stored_hash_opt, owner_user_id, registered_at)) => {
-            // Token must match
+            // Token must match (using constant-time comparison to prevent timing attacks)
             if let Some(stored_hash) = stored_hash_opt {
-                if stored_hash != token_hash {
+                if !auth::validate_token_hash(&token_hash, &stored_hash) {
                     return Err(ApiError::Unauthorized);
                 }
             } else {

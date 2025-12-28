@@ -23,6 +23,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 flate2 = "1"
 sha2 = "0.10"
 hex = "0.4"
+subtle = "2.5"  # Constant-time comparison for security-sensitive operations
 
 # S3-compatible object storage (rust-s3 is lighter than AWS SDK)
 rust-s3 = { version = "0.35", default-features = false, features = ["tokio-rustls-tls"] }

@@ -27,6 +27,9 @@ public final class AsyncAnticheatConfig {
     private String apiUrl = DEFAULT_API_URL;
     private String apiToken = "";
     private int timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
+    // Optional: server address for API ping feature (e.g., "play.myserver.com:25565")
+    // Leave empty for auto-detect (uses connection IP)
+    private String serverAddress = "";
 
     // Dashboard linking
     private String dashboardUrl = DEFAULT_DASHBOARD_URL;
@@ -92,6 +95,7 @@ public final class AsyncAnticheatConfig {
             apiUrl = getString(api, "url", apiUrl);
             apiToken = getString(api, "token", apiToken);
             timeoutSeconds = getInt(api, "timeout_seconds", timeoutSeconds);
+            serverAddress = getString(api, "server_address", serverAddress);
         }
 
         final Map<String, Object> dashboard = (Map<String, Object>) data.get("dashboard");
@@ -146,6 +150,9 @@ public final class AsyncAnticheatConfig {
         api.put("url", apiUrl);
         api.put("token", apiToken);
         api.put("timeout_seconds", timeoutSeconds);
+        // Optional: your server's public address for dashboard ping feature
+        // Leave empty for auto-detect, or set to "play.myserver.com:25565"
+        api.put("server_address", serverAddress);
         root.put("api", api);
 
         final Map<String, Object> dashboard = new LinkedHashMap<>();
@@ -256,6 +263,7 @@ public final class AsyncAnticheatConfig {
     @NotNull public String getApiUrl() { return apiUrl; }
     @NotNull public String getApiToken() { return apiToken; }
     public int getTimeoutSeconds() { return timeoutSeconds; }
+    @NotNull public String getServerAddress() { return serverAddress; }
     @NotNull public String getDashboardUrl() { return dashboardUrl; }
 
     @NotNull public String getSpoolDirName() { return spoolDirName; }

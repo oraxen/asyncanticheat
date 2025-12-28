@@ -699,6 +699,7 @@ export default function DashboardPage() {
   const [playersLoading, setPlayersLoading] = useState(true);
   const [playersError, setPlayersError] = useState<string | null>(null);
   const [errorDismissed, setErrorDismissed] = useState(false);
+  const [playersRefetchKey, setPlayersRefetchKey] = useState(0);
 
   // Use SWR hooks for stats and connection metrics (cached across navigation)
   const { stats, error: statsError, isLoading: statsLoading, mutate: mutateStats } = useDashboardStats(selectedServerId);
@@ -788,7 +789,7 @@ export default function DashboardPage() {
     // Refresh players every 30 seconds
     const interval = setInterval(fetchPlayers, 30000);
     return () => clearInterval(interval);
-  }, [selectedServerId]);
+  }, [selectedServerId, playersRefetchKey]);
 
   // Combined loading state - show skeleton only on first load
   const loading = (statsLoading && !stats) || (playersLoading && players.length === 0);
@@ -808,7 +809,8 @@ export default function DashboardPage() {
     setErrorDismissed(false);
     setPlayersError(null);
     mutateStats();
-    // Players will auto-refetch via the useEffect
+    // Trigger players refetch by incrementing the key
+    setPlayersRefetchKey((k) => k + 1);
   };
 
   if (!mounted) return null;

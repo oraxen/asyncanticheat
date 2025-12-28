@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,15 @@ export function DeleteFindingDialog({
   const [deleting, setDeleting] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Reset state when dialog opens or finding changes
+  useEffect(() => {
+    if (open) {
+      setDeleting(false);
+      setDeleted(false);
+      setError(null);
+    }
+  }, [open, finding?.id]);
 
   const handleDelete = async () => {
     if (!finding) return;

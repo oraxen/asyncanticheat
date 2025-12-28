@@ -67,6 +67,15 @@ function DeleteDialog({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, loading, onClose]);
 
+  // Prevent body scroll when dialog is open
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (

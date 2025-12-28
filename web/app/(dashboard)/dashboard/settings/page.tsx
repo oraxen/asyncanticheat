@@ -55,11 +55,23 @@ function DeleteDialog({
   onConfirm: () => void;
   loading: boolean;
 }) {
+  // Handle escape key to close dialog
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !loading) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, loading, onClose]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
+      <div className="absolute inset-0 bg-black/60" onClick={loading ? undefined : onClose} />
       <div className="relative z-10 w-full max-w-md rounded-lg border border-[rgb(var(--border))] surface-1 p-6 shadow-2xl">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
@@ -291,8 +303,8 @@ export default function SettingsPage() {
 
   if (!serverId) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="rounded-lg border border-[rgb(var(--border))] surface-1 p-8 text-center">
+      <div className="h-full flex items-center justify-center">
+        <div className="rounded-lg border border-[rgb(var(--border))] surface-1 p-8 text-center max-w-md">
           <p className="text-sm text-[rgb(var(--foreground-secondary))]">
             No server selected. Please select a server from the sidebar.
           </p>
@@ -303,7 +315,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto flex items-center justify-center py-12">
+      <div className="h-full flex items-center justify-center">
         <RiLoader4Line className="h-6 w-6 animate-spin text-[rgb(var(--foreground-secondary))]" />
       </div>
     );

@@ -602,6 +602,7 @@ export default function PlayersPage() {
           )}
 
           {/* Player Grid */}
+          {filteredPlayers.length > 0 && (
           <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredPlayers.map((player) => (
               <button
@@ -679,6 +680,7 @@ export default function PlayersPage() {
               </button>
             ))}
           </div>
+          )}
         </div>
       )}
 

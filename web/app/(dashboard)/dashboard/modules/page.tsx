@@ -518,7 +518,7 @@ function ModuleDetailPanel({
           <span className="font-mono text-white/30">{module.base_url}</span>
           <button
             onClick={onConfigure}
-            className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer !bg-transparent"
           >
             <RiSettings4Line className="w-3.5 h-3.5" />
             Configure

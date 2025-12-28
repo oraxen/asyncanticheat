@@ -7,6 +7,8 @@ import {
   RiAlertLine,
   RiTimeLine,
   RiMapPinLine,
+  RiErrorWarningLine,
+  RiRefreshLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -620,6 +622,72 @@ function StatPanel({
   );
 }
 
+// Error banner component - dismissable modal for API errors
+function ErrorBanner({
+  message,
+  onDismiss,
+  onRetry,
+}: {
+  message: string;
+  onDismiss: () => void;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-md glass-panel rounded-xl shadow-2xl overflow-hidden bg-[#0a0a0f]/95 border border-red-500/20">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06] bg-red-500/5">
+          <div className="p-2 rounded-lg bg-red-500/10">
+            <RiErrorWarningLine className="w-5 h-5 text-red-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-medium text-white">Connection Error</h3>
+            <p className="text-xs text-white/50 truncate">
+              Unable to reach the API server
+            </p>
+          </div>
+          <button
+            onClick={onDismiss}
+            className="p-1.5 rounded-md hover:bg-white/10 transition-colors group cursor-pointer"
+          >
+            <RiCloseLine className="w-5 h-5 text-white/40 group-hover:text-white/80 transition-colors" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-5">
+          <div className="bg-white/[0.02] rounded-lg p-4 mb-4">
+            <p className="text-sm text-white/70 font-mono break-all">{message}</p>
+          </div>
+          <p className="text-xs text-white/40 mb-4">
+            The dashboard will retry automatically. Check that the API server is
+            running and accessible.
+          </p>
+
+          {/* Actions */}
+          <div className="flex items-center gap-3">
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-300 text-sm font-medium transition-colors cursor-pointer"
+              >
+                <RiRefreshLine className="w-4 h-4" />
+                Retry Now
+              </button>
+            )}
+            <button
+              onClick={onDismiss}
+              className="px-4 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white/70 text-sm font-medium transition-colors cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const selectedServerId = useSelectedServer();
   const [mounted, setMounted] = useState(false);
@@ -630,9 +698,11 @@ export default function DashboardPage() {
   const [activePlayers, setActivePlayers] = useState<ActivePlayerDot[]>([]);
   const [playersLoading, setPlayersLoading] = useState(true);
   const [playersError, setPlayersError] = useState<string | null>(null);
+  const [errorDismissed, setErrorDismissed] = useState(false);
+  const [playersRefetchKey, setPlayersRefetchKey] = useState(0);
 
   // Use SWR hooks for stats and connection metrics (cached across navigation)
-  const { stats, isLoading: statsLoading } = useDashboardStats(selectedServerId);
+  const { stats, error: statsError, isLoading: statsLoading, mutate: mutateStats } = useDashboardStats(selectedServerId);
   const { metrics: connectionMetrics } = useConnectionMetrics(selectedServerId);
 
   // Track current server ID to prevent stale responses from updating state
@@ -719,11 +789,29 @@ export default function DashboardPage() {
     // Refresh players every 30 seconds
     const interval = setInterval(fetchPlayers, 30000);
     return () => clearInterval(interval);
-  }, [selectedServerId]);
+  }, [selectedServerId, playersRefetchKey]);
 
   // Combined loading state - show skeleton only on first load
   const loading = (statsLoading && !stats) || (playersLoading && players.length === 0);
-  const error = playersError;
+
+  // Combine all errors - show the first one that occurred
+  const activeError = statsError?.message || playersError;
+
+  // Reset dismissed state when error changes
+  useEffect(() => {
+    if (activeError) {
+      setErrorDismissed(false);
+    }
+  }, [activeError]);
+
+  // Retry function for the error banner
+  const handleRetry = () => {
+    setErrorDismissed(false);
+    setPlayersError(null);
+    mutateStats();
+    // Trigger players refetch by incrementing the key
+    setPlayersRefetchKey((k) => k + 1);
+  };
 
   if (!mounted) return null;
 
@@ -758,8 +846,18 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen lg:h-screen flex flex-col lg:flex-row gap-4 lg:gap-6 -m-4 lg:-m-6 overflow-x-hidden">
-      {/* Globe Section - Left on desktop, top on mobile */}
+    <>
+      {/* Error Modal */}
+      {activeError && !errorDismissed && (
+        <ErrorBanner
+          message={activeError}
+          onDismiss={() => setErrorDismissed(true)}
+          onRetry={handleRetry}
+        />
+      )}
+
+      <div className="min-h-screen lg:h-screen flex flex-col lg:flex-row gap-4 lg:gap-6 -m-4 lg:-m-6 overflow-x-hidden">
+        {/* Globe Section - Left on desktop, top on mobile */}
       <div className="flex-1 relative h-[50vh] lg:h-auto min-h-[300px]">
         <AnimatedGlobe
           players={players}
@@ -795,14 +893,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Error state */}
-        {error && (
-          <div className="absolute bottom-20 lg:bottom-20 left-4 right-4 lg:left-6 lg:right-6 z-20">
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
-              {error}
-            </div>
-          </div>
-        )}
 
         {/* Bottom stats bar - hidden on mobile, shown below globe on desktop */}
         <div className="hidden lg:block absolute bottom-6 left-6 right-6">
@@ -1126,6 +1216,7 @@ export default function DashboardPage() {
           />
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

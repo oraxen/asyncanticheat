@@ -10,6 +10,7 @@ import {
   RiArrowLeftLine,
   RiFlagLine,
   RiFlagFill,
+  RiDeleteBinLine,
 } from "@remixicon/react";
 import {
   cn,
@@ -21,6 +22,8 @@ import {
 import { type Finding } from "@/lib/api";
 import { useSelectedServer } from "@/lib/server-context";
 import { ReportFalsePositiveDialog } from "@/components/dashboard/report-false-positive-dialog";
+import { ViewFalsePositiveReportModal } from "@/components/dashboard/view-false-positive-report-modal";
+import { DeleteFindingDialog } from "@/components/dashboard/delete-finding-dialog";
 import { useFindings, useFalsePositiveReports } from "@/lib/hooks/use-dashboard-data";
 
 const severityColors = {
@@ -121,12 +124,16 @@ function PlayerHistoryPanel({
   findings,
   onClose,
   onReportFalsePositive,
+  onViewReport,
+  onDeleteFinding,
   reportedFindingIds,
 }: {
   playerName: string;
   findings: Finding[];
   onClose: () => void;
   onReportFalsePositive: (finding: Finding) => void;
+  onViewReport: (finding: Finding) => void;
+  onDeleteFinding: (finding: Finding) => void;
   reportedFindingIds: Set<string>;
 }) {
   // Normalize player name comparison to handle "Unknown" entries
@@ -331,12 +338,16 @@ function PlayerHistoryPanel({
                             })()}
                             <div className="flex items-center gap-2">
                               {isReported ? (
-                                <div
-                                  className="p-1 text-amber-400"
-                                  title="Reported as false positive"
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onViewReport(finding);
+                                  }}
+                                  className="p-1 text-amber-400 hover:bg-amber-500/10 rounded transition-colors cursor-pointer"
+                                  title="View false positive report"
                                 >
                                   <RiFlagFill className="h-3.5 w-3.5" />
-                                </div>
+                                </button>
                               ) : (
                                 <button
                                   onClick={(e) => {
@@ -349,6 +360,16 @@ function PlayerHistoryPanel({
                                   <RiFlagLine className="h-3.5 w-3.5" />
                                 </button>
                               )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteFinding(finding);
+                                }}
+                                className="opacity-0 group-hover/item:opacity-100 p-1 rounded hover:bg-red-500/10 text-white/40 hover:text-red-400 transition-all cursor-pointer"
+                                title="Delete finding"
+                              >
+                                <RiDeleteBinLine className="h-3.5 w-3.5" />
+                              </button>
                               <span className="text-[10px] text-white/30 tabular-nums">
                                 {time}
                               </span>
@@ -370,9 +391,16 @@ function PlayerHistoryPanel({
                                 </span>
                               )}
                               {isReported && (
-                                <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-[9px] text-amber-400 font-medium uppercase tracking-wide flex-shrink-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onViewReport(finding);
+                                  }}
+                                  className="px-1.5 py-0.5 rounded bg-amber-500/10 text-[9px] text-amber-400 font-medium uppercase tracking-wide flex-shrink-0 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                                  title="View false positive report"
+                                >
                                   Reported
-                                </span>
+                                </button>
                               )}
                             </div>
                             <span
@@ -414,27 +442,53 @@ export default function FindingsPage() {
     findings,
     error,
     isLoading: loading,
+    removeFinding,
   } = useFindings(selectedServerId, {
     severity: filter || undefined,
     player: deepLinkPlayer || undefined,
     limit: 100,
   });
 
-  const { reportedFindingIds, addReport } = useFalsePositiveReports(selectedServerId);
+  const { reportedFindingIds, addReport, removeReport } = useFalsePositiveReports(selectedServerId);
 
   // False positive report dialog state
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedFindingForReport, setSelectedFindingForReport] = useState<Finding | null>(null);
+
+  // View false positive report modal state
+  const [viewReportFinding, setViewReportFinding] = useState<Finding | null>(null);
+
+  // Delete finding dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedFindingForDelete, setSelectedFindingForDelete] = useState<Finding | null>(null);
 
   const handleReportFalsePositive = useCallback((finding: Finding) => {
     setSelectedFindingForReport(finding);
     setReportDialogOpen(true);
   }, []);
 
+  const handleViewReport = useCallback((finding: Finding) => {
+    setViewReportFinding(finding);
+  }, []);
+
+  const handleReportDeleted = useCallback((findingId: string) => {
+    removeReport(findingId);
+  }, [removeReport]);
+
   // Handle successful false positive report submission
   const handleReportSuccess = useCallback((findingId: string) => {
     addReport(findingId);
   }, [addReport]);
+
+  const handleDeleteFinding = useCallback((finding: Finding) => {
+    setSelectedFindingForDelete(finding);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const handleDeleteSuccess = useCallback((findingId: string) => {
+    removeFinding(findingId);
+    removeReport(findingId); // Also remove from reported set if it was reported
+  }, [removeFinding, removeReport]);
 
   // Check for player query param on mount
   useEffect(() => {
@@ -656,10 +710,19 @@ export default function FindingsPage() {
                     isReported && "opacity-60"
                   )}
                 >
-                  <button
+                  <div
                     onClick={() =>
                       setSelectedPlayer(finding.player_name || "Unknown")
                     }
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      // Only handle if the event originated from this element, not nested buttons
+                      if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                        e.preventDefault();
+                        setSelectedPlayer(finding.player_name || "Unknown");
+                      }
+                    }}
                     className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
                   >
                     <div
@@ -719,9 +782,16 @@ export default function FindingsPage() {
                           </span>
                         )}
                         {isReported && (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-[9px] text-amber-400 font-medium uppercase tracking-wide">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewReport(finding);
+                            }}
+                            className="px-1.5 py-0.5 rounded bg-amber-500/10 text-[9px] text-amber-400 font-medium uppercase tracking-wide hover:bg-amber-500/20 transition-colors cursor-pointer"
+                            title="View false positive report"
+                          >
                             Reported
-                          </span>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -733,15 +803,16 @@ export default function FindingsPage() {
                         {time}
                       </span>
                     </div>
-                  </button>
+                  </div>
                   {/* Report False Positive Button */}
                   {isReported ? (
-                    <div
-                      className="p-2 text-amber-400 flex-shrink-0"
-                      title="Reported as false positive"
+                    <button
+                      onClick={() => handleViewReport(finding)}
+                      className="p-2 text-amber-400 flex-shrink-0 hover:bg-amber-500/10 rounded-lg transition-colors cursor-pointer"
+                      title="View false positive report"
                     >
                       <RiFlagFill className="h-4 w-4" />
-                    </div>
+                    </button>
                   ) : (
                     <button
                       onClick={() => handleReportFalsePositive(finding)}
@@ -751,6 +822,14 @@ export default function FindingsPage() {
                       <RiFlagLine className="h-4 w-4" />
                     </button>
                   )}
+                  {/* Delete Finding Button */}
+                  <button
+                    onClick={() => handleDeleteFinding(finding)}
+                    className="opacity-0 group-hover/row:opacity-100 p-2 rounded-lg hover:bg-red-500/10 text-white/40 hover:text-red-400 transition-all flex-shrink-0 cursor-pointer"
+                    title="Delete finding"
+                  >
+                    <RiDeleteBinLine className="h-4 w-4" />
+                  </button>
                 </div>
               );
             })}
@@ -781,6 +860,8 @@ export default function FindingsPage() {
                 setSearch("");
               }}
               onReportFalsePositive={handleReportFalsePositive}
+              onViewReport={handleViewReport}
+              onDeleteFinding={handleDeleteFinding}
               reportedFindingIds={reportedFindingIds}
             />
           </div>
@@ -795,6 +876,27 @@ export default function FindingsPage() {
           onOpenChange={setReportDialogOpen}
           serverId={selectedServerId}
           onReportSuccess={handleReportSuccess}
+        />
+      )}
+
+      {/* View False Positive Report Modal */}
+      {selectedServerId && viewReportFinding && (
+        <ViewFalsePositiveReportModal
+          finding={viewReportFinding}
+          onClose={() => setViewReportFinding(null)}
+          serverId={selectedServerId}
+          onReportDeleted={handleReportDeleted}
+        />
+      )}
+
+      {/* Delete Finding Dialog */}
+      {selectedServerId && (
+        <DeleteFindingDialog
+          finding={selectedFindingForDelete}
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          serverId={selectedServerId}
+          onDeleteSuccess={handleDeleteSuccess}
         />
       )}
     </div>

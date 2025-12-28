@@ -68,6 +68,7 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/health", get(routes::health::health))
         .route("/handshake", axum::routing::post(routes::handshake::handshake))
+        .route("/heartbeat", axum::routing::post(routes::heartbeat::heartbeat))
         .route("/ingest", axum::routing::post(routes::ingest::ingest))
         .route(
             "/servers/:server_id/modules",

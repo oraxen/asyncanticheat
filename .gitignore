@@ -92,6 +92,11 @@ web/next-env.d.ts
 # Documentation screenshots
 web/docs-screenshots/
 
+# Playwright test artifacts
+web/playwright-report/
+web/test-results/
+.playwright-mcp/
+
 # ==============================
 # Modules (submodule has own .gitignore)
 # ==============================

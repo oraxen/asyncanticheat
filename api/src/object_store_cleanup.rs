@@ -1,6 +1,5 @@
 use chrono::{Duration, Utc};
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 
 use crate::{s3::ObjectStore, AppState};
 
@@ -150,12 +149,12 @@ fn cleanup_local_store_blocking(
 
             if meta.is_file() {
                 stats.files_examined += 1;
+                // If we can't read mtime, use current time so the file is kept (not deleted).
                 let modified_dt: chrono::DateTime<chrono::Utc> = meta
                     .modified()
                     .map(|m| chrono::DateTime::<chrono::Utc>::from(m))
-                    .unwrap_or_else(|_| chrono::DateTime::<chrono::Utc>::from(SystemTime::UNIX_EPOCH));
+                    .unwrap_or_else(|_| chrono::Utc::now());
 
-                // If we can't read mtime sensibly, keep the file.
                 if modified_dt < cutoff {
                     let len = meta.len();
                     if !dry_run {

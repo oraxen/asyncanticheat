@@ -238,8 +238,13 @@ public final class AsyncAnticheatService {
     public void updateToken(@NotNull String token) {
         config.setApiToken(token);
         config.save(new File(dataFolder, "config.yml"), logger);
-        // Update the uploader's token so it takes effect immediately
-        uploader.updateToken(token);
         logger.info("[AsyncAnticheat] Token updated. Server will use the new token for API communication.");
+        // Run token update + handshake on the executor to avoid blocking the main thread
+        // and ensure thread-safe access to backoff state fields.
+        try {
+            executor.execute(() -> uploader.updateToken(token));
+        } catch (Exception ignored) {
+            // Executor may be shut down; token is saved and will take effect on restart.
+        }
     }
 }

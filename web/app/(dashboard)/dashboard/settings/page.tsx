@@ -11,7 +11,7 @@ import {
   RiAlertLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
-import { useSelectedServer } from "@/lib/server-context";
+import { useSelectedServer, useRefreshServers } from "@/lib/server-context";
 import { SettingsSkeleton } from "@/components/ui/skeleton";
 
 // Toggle Switch Component
@@ -104,14 +104,14 @@ function DeleteDialog({
           <button
             onClick={onClose}
             disabled={loading}
-            className="rounded-md border border-[rgb(var(--border))] px-4 py-2 text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:border-[rgb(var(--border-elevated))] disabled:opacity-50 transition-colors"
+            className="rounded-md border border-[rgb(var(--border))] px-4 py-2 text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:border-[rgb(var(--border-elevated))] disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="rounded-md bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+            className="rounded-md bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
           >
             {loading && <RiLoader4Line className="h-4 w-4 animate-spin" />}
             Delete Server
@@ -131,6 +131,7 @@ interface ServerSettings {
 export default function SettingsPage() {
   const router = useRouter();
   const serverId = useSelectedServer();
+  const refreshServers = useRefreshServers();
 
   // Settings state
   const [loading, setLoading] = useState(true);
@@ -285,23 +286,11 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        // Clear local storage and redirect
-        const STORAGE_KEY = "async_anticheat_servers";
-        const SELECTED_KEY = "async_anticheat_selected_server";
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) {
-            const servers = JSON.parse(raw);
-            const filtered = servers.filter((s: { id: string }) => s.id !== serverId);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-          }
-          localStorage.removeItem(SELECTED_KEY);
-        } catch {
-          // Ignore localStorage errors
-        }
-
+        // Refresh the server list from the API - this will update the sidebar
+        // and auto-select the next available server (or clear selection if none)
+        await refreshServers();
+        // Navigate to dashboard root (will show the newly selected server or empty state)
         router.push("/dashboard");
-        router.refresh();
       }
     } catch (err) {
       console.error("Failed to delete server:", err);
@@ -459,7 +448,7 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={() => setShowDeleteDialog(true)}
-              className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-colors"
+              className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
             >
               Delete Server
             </button>

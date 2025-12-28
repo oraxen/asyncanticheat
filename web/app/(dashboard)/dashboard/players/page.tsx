@@ -141,9 +141,10 @@ function PlayerDetailSidebar({
             {player.uuid}
           </p>
         </div>
+        {/* cursor-pointer: Ensures pointer cursor on clickable buttons for better UX */}
         <button
           onClick={onClose}
-          className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors group"
+          className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors group cursor-pointer"
         >
           <RiCloseLine className="w-4 h-4 text-white/40 group-hover:text-white/80 transition-colors" />
         </button>
@@ -250,7 +251,7 @@ function PlayerDetailSidebar({
                     </div>
                   </div>
 
-                  {/* Report Button */}
+                  {/* Report Button - cursor-pointer ensures proper hover cursor */}
                   <button
                     onClick={() =>
                       onReportCheat(
@@ -258,7 +259,7 @@ function PlayerDetailSidebar({
                         session
                       )
                     }
-                    className="w-full mt-2 py-2 rounded-lg border border-white/[0.06] hover:border-red-500/30 bg-white/[0.02] hover:bg-red-500/10 text-white/50 hover:text-red-400 text-xs font-medium transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100"
+                    className="w-full mt-2 py-2 rounded-lg border border-white/[0.06] hover:border-red-500/30 bg-white/[0.02] hover:bg-red-500/10 text-white/50 hover:text-red-400 text-xs font-medium transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 cursor-pointer"
                   >
                     <RiSpyLine className="w-3.5 h-3.5" />
                     Report undetected cheat in this session
@@ -269,12 +270,12 @@ function PlayerDetailSidebar({
           )}
         </div>
 
-        {/* Report without session */}
+        {/* Report without session - cursor-pointer ensures proper hover cursor */}
         <button
           onClick={() =>
             onReportCheat({ uuid: player.uuid, name: player.name }, null)
           }
-          className="w-full mt-4 py-3 rounded-lg border border-dashed border-white/[0.08] hover:border-red-500/30 bg-transparent hover:bg-red-500/5 text-white/40 hover:text-red-400 text-xs font-medium transition-all flex items-center justify-center gap-2"
+          className="w-full mt-4 py-3 rounded-lg border border-dashed border-white/[0.08] hover:border-red-500/30 bg-transparent hover:bg-red-500/5 text-white/40 hover:text-red-400 text-xs font-medium transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <RiSpyLine className="w-3.5 h-3.5" />
           Report undetected cheat (general)
@@ -405,14 +406,14 @@ export default function PlayersPage() {
             />
           </div>
 
-          {/* Filters */}
+          {/* Filters - cursor-pointer ensures proper hover cursor on filter buttons */}
           <div className="flex items-center gap-1 p-1 rounded-lg bg-white/[0.02]">
             {(["all", "online", "flagged"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 className={cn(
-                  "px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize",
+                  "px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize cursor-pointer",
                   filter === f
                     ? "bg-white/[0.08] text-white"
                     : "text-white/40 hover:text-white/60"
@@ -429,7 +430,7 @@ export default function PlayersPage() {
       {error && (
         <div className="m-5">
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
-            {error}
+            {error?.message || "An error occurred"}
           </div>
         </div>
       )}

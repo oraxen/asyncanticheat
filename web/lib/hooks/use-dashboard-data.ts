@@ -13,14 +13,13 @@ import { createClient } from "@/lib/supabase/client";
 
 // Default SWR config for dashboard data
 // - dedupingInterval: Prevent duplicate requests within 5 seconds
-// - revalidateOnFocus: Revalidate when window regains focus
+// - revalidateOnFocus: Don't spam API on tab focus
 // - revalidateOnReconnect: Revalidate when network reconnects
-// - keepPreviousData: Keep showing previous data while revalidating (key for smooth UX)
+// - Cache is per server ID, so switching servers shows loading state (no stale cross-server data)
 const defaultConfig: SWRConfiguration = {
   dedupingInterval: 5000,
-  revalidateOnFocus: false, // Don't spam API on tab focus
+  revalidateOnFocus: false,
   revalidateOnReconnect: true,
-  keepPreviousData: true,
   errorRetryCount: 2,
 };
 

@@ -153,10 +153,10 @@ function ConfigurationModal({
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
         onClick={onClose}
       />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] z-50 bg-[#0c0c10] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] z-[60] bg-[#0c0c10] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
           <div>
             <h2 className="text-lg font-semibold text-white">
@@ -166,7 +166,7 @@ function ConfigurationModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors"
+            className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer"
           >
             <RiCloseLine className="w-4 h-4 text-white/40" />
           </button>
@@ -200,13 +200,13 @@ function ConfigurationModal({
         <div className="flex items-center justify-end gap-3 p-5 border-t border-white/[0.06]">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors"
+            className="px-4 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={() => onSave({ base_url: baseUrl, enabled })}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-500 text-white hover:bg-indigo-600 transition-colors cursor-pointer"
           >
             <RiSave2Line className="w-4 h-4" />
             Save Changes
@@ -258,7 +258,7 @@ function AddModuleModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors"
+            className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer"
           >
             <RiCloseLine className="w-4 h-4 text-white/40" />
           </button>
@@ -352,7 +352,7 @@ function AddModuleModal({
         <div className="flex items-center justify-end gap-3 p-5 border-t border-white/[0.06]">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors"
+            className="px-4 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -363,7 +363,7 @@ function AddModuleModal({
               }
             }}
             disabled={!name || !baseUrl}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <RiAddLine className="w-4 h-4" />
             Add Module
@@ -518,7 +518,7 @@ function ModuleDetailPanel({
           <span className="font-mono text-white/30">{module.base_url}</span>
           <button
             onClick={onConfigure}
-            className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors"
+            className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
           >
             <RiSettings4Line className="w-3.5 h-3.5" />
             Configure
@@ -679,9 +679,16 @@ export default function ModulesPage() {
   }
 
   // Track current server for stale response handling
+  // Clear local state when server changes to prevent stale modules from previous server
   if (currentServerIdRef.current !== selectedServerId) {
     currentServerIdRef.current = selectedServerId;
     setSelectedModule(null);
+    // Clear local modules to force re-sync from SWR data for new server
+    setLocalModules([]);
+    // Clear pending toggles for the old server to unblock sync
+    pendingToggles.current.clear();
+    toggleRequestIdRef.current.clear();
+    lastSyncRef.current = "";
   }
 
   const toggleModule = async (id: string) => {
@@ -848,7 +855,7 @@ export default function ModulesPage() {
       {error && (
         <div className="m-5">
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
-            {error}
+            {error?.message || "An error occurred"}
           </div>
         </div>
       )}
@@ -872,11 +879,11 @@ export default function ModulesPage() {
       )}
 
       {/* Overlay Panel - Module Detail */}
-      {selectedModule && !showConfigModal && (
+      {selectedModule && (
         <>
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm z-40 animate-fade-in"
-            onClick={() => setSelectedModule(null)}
+            onClick={() => !showConfigModal && setSelectedModule(null)}
           />
           <div className="absolute top-4 right-4 bottom-4 w-[440px] z-50 bg-[#0c0c10] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden animate-slide-in-right">
             <ModuleDetailPanel

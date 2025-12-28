@@ -135,9 +135,10 @@ function PlayerDetailPanel({
               {player.name}
             </span>
           </div>
+          {/* cursor-pointer: Ensures pointer cursor on clickable buttons for better UX */}
           <button
             onClick={onClose}
-            className="p-1.5 rounded-md hover:bg-white/10 transition-colors group"
+            className="p-1.5 rounded-md hover:bg-white/10 transition-colors group cursor-pointer"
           >
             <RiCloseLine className="w-5 h-5 text-white/40 group-hover:text-white/80 transition-colors" />
           </button>
@@ -584,6 +585,7 @@ function AnimatedGlobe({
 }
 
 // Stat panel with glass effect
+// select-none: Prevents text selection on HUD elements for cleaner UX
 function StatPanel({
   label,
   value,
@@ -596,7 +598,7 @@ function StatPanel({
   trend?: string;
 }) {
   return (
-    <div className="relative p-4 rounded-xl overflow-hidden backdrop-blur-xl bg-white/[0.03] border border-white/[0.08]">
+    <div className="relative p-4 rounded-xl overflow-hidden backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] select-none">
       <div className="relative z-10">
         <p className="text-[10px] uppercase tracking-wider text-indigo-400 mb-1">
           {label}
@@ -768,8 +770,8 @@ export default function DashboardPage() {
           />
         )}
 
-        {/* Overlay HUD elements */}
-        <div className="absolute top-4 left-4 right-4 lg:top-6 lg:left-6 lg:right-6 z-10">
+        {/* Overlay HUD elements - select-none prevents text selection on HUD */}
+        <div className="absolute top-4 left-4 right-4 lg:top-6 lg:left-6 lg:right-6 z-10 select-none">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-base lg:text-lg font-medium text-white/90">
@@ -864,7 +866,7 @@ export default function DashboardPage() {
                         region: "Global",
                       })
                     }
-                    className="w-full px-4 py-3 hover:bg-white/[0.03] transition-colors text-left"
+                    className="w-full px-4 py-3 hover:bg-white/[0.03] transition-colors text-left cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-2 h-2 rounded-full flex-shrink-0 bg-white/20" />
@@ -888,7 +890,7 @@ export default function DashboardPage() {
               <button
                 key={player.id}
                 onClick={() => setSelectedPlayer(player)}
-                className="w-full px-4 py-3 hover:bg-white/[0.03] transition-colors text-left"
+                className="w-full px-4 py-3 hover:bg-white/[0.03] transition-colors text-left cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div

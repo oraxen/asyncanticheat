@@ -18,6 +18,7 @@ api:
   url: "https://api.asyncanticheat.com"
   token: "your_api_token"
   timeout_seconds: 10
+  server_address: ""  # Optional: e.g., "play.myserver.com:25565"
 ```
 
 | Option | Description | Default |
@@ -25,6 +26,9 @@ api:
 | `url` | Base URL of your AsyncAnticheat API | Required |
 | `token` | Authentication token for API requests | Required |
 | `timeout_seconds` | Request timeout in seconds | `10` |
+| `server_address` | Server address for dashboard ping (auto-detected if empty) | `""` |
+
+> **Note:** The `server_address` is automatically detected from your server's IP when the plugin connects to the API. Only set this manually if auto-detection doesn't work (e.g., behind NAT or using a different public address).
 
 ### Spool Settings
 
@@ -127,7 +131,13 @@ OBJECT_STORE_CLEANUP_DRY_RUN="true"
 OBJECT_STORE_CLEANUP_INTERVAL_SECONDS="3600"
 OBJECT_STORE_TTL_DAYS="7"
 BATCH_INDEX_TTL_DAYS="7"
+
+# CORS
+CORS_ALLOW_ORIGINS="https://asyncanticheat.com,https://dashboard.asyncanticheat.com"
+CORS_PERMISSIVE_DEV="false"  # Only set true for local development
 ```
+
+> **Security Note:** `CORS_PERMISSIVE_DEV` must be explicitly set to `true` to enable permissive CORS. This prevents accidental exposure in production. For production, always use `CORS_ALLOW_ORIGINS` to specify allowed domains.
 
 ## Server-Specific Configuration
 

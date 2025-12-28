@@ -890,13 +890,15 @@ export default function FindingsPage() {
       )}
 
       {/* Delete Finding Dialog */}
-      <DeleteFindingDialog
-        finding={selectedFindingForDelete}
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        serverId={selectedServerId}
-        onDeleteSuccess={handleDeleteSuccess}
-      />
+      {selectedServerId && (
+        <DeleteFindingDialog
+          finding={selectedFindingForDelete}
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          serverId={selectedServerId}
+          onDeleteSuccess={handleDeleteSuccess}
+        />
+      )}
     </div>
   );
 }

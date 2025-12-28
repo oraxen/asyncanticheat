@@ -94,6 +94,54 @@ Player -> Plugin (captures packets)
 - **Contents**: 6 Rust detection modules (movement, combat, player - core & advanced)
 - **Ports**: 4030-4035
 
+## Contributing
+
+### Monorepo Components (plugin/, api/, web/)
+
+Changes to `plugin/`, `api/`, or `web/` are committed directly to this repository:
+
+```bash
+# Make changes
+git add plugin/... api/... web/...
+git commit -m "feat: your changes"
+git push origin your-branch
+# Create PR against master on oraxen/asyncanticheat
+```
+
+### Detection Modules (modules/ submodule)
+
+The `modules/` directory is a **git submodule** pointing to `lfglabs-dev/aac-modules`.
+Changes must be made in the submodule first, then the reference updated:
+
+```bash
+# 1. Enter the submodule
+cd modules
+
+# 2. Create a branch and make changes
+git checkout -b feat/your-feature
+# ... make changes ...
+git add .
+git commit -m "feat: your module changes"
+
+# 3. Push to the modules repo
+git push origin feat/your-feature
+# Create PR against master on lfglabs-dev/aac-modules
+
+# 4. After PR is merged, update the submodule reference in the parent
+cd ..  # back to monorepo root
+git pull --recurse-submodules
+git add modules
+git commit -m "chore: update modules submodule"
+git push
+```
+
+### Repository Links
+
+| Component | Repository | PR Target |
+|-----------|------------|-----------|
+| plugin/, api/, web/ | `oraxen/asyncanticheat` | `master` |
+| modules/ | `lfglabs-dev/aac-modules` | `master` |
+
 ## AI Agent Guidelines
 
 1. **Scope changes**: Work within one directory when possible
@@ -101,7 +149,7 @@ Player -> Plugin (captures packets)
 3. **Avoid generated dirs**: `**/build/`, `**/target/`, `**/node_modules/`, `**/.next/`
 4. **Use correct package manager**: Gradle for plugin, Cargo for api/modules, Bun for web
 5. **Never commit secrets**: Always read from environment variables
-6. **Submodule changes**: If modifying modules, commit there first, then update submodule ref
+6. **Submodule workflow**: If modifying modules, commit in submodule first, push to `lfglabs-dev/aac-modules`, then update submodule ref in parent
 
 ## Testing
 

@@ -1,74 +1,102 @@
-# Async Anticheat
+# AsyncAnticheat
 
-Multi-platform Minecraft plugin (Paper/Spigot, BungeeCord, Velocity) that captures high-signal packets via PacketEvents and streams them to a cloud service for async analysis.
+Multi-platform Minecraft anticheat with cloud-based async analysis.
 
-Packet capture is implemented with [PacketEvents](https://docs.packetevents.com/), which is shaded into the plugin JAR (no separate installation required).
+## Repository Structure
 
-## Requirements
-
-- Java 21
-
-## Modules
-
-```text
+```
 asyncanticheat/
-├── asyncanticheat-core/     # Shared logic (config, spooling, uploader, models)
-├── asyncanticheat-bukkit/   # Paper/Spigot plugin entrypoint
-├── asyncanticheat-bungee/   # BungeeCord plugin entrypoint
-└── asyncanticheat-velocity/ # Velocity plugin entrypoint
+├── plugin/     # Java Minecraft plugin (Paper/Spigot)
+├── api/        # Rust ingestion API (Axum)
+├── web/        # Next.js website/dashboard/docs
+└── modules/    # Detection modules (git submodule)
 ```
 
-## Build
+## Quick Start
+
+### Plugin Development
 
 ```bash
-cd asyncanticheat
+cd plugin
 ./gradlew build
+# Output: plugin/build/libs/async-anticheat-<version>.jar
 ```
 
-Output jar: `build/libs/async-anticheat-<version>.jar`
+**Requirements:** Java 21
 
-## Quick Start (For Server Owners)
+### API Development
 
-1. Drop the plugin JAR into your `/plugins/` folder
-2. Start your server
-3. Click the registration link in console (or run `/aac`)
-4. Sign in with GitHub, Discord, or Email
-5. Done! Your server is linked and protected
+```bash
+cd api
+cp env.example .env
+# Configure DATABASE_URL in .env
+cargo run
+```
+
+**Requirements:** Rust toolchain, PostgreSQL
+
+### Web Development
+
+```bash
+cd web
+cp .env.example .env.local
+# Configure Supabase keys in .env.local
+bun install
+bun dev
+# Open http://localhost:3000
+```
+
+**Requirements:** Bun
+
+### Detection Modules
+
+```bash
+# Initialize submodule
+git submodule update --init
+
+# Build a module
+cd modules/movement_core_module
+cargo build --release
+```
 
 ## Configuration
 
-On first start, the plugin generates `config.yml` in its data folder (platform-specific). 
+Copy `secrets.json.example` to `~/minecraft/secrets.json` and configure values.
+Each project has its own environment template - copy and configure as needed.
 
-The plugin works out-of-the-box with the managed service at [asyncanticheat.com](https://asyncanticheat.com). 
+## Documentation
 
-For self-hosted or advanced configuration:
+- **User docs:** [asyncanticheat.com/docs](https://asyncanticheat.com/docs)
+- **API reference:** `api/docs/`
+- **Module development:** `modules/README.md`
 
-```yaml
-api:
-  url: "https://api.asyncanticheat.com"  # Default managed service
-  token: ""                               # Auto-generated after linking
-  timeout_seconds: 10
+## Architecture
 
-spool:
-  dir: "spool"
-  max_mb: 256
-  flush_interval_ms: 1000
-  drop_policy: "drop_oldest" # drop_oldest | drop_newest
-
-capture:
-  # If empty, AsyncAnticheat uses a conservative built-in allow-list (movement/combat/digging/etc).
-  enabled_packets: []
-  disabled_packets: []
-  sample_rate: 1.0
-
-privacy:
-  redact_chat: true
+```
+Player → Plugin (captures packets)
+           ↓
+       API /ingest
+           ↓
+    Object Store + batch_index
+           ↓
+    Dispatch to Detection Modules
+           ↓
+    Module analyzes packets
+           ↓
+    Module → API /callbacks/findings
+           ↓
+    Dashboard displays findings
 ```
 
-## Data flow
+## Deployment
 
-- PacketEvents is shaded into the jar, so no separate PacketEvents plugin is required.
-- Packets are buffered in memory, written to gzipped NDJSON batch files under `spool/`, then uploaded to `async_anticheat_api`.
-- If the API is unreachable, the plugin enters a **spool-only** mode (temporary) and retries later with exponential backoff.
+| Component | Method |
+|-----------|--------|
+| Plugin | GitHub Releases |
+| Web | Vercel (auto-deploy from main) |
+| API | Dedicated server |
+| Modules | Dedicated server |
 
+## License
 
+Proprietary - See LICENSE.md

@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+Built-By: thomas
+Version: 0.2.0
+Build-Timestamp: 2025-12-28 09:52:23.621+0100
+Created-By: Gradle 8.14.3
+Build-Jdk: 21.0.4 (Azul Systems, Inc. 21.0.4+7-LTS)
+Build-OS: Mac OS X aarch64 26.2
+

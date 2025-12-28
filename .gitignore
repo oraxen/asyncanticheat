@@ -1,9 +1,6 @@
-# Gradle
-.gradle/
-build/
-bin/
-out/
-!gradle/wrapper/gradle-wrapper.jar
+# ==============================
+# Shared
+# ==============================
 
 # IDE
 .idea/
@@ -15,25 +12,90 @@ out/
 .settings/
 .vscode/
 
-# Cursor
+# Cursor (excluded from git, local only)
 .cursor/
-
-# Claude
-.claude/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Local documentation site (separate repo)
-docs.asyncanticheat.com/
+# Secrets (never commit)
+secrets.json
+.env
+.env.local
+.env.prod
+.env.*.local
 
-# Runtime
+# Logs
 *.log
 logs/
 
-# Local config overrides
-local.properties
+# ==============================
+# Plugin (Gradle/Java)
+# ==============================
 
-# Secrets
-secrets.json
+# Gradle
+plugin/.gradle/
+plugin/**/build/
+plugin/bin/
+plugin/out/
+!plugin/gradle/wrapper/gradle-wrapper.jar
+
+# Local config
+plugin/local.properties
+
+# ==============================
+# API (Rust/Cargo)
+# ==============================
+
+# Rust
+api/target/
+api/**/*.rs.bk
+api/Cargo.lock
+
+# Local data
+api/data/
+api/*.db
+api/*.sqlite
+
+# Deployment scripts (local convenience)
+api/scripts/
+
+# Test data
+api/test_data/
+
+# ==============================
+# Web (Next.js/Bun)
+# ==============================
+
+# Dependencies
+web/node_modules/
+web/.pnp
+web/.pnp.js
+
+# Build
+web/.next/
+web/out/
+web/build/
+web/dist/
+web/public/_pagefind/
+
+# Vercel
+web/.vercel
+
+# TypeScript
+web/*.tsbuildinfo
+web/next-env.d.ts
+
+# Documentation screenshots
+web/docs-screenshots/
+
+# ==============================
+# Modules (submodule has own .gitignore)
+# ==============================
+# Handled by modules/.gitignore
+
+# ==============================
+# Context files (kept for AI tooling)
+# ==============================
+.context/

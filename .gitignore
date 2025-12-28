@@ -34,7 +34,9 @@ logs/
 # Plugin (Gradle/Java)
 # ==============================
 
-# Gradle
+# Gradle (root and plugin)
+.gradle/
+build/
 plugin/.gradle/
 plugin/**/build/
 plugin/bin/

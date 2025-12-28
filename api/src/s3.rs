@@ -65,10 +65,17 @@ impl ObjectStore {
 
     /// Sanitize a path component to prevent path traversal attacks.
     /// Removes any characters that could be used for directory traversal.
-    fn sanitize_path_component(s: &str) -> String {
-        s.chars()
+    /// Returns None if the sanitized result would be empty.
+    fn sanitize_path_component(s: &str) -> Option<String> {
+        let sanitized: String = s
+            .chars()
             .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
-            .collect()
+            .collect();
+        if sanitized.is_empty() {
+            None
+        } else {
+            Some(sanitized)
+        }
     }
 
     /// Generate the S3 object key for a batch.
@@ -76,19 +83,21 @@ impl ObjectStore {
     /// Format: `events/{server_id}/{YYYY-MM-DD}/{session_id}/{batch_id}.ndjson.gz`
     ///
     /// Note: server_id and session_id are sanitized to prevent path traversal.
-    pub fn batch_key(server_id: &str, session_id: &str, batch_id: &uuid::Uuid) -> String {
+    /// Returns None if server_id or session_id sanitizes to an empty string.
+    pub fn batch_key(server_id: &str, session_id: &str, batch_id: &uuid::Uuid) -> Option<String> {
         let date = Utc::now().format("%Y-%m-%d");
-        let safe_server_id = Self::sanitize_path_component(server_id);
-        let safe_session_id = Self::sanitize_path_component(session_id);
-        format!(
+        let safe_server_id = Self::sanitize_path_component(server_id)?;
+        let safe_session_id = Self::sanitize_path_component(session_id)?;
+        Some(format!(
             "events/{}/{}/{}/{}.ndjson.gz",
             safe_server_id, date, safe_session_id, batch_id
-        )
+        ))
     }
 
     /// Upload a gzipped NDJSON batch to object storage.
     ///
     /// Returns the object key on success.
+    /// Returns an error if server_id or session_id sanitizes to an empty string.
     pub async fn put_batch(
         &self,
         server_id: &str,
@@ -96,7 +105,8 @@ impl ObjectStore {
         batch_id: &uuid::Uuid,
         data: Vec<u8>,
     ) -> anyhow::Result<String> {
-        let key = Self::batch_key(server_id, session_id, batch_id);
+        let key = Self::batch_key(server_id, session_id, batch_id)
+            .ok_or_else(|| anyhow::anyhow!("Invalid server_id or session_id: sanitizes to empty string"))?;
 
         match self {
             ObjectStore::S3 { bucket } => {

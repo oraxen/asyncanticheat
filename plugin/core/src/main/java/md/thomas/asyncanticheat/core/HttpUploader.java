@@ -86,13 +86,19 @@ final class HttpUploader {
         }
 
         final String url = normalizeBaseUrl(config.getApiUrl()) + "/handshake";
-        final HttpRequest req = HttpRequest.newBuilder()
+        final HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
                 .header("Authorization", "Bearer " + token)
-                .header("X-Server-Id", serverId)
-                .POST(HttpRequest.BodyPublishers.noBody())
-                .build();
+                .header("X-Server-Id", serverId);
+
+        // Send server address if configured (for dashboard ping feature)
+        final String serverAddr = config.getServerAddress();
+        if (serverAddr != null && !serverAddr.isBlank()) {
+            reqBuilder.header("X-Server-Address", serverAddr.trim());
+        }
+
+        final HttpRequest req = reqBuilder.POST(HttpRequest.BodyPublishers.noBody()).build();
 
         try {
             final HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
@@ -150,16 +156,22 @@ final class HttpUploader {
         }
 
         final String url = normalizeBaseUrl(config.getApiUrl()) + "/ingest";
-        final HttpRequest req = HttpRequest.newBuilder()
+        final HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
                 .header("Authorization", "Bearer " + token)
                 .header("Content-Type", "application/x-ndjson")
                 .header("Content-Encoding", "gzip")
                 .header("X-Server-Id", serverId)
-                .header("X-Session-Id", sessionId)
-                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
-                .build();
+                .header("X-Session-Id", sessionId);
+
+        // Send server address if configured (for dashboard ping feature)
+        final String serverAddr = config.getServerAddress();
+        if (serverAddr != null && !serverAddr.isBlank()) {
+            reqBuilder.header("X-Server-Address", serverAddr.trim());
+        }
+
+        final HttpRequest req = reqBuilder.POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
 
         try {
             final HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());

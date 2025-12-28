@@ -141,8 +141,10 @@ public final class AsyncAnticheatService {
         if (isDevMarker(record)) {
             return offerWithDropPolicy(record);
         }
-        if (Math.random() > config.getSampleRate()) {
-            return true;
+        // Sample rate: keep packets with probability = sampleRate
+        // If sampleRate is 0.5, we want to keep ~50% of packets
+        if (Math.random() >= config.getSampleRate()) {
+            return true; // Drop this packet (sampled out)
         }
         if (!PacketFilters.shouldCapture(config, record.getPacketName())) {
             return true;

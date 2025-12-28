@@ -5,7 +5,7 @@ use axum::{
 };
 use serde::Serialize;
 
-use crate::{error::ApiError, AppState};
+use crate::{auth, error::ApiError, AppState};
 
 #[derive(Debug, Serialize)]
 pub struct HandshakeResponse {
@@ -15,40 +15,17 @@ pub struct HandshakeResponse {
     pub server_id: String,
 }
 
-fn parse_bearer_token(headers: &HeaderMap) -> Option<String> {
-    let auth = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .trim();
-    let prefix = "bearer ";
-    if auth.len() <= prefix.len() {
-        return None;
-    }
-    if !auth[..prefix.len()].eq_ignore_ascii_case(prefix) {
-        return None;
-    }
-    Some(auth[prefix.len()..].trim().to_string())
-}
-
-fn sha256_hex(input: &str) -> String {
-    use sha2::Digest;
-    let mut h = sha2::Sha256::new();
-    h.update(input.as_bytes());
-    let out = h.finalize();
-    hex::encode(out)
-}
-
 /// POST /handshake
 ///
 /// Lightweight "hello" endpoint used by the plugin on startup.
 /// - Stores the server_id + token hash the first time we see a server.
 /// - Returns `waiting_for_registration` until the server is linked to an account (owner_user_id set).
+/// - Optionally stores server address for dashboard ping feature (auto-detected or from X-Server-Address header).
 pub async fn handshake(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<(StatusCode, Json<HandshakeResponse>), ApiError> {
-    let token = parse_bearer_token(&headers).ok_or(ApiError::Unauthorized)?;
+    let token = auth::parse_bearer_token(&headers).ok_or(ApiError::Unauthorized)?;
 
     let server_id = headers
         .get("x-server-id")
@@ -66,7 +43,10 @@ pub async fn handshake(
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
 
-    let token_hash = sha256_hex(&token);
+    // Extract server address for ping feature (explicit header > forwarded-for > real-ip)
+    let server_address = auth::extract_server_address(&headers);
+
+    let token_hash = auth::sha256_hex(&token);
 
     // Load or create server row.
     let row: Option<(
@@ -94,17 +74,19 @@ pub async fn handshake(
             sqlx::query(
                 r#"
                 insert into public.servers
-                    (id, platform, first_seen_at, last_seen_at, auth_token_hash, auth_token_first_seen_at)
+                    (id, platform, first_seen_at, last_seen_at, auth_token_hash, auth_token_first_seen_at, callback_url)
                 values
-                    ($1, $2, now(), now(), $3, now())
+                    ($1, $2, now(), now(), $3, now(), $4)
                 on conflict (id) do update set
                     platform = coalesce(excluded.platform, servers.platform),
-                    last_seen_at = now()
+                    last_seen_at = now(),
+                    callback_url = coalesce(excluded.callback_url, servers.callback_url)
                 "#,
             )
             .bind(&server_id)
             .bind(platform.as_deref())
             .bind(&token_hash)
+            .bind(server_address.as_deref())
             .execute(&state.db)
             .await
             .map_err(|e| {
@@ -124,17 +106,26 @@ pub async fn handshake(
         Some((stored_hash_opt, owner_user_id, registered_at)) => {
             // Validate token FIRST before updating any state.
             // This prevents attackers from spoofing last_seen_at with invalid tokens.
+            // Uses constant-time comparison to prevent timing attacks.
             if let Some(stored_hash) = &stored_hash_opt {
-                if stored_hash != &token_hash {
+                if !auth::validate_token_hash(&token_hash, stored_hash) {
                     return Err(ApiError::Unauthorized);
                 }
             }
 
-            // Token is valid (or no token stored yet) - now bump last_seen_at.
-            let _ = sqlx::query("update public.servers set last_seen_at = now() where id = $1")
-                .bind(&server_id)
-                .execute(&state.db)
-                .await;
+            // Token is valid (or no token stored yet) - now bump last_seen_at and callback_url.
+            let _ = sqlx::query(
+                r#"
+                update public.servers
+                set last_seen_at = now(),
+                    callback_url = coalesce($2, callback_url)
+                where id = $1
+                "#,
+            )
+            .bind(&server_id)
+            .bind(server_address.as_deref())
+            .execute(&state.db)
+            .await;
 
             // If no token was stored, save this one.
             if stored_hash_opt.is_none() {

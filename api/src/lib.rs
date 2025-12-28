@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod builtin_modules;
 pub mod config;
 pub mod db;

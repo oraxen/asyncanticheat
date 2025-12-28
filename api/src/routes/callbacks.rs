@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use subtle::ConstantTimeEq;
 use uuid::Uuid;
 
 use crate::{error::ApiError, webhooks, AppState};
@@ -40,7 +41,28 @@ fn require_callback_auth(state: &AppState, headers: &HeaderMap) -> Result<(), Ap
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
     let expected = format!("Bearer {}", state.module_callback_token);
-    if state.module_callback_token.is_empty() || auth != expected {
+
+    // Use constant-time comparison to prevent timing attacks
+    if state.module_callback_token.is_empty() {
+        return Err(ApiError::Unauthorized);
+    }
+
+    let auth_bytes = auth.as_bytes();
+    let expected_bytes = expected.as_bytes();
+
+    // Constant-time comparison: both length check and content check
+    // are done in a way that doesn't leak timing information
+    let len_match = auth_bytes.len() == expected_bytes.len();
+    let content_match = if len_match {
+        auth_bytes.ct_eq(expected_bytes).into()
+    } else {
+        // Still do a comparison to maintain constant time even on length mismatch
+        let dummy = vec![0u8; expected_bytes.len()];
+        let _ = dummy.as_slice().ct_eq(expected_bytes);
+        false
+    };
+
+    if !content_match {
         return Err(ApiError::Unauthorized);
     }
     Ok(())

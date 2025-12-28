@@ -271,9 +271,11 @@ export default function HomePage() {
               dashboard.
             </FaqItem>
             <FaqItem question="What servers are supported?">
-              AsyncAnticheat supports Paper, Spigot, BungeeCord, and Velocity.
-              The plugin uses PacketEvents for cross-platform packet
-              interception.
+              AsyncAnticheat supports all major server platforms including
+              Paper, Spigot, Purpur, Folia, and any proxy (BungeeCord,
+              Velocity, etc.). The plugin uses PacketEvents for cross-platform
+              packet interception. Note: the plugin must be installed on each
+              backend server.
             </FaqItem>
             <FaqItem question="What checks are included?">
               AsyncAnticheat ships with category modules for Combat (aim,

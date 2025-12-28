@@ -179,10 +179,28 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Build a CORS layer. If `CORS_ALLOW_ORIGINS` is empty, fall back to permissive (dev).
+/// Build a CORS layer.
+/// SECURITY: Permissive CORS is only allowed when CORS_PERMISSIVE_DEV=true is explicitly set.
+/// This prevents accidental permissive CORS in production.
 fn cors_layer(cfg: &Config) -> CorsLayer {
     if cfg.cors_allow_origins.is_empty() {
-        return CorsLayer::permissive();
+        if cfg.cors_permissive_dev {
+            tracing::warn!(
+                "CORS_PERMISSIVE_DEV=true: using permissive CORS. DO NOT USE IN PRODUCTION!"
+            );
+            return CorsLayer::permissive();
+        } else {
+            // In production with no origins configured, use restrictive defaults
+            // This allows same-origin requests only
+            tracing::info!(
+                "CORS_ALLOW_ORIGINS is empty and CORS_PERMISSIVE_DEV is not set. \
+                 Using restrictive CORS (same-origin only). Set CORS_ALLOW_ORIGINS \
+                 or CORS_PERMISSIVE_DEV=true for cross-origin requests."
+            );
+            return CorsLayer::new()
+                .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+                .allow_headers([CONTENT_TYPE, AUTHORIZATION]);
+        }
     }
 
     let origins: Vec<HeaderValue> = cfg

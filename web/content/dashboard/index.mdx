@@ -50,8 +50,35 @@ Monitor your infrastructure health:
 | Status | Meaning |
 |--------|---------|
 | **Dashboard → API** | Latency from your browser to our API |
-| **API → Server** | Ping from API to your Minecraft server |
+| **API → Server** | TCP ping from API to your Minecraft server (optional) |
 | **Plugin Status** | Time since last data from your plugin |
+
+#### How Plugin Status Works
+
+The plugin sends data to the API whenever there's activity. The "Plugin Status" shows how long ago the last data was received. A plugin is considered **online** if data was received within the last 2 hours.
+
+> **Note:** If your server has no players, the plugin may only send keep-alive pings infrequently. This is normal—the plugin batches packets and only uploads when there's meaningful data.
+
+#### API → Server Ping
+
+The "API → Server" connection status shows TCP ping results from our API to your Minecraft server (default port 25565).
+
+**Automatic Detection**: The server address is automatically detected from your plugin's IP address when it connects to the API. This happens automatically—no configuration needed for most setups.
+
+**Manual Override**: If auto-detection doesn't work (e.g., your server is behind NAT or uses a different public address), you can set the address explicitly in your plugin's `config.yml`:
+
+```yaml
+api:
+  url: https://api.asyncanticheat.com
+  token: your-token-here
+  server_address: play.yourserver.com:25565  # Optional override
+```
+
+The priority order is:
+1. Explicit `server_address` in config (if set)
+2. Auto-detected from plugin's connection IP
+
+If no address is configured or detected, this metric is hidden and doesn't affect your overall status.
 
 
 ## Navigation

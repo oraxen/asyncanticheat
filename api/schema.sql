@@ -326,3 +326,68 @@ create index if not exists idx_cheat_observations_type
 
 create index if not exists idx_cheat_observations_finding
     on public.cheat_observations (finding_id);
+
+--------------------------------------------------------------------------------
+-- MODULE_ENABLED_AUDIT: track all changes to server_modules.enabled
+--------------------------------------------------------------------------------
+-- This table logs every change to the enabled field to help debug unexpected
+-- module state changes. The trigger captures the source (application_name),
+-- query context, and before/after values.
+--------------------------------------------------------------------------------
+create table if not exists public.module_enabled_audit (
+    id uuid primary key default gen_random_uuid(),
+    created_at timestamptz not null default now(),
+    module_id uuid not null,
+    server_id text not null,
+    module_name text not null,
+    old_enabled boolean,
+    new_enabled boolean,
+    operation text not null,                    -- INSERT, UPDATE, DELETE
+    application_name text,                      -- from current_setting
+    client_addr text,                           -- client IP if available
+    query_preview text                          -- first 500 chars of current query
+);
+
+create index if not exists idx_module_enabled_audit_time
+    on public.module_enabled_audit (created_at desc);
+
+create index if not exists idx_module_enabled_audit_module
+    on public.module_enabled_audit (module_id, created_at desc);
+
+-- Trigger function to log enabled changes
+create or replace function audit_module_enabled_change()
+returns trigger as $$
+begin
+    -- Only log if enabled actually changed (or on INSERT/DELETE)
+    if (TG_OP = 'INSERT') or (TG_OP = 'DELETE') or (OLD.enabled is distinct from NEW.enabled) then
+        insert into public.module_enabled_audit (
+            module_id,
+            server_id,
+            module_name,
+            old_enabled,
+            new_enabled,
+            operation,
+            application_name,
+            client_addr,
+            query_preview
+        ) values (
+            coalesce(NEW.id, OLD.id),
+            coalesce(NEW.server_id, OLD.server_id),
+            coalesce(NEW.name, OLD.name),
+            case when TG_OP = 'INSERT' then null else OLD.enabled end,
+            case when TG_OP = 'DELETE' then null else NEW.enabled end,
+            TG_OP,
+            current_setting('application_name', true),
+            inet_client_addr()::text,
+            left(current_query(), 500)
+        );
+    end if;
+    return coalesce(NEW, OLD);
+end;
+$$ language plpgsql;
+
+-- Create trigger if it doesn't exist
+drop trigger if exists trg_audit_module_enabled on public.server_modules;
+create trigger trg_audit_module_enabled
+    after insert or update or delete on public.server_modules
+    for each row execute function audit_module_enabled_change();

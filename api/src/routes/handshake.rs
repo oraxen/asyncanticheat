@@ -122,18 +122,22 @@ pub async fn handshake(
             ));
         }
         Some((stored_hash_opt, owner_user_id, registered_at)) => {
-            // Always bump last_seen_at for heartbeat.
+            // Validate token FIRST before updating any state.
+            // This prevents attackers from spoofing last_seen_at with invalid tokens.
+            if let Some(stored_hash) = &stored_hash_opt {
+                if stored_hash != &token_hash {
+                    return Err(ApiError::Unauthorized);
+                }
+            }
+
+            // Token is valid (or no token stored yet) - now bump last_seen_at.
             let _ = sqlx::query("update public.servers set last_seen_at = now() where id = $1")
                 .bind(&server_id)
                 .execute(&state.db)
                 .await;
 
-            // If hash doesn't match, reject.
-            if let Some(stored_hash) = stored_hash_opt {
-                if stored_hash != token_hash {
-                    return Err(ApiError::Unauthorized);
-                }
-            } else {
+            // If no token was stored, save this one.
+            if stored_hash_opt.is_none() {
                 // First time we see a token for an existing server row.
                 let _ = sqlx::query(
                     r#"

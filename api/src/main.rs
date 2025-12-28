@@ -2,7 +2,7 @@ use axum::{routing::get, Router};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::EnvFilter;
 
-use async_anticheat_api::{config::Config, db, module_pipeline, routes, s3::ObjectStore, AppState};
+use async_anticheat_api::{config::Config, db, module_pipeline, object_store_cleanup, routes, s3::ObjectStore, AppState};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -61,6 +61,19 @@ async fn main() -> anyhow::Result<()> {
             loop {
                 ticker.tick().await;
                 module_pipeline::healthcheck_tick(health_state.clone()).await;
+            }
+        });
+    }
+
+    // Background: object store cleanup (delete old batches and batch_index rows)
+    {
+        let cleanup_state = state.clone();
+        let interval_seconds = cfg.object_store_cleanup_interval_seconds.max(60);
+        tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(std::time::Duration::from_secs(interval_seconds));
+            loop {
+                ticker.tick().await;
+                object_store_cleanup::cleanup_tick(cleanup_state.clone()).await;
             }
         });
     }

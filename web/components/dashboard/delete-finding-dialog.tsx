@@ -54,10 +54,14 @@ export function DeleteFindingDialog({
       const supabase = createClient();
 
       // First delete any associated false positive reports
-      await supabase
+      const { error: reportDeleteError } = await supabase
         .from("false_positive_reports")
         .delete()
         .eq("finding_id", finding.id);
+
+      if (reportDeleteError) {
+        throw new Error(reportDeleteError.message);
+      }
 
       // Then delete the finding itself
       const { error: deleteError } = await supabase

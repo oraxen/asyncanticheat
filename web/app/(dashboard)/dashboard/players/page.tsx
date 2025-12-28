@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   RiSearchLine,
-  RiTimeLine,
   RiAlertLine,
   RiSpyLine,
   RiUserLine,
-  RiCalendarLine,
   RiPlayCircleLine,
   RiStopCircleLine,
   RiArrowRightLine,
@@ -15,12 +13,13 @@ import {
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import { useSelectedServer } from "@/lib/server-context";
-import { createClient } from "@/lib/supabase/client";
 import {
   ReportUndetectedCheatDialog,
   type PlayerSession,
 } from "@/components/dashboard/report-undetected-cheat-dialog";
 import Link from "next/link";
+import { PlayersSkeleton } from "@/components/ui/skeleton";
+import { usePlayers } from "@/lib/hooks/use-dashboard-data";
 
 // Types for player data
 interface PlayerWithStats {
@@ -289,12 +288,12 @@ export default function PlayersPage() {
   const selectedServerId = useSelectedServer();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "online" | "flagged">("all");
-  const [players, setPlayers] = useState<PlayerWithStats[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerWithStats | null>(
     null
   );
+
+  // Use SWR hook for cached data fetching
+  const { players, error, isLoading: loading } = usePlayers(selectedServerId);
 
   // Report dialog state
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -314,150 +313,6 @@ export default function PlayersPage() {
     },
     []
   );
-
-  // Fetch players data
-  useEffect(() => {
-    if (!selectedServerId) {
-      setPlayers([]);
-      setLoading(false);
-      return;
-    }
-
-    const serverId = selectedServerId;
-
-    async function fetchPlayers() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const supabase = createClient();
-
-        // Fetch server_players with player details
-        const { data: serverPlayers, error: playersError } = await supabase
-          .from("server_players")
-          .select("*")
-          .eq("server_id", serverId)
-          .order("last_seen_at", { ascending: false })
-          .limit(100);
-
-        if (playersError) throw playersError;
-
-        // Early return if no players yet
-        if (!serverPlayers || serverPlayers.length === 0) {
-          setPlayers([]);
-          return;
-        }
-
-        // Fetch sessions for these players
-        const playerUuids = serverPlayers.map((p) => p.player_uuid);
-        const { data: sessions, error: sessionsError } = await supabase
-          .from("sessions")
-          .select("*")
-          .eq("server_id", serverId)
-          .in("player_uuid", playerUuids)
-          .order("started_at", { ascending: false });
-
-        if (sessionsError) throw sessionsError;
-
-        // Fetch findings counts
-        const { data: findings, error: findingsError } = await supabase
-          .from("findings")
-          .select("player_uuid, severity")
-          .eq("server_id", serverId)
-          .in("player_uuid", playerUuids);
-
-        if (findingsError) throw findingsError;
-
-        // Group sessions by player
-        const sessionsByPlayer = new Map<string, PlayerSession[]>();
-        sessions?.forEach((s) => {
-          if (!s.player_uuid) return;
-          const existing = sessionsByPlayer.get(s.player_uuid) ?? [];
-          existing.push({
-            id: s.id,
-            player_uuid: s.player_uuid,
-            player_name: "",
-            session_id: s.session_id,
-            started_at: s.started_at,
-            ended_at: s.ended_at,
-          });
-          sessionsByPlayer.set(s.player_uuid, existing);
-        });
-
-        // Count findings and determine severity per player
-        const findingsByPlayer = new Map<
-          string,
-          { count: number; highest: string | null }
-        >();
-        const severityRank = { low: 1, medium: 2, high: 3, critical: 4 };
-        findings?.forEach((f) => {
-          if (!f.player_uuid) return;
-          const existing = findingsByPlayer.get(f.player_uuid) ?? {
-            count: 0,
-            highest: null,
-          };
-          existing.count++;
-          if (
-            f.severity &&
-            (!existing.highest ||
-              severityRank[f.severity as keyof typeof severityRank] >
-                severityRank[existing.highest as keyof typeof severityRank])
-          ) {
-            existing.highest = f.severity;
-          }
-          findingsByPlayer.set(f.player_uuid, existing);
-        });
-
-        // Check which players are online (last seen within 5 minutes)
-        const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-
-        // Build player stats
-        const playerStats: PlayerWithStats[] = (serverPlayers ?? []).map(
-          (sp) => {
-            const findingsData = findingsByPlayer.get(sp.player_uuid);
-            const playerSessions = sessionsByPlayer.get(sp.player_uuid) ?? [];
-
-            // Update session player names
-            playerSessions.forEach((s) => {
-              s.player_name = sp.player_name;
-            });
-
-            return {
-              uuid: sp.player_uuid,
-              name: sp.player_name,
-              first_seen_at: sp.first_seen_at,
-              last_seen_at: sp.last_seen_at,
-              findings_count: findingsData?.count ?? 0,
-              sessions: playerSessions,
-              highest_severity:
-                (findingsData?.highest as PlayerWithStats["highest_severity"]) ??
-                null,
-              is_online: new Date(sp.last_seen_at).getTime() > fiveMinutesAgo,
-            };
-          }
-        );
-
-        setPlayers(playerStats);
-      } catch (err) {
-        console.error("Failed to fetch players:", err);
-        // Don't show error for permission/RLS issues when there's just no data
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        if (errorMessage.includes("permission") || errorMessage.includes("RLS")) {
-          // Likely no data available yet, treat as empty
-          setPlayers([]);
-        } else {
-          setError(errorMessage);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchPlayers();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchPlayers, 30000);
-    return () => clearInterval(interval);
-  }, [selectedServerId]);
 
   // Filter players
   const filteredPlayers = useMemo(() => {
@@ -504,6 +359,11 @@ export default function PlayersPage() {
     );
   }
 
+  // Show skeleton while loading
+  if (loading) {
+    return <PlayersSkeleton />;
+  }
+
   return (
     <div className="h-screen -m-6 flex flex-col relative">
       {/* Header */}
@@ -522,7 +382,7 @@ export default function PlayersPage() {
               <span className="text-white/50">{stats.online} online</span>
             </div>
             <div className="flex items-center gap-2">
-              <RiAlertLine className="w-3.5 h-3.5 text-amber-400" />
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
               <span className="text-white/50">{stats.flagged} flagged</span>
             </div>
             <div className="flex items-center gap-2">
@@ -565,13 +425,7 @@ export default function PlayersPage() {
         </div>
       </div>
 
-      {/* Loading / Error states */}
-      {loading && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-white/60 text-sm">Loading players...</div>
-        </div>
-      )}
-
+      {/* Error state */}
       {error && (
         <div className="m-5">
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
@@ -581,7 +435,7 @@ export default function PlayersPage() {
       )}
 
       {/* Content */}
-      {!loading && !error && (
+      {!error && (
         <div className="flex-1 overflow-y-auto">
           {filteredPlayers.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-3">

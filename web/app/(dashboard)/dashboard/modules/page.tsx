@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   RiShieldCheckLine,
   RiCheckLine,
@@ -17,6 +17,8 @@ import {
 import { cn } from "@/lib/utils";
 import { api, type BuiltinModuleInfo, type Module } from "@/lib/api";
 import { useSelectedServer } from "@/lib/server-context";
+import { ModulesSkeleton } from "@/components/ui/skeleton";
+import { useModules } from "@/lib/hooks/use-dashboard-data";
 
 function hashStringToUnitInterval(input: string): number {
   let h = 0x811c9dc5;
@@ -640,64 +642,47 @@ function AddModuleCard({ onClick }: { onClick: () => void }) {
 }
 
 export default function ModulesPage() {
-  const [modules, setModules] = useState<InstalledModule[]>([]);
-  const [builtinModules, setBuiltinModules] = useState<BuiltinModuleInfo[]>([]);
+  const selectedServerId = useSelectedServer();
+
+  // Use SWR hook for cached data fetching
+  const {
+    modules: apiModules,
+    builtinModules,
+    error,
+    isLoading: loading,
+    mutate,
+  } = useModules(selectedServerId);
+
+  // Local state for optimistic updates during mutations
+  const [localModules, setLocalModules] = useState<InstalledModule[]>([]);
   const [selectedModule, setSelectedModule] = useState<InstalledModule | null>(
     null
   );
   const [showAddModal, setShowAddModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const pendingToggles = useRef<Set<string>>(new Set());
   const toggleRequestIdRef = useRef<Map<string, number>>(new Map());
-  const fetchIdRef = useRef(0);
   const currentServerIdRef = useRef<string | null>(null);
-  const selectedServerId = useSelectedServer();
 
-  useEffect(() => {
-    if (!selectedServerId) {
-      currentServerIdRef.current = null;
-      setSelectedModule(null);
-      setModules([]);
-      setBuiltinModules([]);
-      setError(null);
-      setLoading(false);
-      return;
+  // Sync local modules with SWR data
+  const modules = localModules.length > 0 ? localModules : apiModules.map((m) => toInstalledModule(m, builtinModules));
+
+  // Update local modules when SWR data changes (and no pending mutations)
+  const lastSyncRef = useRef<string>("");
+  const syncKey = `${selectedServerId}:${apiModules.map(m => `${m.id}:${m.enabled}`).join(",")}`;
+  if (syncKey !== lastSyncRef.current && pendingToggles.current.size === 0) {
+    lastSyncRef.current = syncKey;
+    const newModules = apiModules.map((m) => toInstalledModule(m, builtinModules));
+    if (JSON.stringify(newModules) !== JSON.stringify(localModules)) {
+      setLocalModules(newModules);
     }
+  }
 
-    setSelectedModule(null);
+  // Track current server for stale response handling
+  if (currentServerIdRef.current !== selectedServerId) {
     currentServerIdRef.current = selectedServerId;
-    const serverId = selectedServerId;
-    const fetchId = ++fetchIdRef.current;
-
-    async function fetchModules() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const { modules: apiModules, builtinModules: builtins } =
-          await api.getModules(serverId);
-        const installedModules: InstalledModule[] = apiModules.map((m) =>
-          toInstalledModule(m, builtins)
-        );
-
-        if (fetchId !== fetchIdRef.current) return;
-        setBuiltinModules(builtins);
-        setModules(installedModules);
-      } catch (err) {
-        if (fetchId !== fetchIdRef.current) return;
-        console.error("Failed to fetch modules:", err);
-        setError(err instanceof Error ? err.message : "Failed to load modules");
-      } finally {
-        if (fetchId === fetchIdRef.current) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchModules();
-  }, [selectedServerId]);
+    setSelectedModule(null);
+  }
 
   const toggleModule = async (id: string) => {
     const serverId = selectedServerId;
@@ -713,7 +698,7 @@ export default function ModulesPage() {
 
     const newEnabled = !moduleItem.enabled;
 
-    setModules((prev) =>
+    setLocalModules((prev) =>
       prev.map((m) => (m.id === id ? { ...m, enabled: newEnabled } : m))
     );
 
@@ -728,7 +713,7 @@ export default function ModulesPage() {
       if (currentServerIdRef.current !== serverId) return;
       if (toggleRequestIdRef.current.get(toggleKey) !== requestId) return;
 
-      setModules((prev) =>
+      setLocalModules((prev) =>
         prev.map((m) => {
           if (m.id !== id) return m;
           if (m.enabled !== newEnabled) return m;
@@ -767,8 +752,10 @@ export default function ModulesPage() {
         builtinModules
       );
 
-      setModules((prev) => [...prev, installedModule]);
+      setLocalModules((prev) => [...prev, installedModule]);
       setShowAddModal(false);
+      // Refresh SWR cache
+      mutate();
     } catch (err) {
       console.error("Failed to add module:", err);
     }
@@ -839,6 +826,11 @@ export default function ModulesPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedModule, navigateModule, showAddModal, showConfigModal]);
 
+  // Show skeleton while loading
+  if (loading) {
+    return <ModulesSkeleton />;
+  }
+
   return (
     <div className="h-screen -m-6 flex flex-col relative">
       {/* Header */}
@@ -853,13 +845,6 @@ export default function ModulesPage() {
         </div>
       </div>
 
-      {/* Loading / Error states */}
-      {loading && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-white/60 text-sm">Loading modules...</div>
-        </div>
-      )}
-
       {error && (
         <div className="m-5">
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-xs">
@@ -869,7 +854,7 @@ export default function ModulesPage() {
       )}
 
       {/* Content */}
-      {!loading && !error && (
+      {!error && (
         <div className="flex-1 overflow-y-auto p-5">
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {modules.map((module) => (

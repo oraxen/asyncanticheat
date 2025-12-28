@@ -82,7 +82,7 @@ export function Sidebar({
             className="[image-rendering:pixelated]"
             unoptimized
           />
-          <span className="text-sm font-semibold text-white">AsyncAC</span>
+          <span className="text-sm font-semibold text-white">Async Anticheat</span>
         </Link>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -123,7 +123,7 @@ export function Sidebar({
               className="[image-rendering:pixelated]"
               unoptimized
             />
-            <span className="text-sm font-semibold text-white">AsyncAC</span>
+            <span className="text-sm font-semibold text-white">Async Anticheat</span>
           </Link>
         </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   RiSearchLine,
@@ -18,10 +18,10 @@ import {
   getModuleName,
   getModuleColorClass,
 } from "@/lib/utils";
-import { api, type Finding } from "@/lib/api";
+import { type Finding } from "@/lib/api";
 import { useSelectedServer } from "@/lib/server-context";
 import { ReportFalsePositiveDialog } from "@/components/dashboard/report-false-positive-dialog";
-import { createClient } from "@/lib/supabase/client";
+import { useFindings, useFalsePositiveReports } from "@/lib/hooks/use-dashboard-data";
 
 const severityColors = {
   low: "text-blue-400",
@@ -407,17 +407,23 @@ export default function FindingsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
-  const [findings, setFindings] = useState<Finding[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const fetchIdRef = useRef(0);
-  const fpFetchIdRef = useRef(0);
+
+  // Use SWR hooks for cached data fetching
+  const {
+    findings,
+    error,
+    isLoading: loading,
+  } = useFindings(selectedServerId, {
+    severity: filter || undefined,
+    player: deepLinkPlayer || undefined,
+    limit: 100,
+  });
+
+  const { reportedFindingIds, addReport } = useFalsePositiveReports(selectedServerId);
 
   // False positive report dialog state
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedFindingForReport, setSelectedFindingForReport] = useState<Finding | null>(null);
-  // Track finding IDs that have been reported as false positives
-  const [reportedFindingIds, setReportedFindingIds] = useState<Set<string>>(new Set());
 
   const handleReportFalsePositive = useCallback((finding: Finding) => {
     setSelectedFindingForReport(finding);
@@ -426,101 +432,8 @@ export default function FindingsPage() {
 
   // Handle successful false positive report submission
   const handleReportSuccess = useCallback((findingId: string) => {
-    setReportedFindingIds(prev => new Set([...prev, findingId]));
-  }, []);
-
-  // Fetch findings from API - refetch when filter OR server changes
-  useEffect(() => {
-    // If there's no server selected (e.g., server removed), don't get stuck loading
-    if (!selectedServerId) {
-      setFindings([]);
-      setSelectedPlayer(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-
-    // Capture serverId for async closures (TypeScript narrowing)
-    const serverId = selectedServerId;
-    
-    const fetchId = ++fetchIdRef.current;
-
-    async function fetchFindings() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const params: { severity?: string; player?: string; limit?: number } = {
-          limit: 100,
-        };
-        if (filter) params.severity = filter;
-        if (deepLinkPlayer) params.player = deepLinkPlayer;
-
-        const { findings: data } = await api.getFindings(
-          serverId,
-          params
-        );
-
-        // Guard against stale responses from out-of-order requests
-        if (fetchId !== fetchIdRef.current) return;
-
-        setFindings(data);
-      } catch (err) {
-        // Guard against stale error handling
-        if (fetchId !== fetchIdRef.current) return;
-
-        console.error("Failed to fetch findings:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load findings"
-        );
-      } finally {
-        // Guard against stale loading state
-        if (fetchId === fetchIdRef.current) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchFindings();
-  }, [filter, selectedServerId, deepLinkPlayer]);
-
-  // Fetch existing false positive reports for the current server
-  useEffect(() => {
-    if (!selectedServerId) {
-      setReportedFindingIds(new Set());
-      return;
-    }
-
-    const fetchId = ++fpFetchIdRef.current;
-
-    async function fetchReportedFindings() {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("false_positive_reports")
-          .select("finding_id")
-          .eq("server_id", selectedServerId);
-
-        // Guard against stale responses from out-of-order requests
-        if (fetchId !== fpFetchIdRef.current) return;
-
-        if (error) {
-          console.error("Failed to fetch false positive reports:", error);
-          return;
-        }
-
-        if (data) {
-          setReportedFindingIds(new Set(data.map((r) => r.finding_id)));
-        }
-      } catch (err) {
-        // Guard against stale error handling
-        if (fetchId !== fpFetchIdRef.current) return;
-        console.error("Failed to fetch false positive reports:", err);
-      }
-    }
-
-    fetchReportedFindings();
-  }, [selectedServerId]);
+    addReport(findingId);
+  }, [addReport]);
 
   // Check for player query param on mount
   useEffect(() => {

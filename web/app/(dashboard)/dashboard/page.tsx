@@ -9,9 +9,13 @@ import {
   RiMapPinLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
-import { api, type DashboardStats, type ConnectionMetrics } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useSelectedServer } from "@/lib/server-context";
 import { DashboardSkeleton } from "@/components/ui/skeleton";
+import {
+  useDashboardStats,
+  useConnectionMetrics,
+} from "@/lib/hooks/use-dashboard-data";
 
 // Transform API player to dashboard player format
 interface DashboardPlayer {
@@ -617,28 +621,30 @@ export default function DashboardPage() {
   );
   const [players, setPlayers] = useState<DashboardPlayer[]>([]);
   const [activePlayers, setActivePlayers] = useState<ActivePlayerDot[]>([]);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [connectionMetrics, setConnectionMetrics] =
-    useState<ConnectionMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [playersLoading, setPlayersLoading] = useState(true);
+  const [playersError, setPlayersError] = useState<string | null>(null);
+
+  // Use SWR hooks for stats and connection metrics (cached across navigation)
+  const { stats, isLoading: statsLoading } = useDashboardStats(selectedServerId);
+  const { metrics: connectionMetrics } = useConnectionMetrics(selectedServerId);
 
   // Track current server ID to prevent stale responses from updating state
   const currentServerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
 
-    // If there's no server selected (e.g., server removed), don't get stuck loading
+  // Fetch players data (special transformation needed for globe)
+  useEffect(() => {
+    // If there's no server selected, reset state
     if (!selectedServerId) {
       currentServerIdRef.current = null;
       setSelectedPlayer(null);
       setPlayers([]);
       setActivePlayers([]);
-      setStats(null);
-      setConnectionMetrics(null);
-      setError(null);
-      setLoading(false);
+      setPlayersError(null);
+      setPlayersLoading(false);
       return;
     }
 
@@ -646,16 +652,13 @@ export default function DashboardPage() {
     currentServerIdRef.current = selectedServerId;
     const serverId = selectedServerId;
 
-    // Fetch data from API
-    async function fetchData() {
+    // Fetch players data from API
+    async function fetchPlayers() {
       try {
-        setLoading(true);
-        setError(null);
+        setPlayersLoading(true);
+        setPlayersError(null);
 
-        const [playersData, statsData] = await Promise.all([
-          api.getPlayers(serverId),
-          api.getStats(serverId),
-        ]);
+        const playersData = await api.getPlayers(serverId);
 
         // Guard against stale responses if server changed during fetch
         if (currentServerIdRef.current !== serverId) return;
@@ -691,45 +694,29 @@ export default function DashboardPage() {
             };
           })
         );
-        setStats(statsData);
       } catch (err) {
         // Guard against stale error handling
         if (currentServerIdRef.current !== serverId) return;
-        console.error("Failed to fetch dashboard data:", err);
-        setError(err instanceof Error ? err.message : "Failed to load data");
+        console.error("Failed to fetch players data:", err);
+        setPlayersError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
         // Guard against stale loading state
         if (currentServerIdRef.current === serverId) {
-          setLoading(false);
+          setPlayersLoading(false);
         }
       }
     }
 
-    // Fetch connection status
-    async function fetchConnectionStatus() {
-      try {
-        const metrics = await api.getConnectionStatus(serverId);
-        // Guard against stale responses
-        if (currentServerIdRef.current !== serverId) return;
-        setConnectionMetrics(metrics);
-      } catch (err) {
-        console.error("Failed to fetch connection status:", err);
-      }
-    }
+    fetchPlayers();
 
-    fetchData();
-    fetchConnectionStatus();
-
-    // Refresh data every 30 seconds
-    const dataInterval = setInterval(fetchData, 30000);
-    // Refresh connection status every 5 seconds
-    const statusInterval = setInterval(fetchConnectionStatus, 5000);
-
-    return () => {
-      clearInterval(dataInterval);
-      clearInterval(statusInterval);
-    };
+    // Refresh players every 30 seconds
+    const interval = setInterval(fetchPlayers, 30000);
+    return () => clearInterval(interval);
   }, [selectedServerId]);
+
+  // Combined loading state - show skeleton only on first load
+  const loading = (statsLoading && !stats) || (playersLoading && players.length === 0);
+  const error = playersError;
 
   if (!mounted) return null;
 

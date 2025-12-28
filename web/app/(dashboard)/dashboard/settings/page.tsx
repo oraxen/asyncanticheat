@@ -12,6 +12,7 @@ import {
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import { useSelectedServer } from "@/lib/server-context";
+import { SettingsSkeleton } from "@/components/ui/skeleton";
 
 // Toggle Switch Component
 function Toggle({
@@ -323,11 +324,7 @@ export default function SettingsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <RiLoader4Line className="h-6 w-6 animate-spin text-[rgb(var(--foreground-secondary))]" />
-      </div>
-    );
+    return <SettingsSkeleton />;
   }
 
   return (

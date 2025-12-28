@@ -1,0 +1,195 @@
+---
+description: Configure AsyncAnticheat plugin and API settings
+title: Configuration
+---
+
+# Configuration
+
+AsyncAnticheat is highly configurable to match your server's needs.
+
+## Plugin Configuration
+
+The plugin configuration is stored in `plugins/AsyncAnticheat/config.yml`.
+
+### API Settings
+
+```yaml
+api:
+  url: "https://api.asyncanticheat.com"
+  token: "your_api_token"
+  timeout_seconds: 10
+```
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `url` | Base URL of your AsyncAnticheat API | Required |
+| `token` | Authentication token for API requests | Required |
+| `timeout_seconds` | Request timeout in seconds | `10` |
+
+### Spool Settings
+
+The spool is a local buffer for packets before they're uploaded.
+
+```yaml
+spool:
+  dir: "spool"
+  max_mb: 256
+  flush_interval_ms: 1000
+  drop_policy: "drop_oldest"
+```
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `dir` | Directory for spool files | `"spool"` |
+| `max_mb` | Maximum spool size in MB | `256` |
+| `flush_interval_ms` | How often to flush batches (ms) | `1000` |
+| `drop_policy` | What to drop when full: `drop_oldest` or `drop_newest` | `"drop_oldest"` |
+
+### Capture Settings
+
+Control which packets are captured and at what rate.
+
+```yaml
+capture:
+  enabled_packets: []
+  disabled_packets: []
+  sample_rate: 1.0
+```
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `enabled_packets` | Whitelist of packet types (empty = default list) | `[]` |
+| `disabled_packets` | Blacklist of packet types | `[]` |
+| `sample_rate` | Sampling rate (1.0 = 100%, 0.5 = 50%) | `1.0` |
+
+#### Default Allow-List
+
+When `enabled_packets` is empty, these packet types are captured:
+
+- Movement packets (position, rotation, ground state)
+- Combat packets (attacks, interactions)
+- Block interaction packets (dig, place)
+- Inventory packets (clicks, close)
+- Vehicle packets (steer, move)
+
+### Privacy Settings
+
+```yaml
+privacy:
+  redact_chat: true
+```
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `redact_chat` | Remove chat message content from packets | `true` |
+
+## API Configuration
+
+The API is configured via environment variables.
+
+### Required Variables
+
+```bash
+# Database
+DATABASE_URL="postgresql://user:pass@localhost:5432/asyncanticheat"
+
+# Authentication
+INGEST_TOKEN="your_secret_token"
+MODULE_CALLBACK_TOKEN="module_callback_secret"
+```
+
+### Optional Variables
+
+```bash
+# Server
+HOST="0.0.0.0"
+PORT="3002"
+
+# Batch Processing
+MAX_BODY_BYTES="10485760"  # 10MB
+
+# Module Pipeline
+MODULE_HEALTHCHECK_INTERVAL_SECONDS="10"
+
+# Object Storage (S3-compatible)
+S3_BUCKET="asyncanticheat-batches"
+S3_REGION="us-east-1"
+S3_ENDPOINT="https://s3.amazonaws.com"  # For MinIO/Supabase
+S3_ACCESS_KEY="your_access_key"
+S3_SECRET_KEY="your_secret_key"
+
+# Local Storage (fallback when S3_BUCKET is empty)
+LOCAL_STORE_DIR="./data/object_store"
+
+# Cleanup (TTL)
+OBJECT_STORE_CLEANUP_ENABLED="false"
+OBJECT_STORE_CLEANUP_DRY_RUN="true"
+OBJECT_STORE_CLEANUP_INTERVAL_SECONDS="3600"
+OBJECT_STORE_TTL_DAYS="7"
+BATCH_INDEX_TTL_DAYS="7"
+```
+
+## Server-Specific Configuration
+
+### Per-Server Settings
+
+Each server connecting to the API is identified by a unique `server_id`. You can configure different capture settings per server.
+
+### Exemption Configuration
+
+Exempt specific players, permissions, or worlds from capture:
+
+```yaml
+exemptions:
+  # Exempt specific players
+  players:
+    - "admin_uuid_here"
+  
+  # Exempt by permission
+  permissions:
+    - "asyncanticheat.exempt"
+  
+  # Exempt by world
+  worlds:
+    - "creative_world"
+```
+
+## Performance Tuning
+
+### High-Traffic Servers
+
+For servers with 200+ players:
+
+```yaml
+spool:
+  max_mb: 512
+  flush_interval_ms: 500
+
+capture:
+  sample_rate: 0.5  # Capture 50% of packets
+```
+
+### Low-Latency Detection
+
+For competitive servers requiring fast detection:
+
+```yaml
+spool:
+  flush_interval_ms: 250
+
+capture:
+  sample_rate: 1.0
+```
+
+### Minimal Resource Usage
+
+For smaller servers or limited resources:
+
+```yaml
+spool:
+  max_mb: 64
+  flush_interval_ms: 2000
+
+capture:
+  sample_rate: 0.25
+```

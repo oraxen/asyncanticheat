@@ -1,0 +1,224 @@
+---
+description: Combat-related cheat detection checks
+title: Combat Checks
+---
+
+# Combat Checks
+
+Combat checks detect killaura, reach hacks, and other combat-related cheats.
+
+## Reach
+
+Detects attacking from impossible distances.
+
+### reach.attack
+
+Attack reach beyond vanilla limits.
+
+**Detection:**
+- Calculate distance between attacker and victim positions
+- Account for latency and position interpolation
+- Flag attacks beyond maximum reach
+
+**Vanilla Limits:**
+| Mode | Max Reach |
+|------|-----------|
+| Survival | 3.0 blocks |
+| Creative | 5.0 blocks |
+
+**Example Finding:**
+```json
+{
+  "check": "reach.attack",
+  "vl": 35.0,
+  "details": {
+    "distance": 4.2,
+    "max_allowed": 3.0,
+    "attacker_pos": {"x": 100, "y": 64, "z": 200},
+    "victim_pos": {"x": 104.2, "y": 64, "z": 200}
+  }
+}
+```
+
+### reach.block
+
+Interacting with blocks from too far away.
+
+**Detection:**
+- Calculate distance to targeted block
+- Maximum vanilla reach is 4.5 blocks
+- Flag interactions beyond limit
+
+## Killaura
+
+Detects automated combat targeting.
+
+### killaura.pattern
+
+Unnatural attack patterns.
+
+**Detection:**
+- Analyze attack timing consistency
+- Track target switching speed
+- Detect multi-target attacks in single tick
+
+**Example Finding:**
+```json
+{
+  "check": "killaura.pattern",
+  "vl": 45.0,
+  "details": {
+    "attacks_per_second": 18.5,
+    "target_switches": 5,
+    "average_interval_ms": 54
+  }
+}
+```
+
+### killaura.angle
+
+Attacking without proper aim.
+
+**Detection:**
+- Compare player look direction to attack target
+- Track rotation changes around attacks
+- Flag attacks with impossible aim angles
+
+### killaura.timing
+
+Perfect attack timing detection.
+
+**Detection:**
+- Analyze time between attacks
+- Detect inhuman consistency
+- Flag patterns matching known hacks
+
+## Velocity
+
+Detects knockback modification.
+
+### velocity.horizontal
+
+Horizontal knockback reduction/cancellation.
+
+**Detection:**
+- Track player movement after receiving damage
+- Compare to expected knockback physics
+- Flag insufficient horizontal movement
+
+**Example Finding:**
+```json
+{
+  "check": "velocity.horizontal",
+  "vl": 40.0,
+  "details": {
+    "expected_kb": 0.4,
+    "actual_kb": 0.05,
+    "reduction_percent": 87.5
+  }
+}
+```
+
+### velocity.vertical
+
+Vertical knockback modification.
+
+**Detection:**
+- Track Y velocity after hits
+- Compare to expected upward movement
+- Flag missing vertical knockback
+
+## AutoClicker
+
+Detects automated clicking.
+
+### autoclicker.cps
+
+Clicks per second analysis.
+
+**Detection:**
+- Count arm swing packets per second
+- Track consistency over time
+- Flag inhuman CPS or patterns
+
+**Typical Limits:**
+| Type | CPS Range |
+|------|-----------|
+| Normal | 6-12 |
+| Jitter | 12-16 |
+| Butterfly | 15-25 |
+| Macro/Auto | 20+ consistent |
+
+**Example Finding:**
+```json
+{
+  "check": "autoclicker.cps",
+  "vl": 30.0,
+  "details": {
+    "cps": 22.5,
+    "variance": 0.3,
+    "sample_duration_ms": 5000
+  }
+}
+```
+
+### autoclicker.pattern
+
+Click pattern analysis.
+
+**Detection:**
+- Analyze interval between clicks
+- Detect regular patterns (auto-clicker signatures)
+- Compare variance to human clicking
+
+## Configuration
+
+Example combat check configuration:
+
+```json
+{
+  "combat": {
+    "reach": {
+      "enabled": true,
+      "max_reach": 3.1,
+      "latency_compensation_ms": 150
+    },
+    "killaura": {
+      "enabled": true,
+      "min_attacks_for_pattern": 10,
+      "max_target_switch_speed_ms": 50
+    },
+    "velocity": {
+      "enabled": true,
+      "min_horizontal_ratio": 0.75,
+      "min_vertical_ratio": 0.75
+    },
+    "autoclicker": {
+      "enabled": true,
+      "max_cps": 20,
+      "min_variance": 0.5
+    }
+  }
+}
+```
+
+## Notes
+
+### Latency Consideration
+
+Combat checks must account for network latency:
+
+1. Position data may be delayed
+2. Hit registration happens server-side
+3. Use historical positions for reach calculations
+
+### False Positives
+
+Common causes of false positives:
+
+- High ping players
+- Server lag spikes  
+- Legitimate fast clicking (jitter/butterfly)
+- Entity interpolation issues
+
+Recommend setting conservative thresholds and reviewing flagged players manually.

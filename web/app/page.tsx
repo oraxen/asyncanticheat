@@ -1,0 +1,342 @@
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { useState } from "react";
+import {
+  RiShieldCheckLine,
+  RiSpeedLine,
+  RiPlugLine,
+  RiOpenSourceLine,
+  RiArrowRightLine,
+  RiArrowDownSLine,
+  RiGithubFill,
+  RiExternalLinkLine,
+  RiMenuLine,
+  RiCloseLine,
+} from "@remixicon/react";
+import HeroImage from "@/app/components/ui/HeroImage";
+
+// FAQ Item Component
+function FaqItem({
+  question,
+  children,
+}: {
+  question: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-[rgb(var(--border))]">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between py-4 text-left font-medium text-[rgb(var(--foreground))] hover:text-indigo-500 transition-colors"
+      >
+        <span className="text-sm">{question}</span>
+        <RiArrowDownSLine
+          className={`h-4 w-4 text-[rgb(var(--foreground-tertiary))] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="pb-4 text-sm text-[rgb(var(--foreground-secondary))] leading-relaxed">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Feature Card Component
+function FeatureCard({
+  icon: Icon,
+  title,
+  description,
+  link,
+  linkText,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  link?: string;
+  linkText?: string;
+}) {
+  return (
+    <div className="group rounded-lg surface-1 p-5 border border-[rgb(var(--border))] hover:border-[rgb(var(--border-elevated))] transition-colors">
+      <div className="mb-3 inline-flex rounded-md bg-indigo-500/10 p-2">
+        <Icon className="h-5 w-5 text-indigo-500" />
+      </div>
+      <h3 className="mb-1.5 text-sm font-semibold text-[rgb(var(--foreground))]">
+        {title}
+      </h3>
+      <p className="text-sm text-[rgb(var(--foreground-secondary))] leading-relaxed">
+        {description}
+      </p>
+      {link && linkText && (
+        <Link
+          href={link}
+          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-indigo-500 hover:text-indigo-400 transition-colors"
+        >
+          {linkText}
+          <RiArrowRightLine className="h-3 w-3" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+export default function HomePage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  return (
+    <div className="min-h-screen surface-0">
+      {/* Header */}
+      <header className="sticky top-0 z-50 glass border-b border-[rgb(var(--border))]">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <Link href="/" className="flex items-center gap-2 group">
+            <Image
+              src="/logo.png"
+              alt="AsyncAnticheat"
+              width={28}
+              height={28}
+              className="[image-rendering:pixelated]"
+              unoptimized
+            />
+            <span className="text-sm font-medium text-[rgb(var(--foreground))]">
+              AsyncAnticheat
+            </span>
+          </Link>
+
+          <nav className="hidden md:flex items-center gap-6">
+            <Link
+              href="https://github.com/oraxen/asyncanticheat"
+              className="text-xs font-medium text-[rgb(var(--foreground-secondary))] hover:text-[rgb(var(--foreground))] transition-colors"
+            >
+              GitHub
+            </Link>
+            <Link
+              href="/docs"
+              className="text-xs font-medium text-[rgb(var(--foreground-secondary))] hover:text-[rgb(var(--foreground))] transition-colors"
+            >
+              Documentation
+            </Link>
+            <Link
+              href="/dashboard"
+              className="text-xs font-medium text-[rgb(var(--foreground-secondary))] hover:text-[rgb(var(--foreground))] transition-colors"
+            >
+              Dashboard
+            </Link>
+          </nav>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/docs"
+              className="hidden sm:inline-flex items-center rounded-md bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-600 transition-colors"
+            >
+              View Docs
+            </Link>
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-md hover:bg-[rgb(var(--foreground))]/10 transition-colors"
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            >
+              {mobileMenuOpen ? (
+                <RiCloseLine className="h-5 w-5 text-[rgb(var(--foreground))]" />
+              ) : (
+                <RiMenuLine className="h-5 w-5 text-[rgb(var(--foreground))]" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-[rgb(var(--border))] surface-1 animate-fade-in">
+            <nav className="mx-auto max-w-5xl px-4 py-3 flex flex-col gap-1">
+              <Link
+                href="https://github.com/oraxen/asyncanticheat"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:text-[rgb(var(--foreground))] hover:bg-[rgb(var(--foreground))]/5 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <RiGithubFill className="h-4 w-4" />
+                GitHub
+              </Link>
+              <Link
+                href="/docs"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:text-[rgb(var(--foreground))] hover:bg-[rgb(var(--foreground))]/5 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Documentation
+              </Link>
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:text-[rgb(var(--foreground))] hover:bg-[rgb(var(--foreground))]/5 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+              <div className="mt-2 pt-2 border-t border-[rgb(var(--border))]">
+                <Link
+                  href="/docs"
+                  className="flex items-center justify-center rounded-md bg-indigo-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-indigo-600 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  View Docs
+                </Link>
+              </div>
+            </nav>
+          </div>
+        )}
+      </header>
+
+      {/* Hero Section with Thread Showcase */}
+      <main>
+        <section className="mx-auto max-w-5xl px-4 py-12">
+          {/* Thread Slideshow */}
+          <HeroImage />
+
+          {/* CTA Buttons */}
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors"
+            >
+              Open Dashboard
+            </Link>
+            <Link
+              href="https://github.com/oraxen/asyncanticheat"
+              className="inline-flex items-center gap-2 rounded-md border border-[rgb(var(--border))] surface-1 px-4 py-2 text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:border-[rgb(var(--border-elevated))] hover:text-[rgb(var(--foreground))] transition-colors"
+            >
+              <RiGithubFill className="h-4 w-4" />
+              View on GitHub
+            </Link>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="mx-auto max-w-5xl px-4 py-12">
+          <div className="text-center mb-8">
+            <span className="inline-block rounded-md bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-500">
+              Features
+            </span>
+            <h2 className="mt-3 text-xl font-semibold text-[rgb(var(--foreground))]">
+              Why choose AsyncAnticheat?
+            </h2>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3 max-w-3xl mx-auto">
+            <FeatureCard
+              icon={RiSpeedLine}
+              title="Async by Design"
+              description="Offload cheat detection to cloud services. Zero impact on your server's TPS."
+            />
+            <FeatureCard
+              icon={RiPlugLine}
+              title="Modular Architecture"
+              description="Register external check modules that process packet data independently."
+            />
+            <FeatureCard
+              icon={RiOpenSourceLine}
+              title="Open Source"
+              description="Fully transparent and community-driven. Inspect the code, contribute improvements."
+              link="https://github.com/oraxen/asyncanticheat"
+              linkText="View on GitHub"
+            />
+          </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section className="mx-auto max-w-2xl px-4 py-12">
+          <div className="text-center mb-8">
+            <h2 className="text-xl font-semibold text-[rgb(var(--foreground))]">
+              Frequently Asked Questions
+            </h2>
+            <p className="mt-2 text-sm text-[rgb(var(--foreground-secondary))]">
+              Can&apos;t find the answer?{" "}
+              <Link
+                href="https://discord.gg/2ng6q3JNQ7"
+                className="text-indigo-500 hover:text-indigo-400"
+              >
+                Join our Discord
+              </Link>
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-[rgb(var(--border))] surface-1 px-4">
+            <FaqItem question="What is AsyncAnticheat?">
+              AsyncAnticheat is a next-generation anticheat system that offloads
+              detection to cloud services. Your Minecraft server captures
+              relevant packets and sends them to external &quot;modules&quot;
+              that analyze player behavior and report findings back to a central
+              dashboard.
+            </FaqItem>
+            <FaqItem question="What servers are supported?">
+              AsyncAnticheat supports Paper, Spigot, BungeeCord, and Velocity.
+              The plugin uses PacketEvents for cross-platform packet
+              interception.
+            </FaqItem>
+            <FaqItem question="What checks are included?">
+              AsyncAnticheat ships with category modules for Combat (aim,
+              killaura, autoclicker, reach), Movement (fly, speed, timer,
+              no-fall, velocity), and Player (bad packets, scaffold, fast
+              break/place). You can also create custom modules.
+            </FaqItem>
+            <FaqItem question="Does it impact server performance?">
+              Minimal impact. Packet capture runs on the network thread with
+              efficient filtering. Heavy processing happens off-server. Most
+              servers see less than 1% overhead.
+            </FaqItem>
+            <FaqItem question="How do I create custom modules?">
+              Modules are HTTP services that receive packet batches and return
+              findings. You can write them in any language. See the{" "}
+              <Link
+                href="/docs/modules/creating-modules"
+                className="text-indigo-500 hover:underline"
+              >
+                documentation
+              </Link>{" "}
+              for details.
+            </FaqItem>
+            <FaqItem question="Is AsyncAnticheat free?">
+              Yes, AsyncAnticheat is free to use. The source code is available
+              on GitHub for transparency.
+            </FaqItem>
+            <FaqItem question="Where can I find documentation?">
+              Full documentation is available at{" "}
+              <Link
+                href="/docs"
+                className="text-indigo-500 hover:underline inline-flex items-center gap-0.5"
+              >
+                /docs
+                <RiExternalLinkLine className="h-3 w-3" />
+              </Link>
+            </FaqItem>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-[rgb(var(--border))]">
+        <div className="mx-auto max-w-5xl px-4 py-6">
+          <div className="flex flex-col items-center justify-between gap-3 md:flex-row">
+            <p className="text-xs text-[rgb(var(--foreground-muted))]">
+              © {new Date().getFullYear()}{" "}
+              <Link
+                href="https://thomas.md"
+                className="text-[rgb(var(--foreground-tertiary))] hover:text-[rgb(var(--foreground-secondary))] transition-colors"
+              >
+                Thomas Marchand
+              </Link>
+            </p>
+            <Link
+              href="https://github.com/oraxen/asyncanticheat"
+              className="text-[rgb(var(--foreground-muted))] hover:text-[rgb(var(--foreground-tertiary))] transition-colors"
+            >
+              <RiGithubFill className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

@@ -1,0 +1,66 @@
+---
+description: How to install AsyncAnticheat on BungeeCord and Velocity networks
+title: Network Setup
+---
+
+# Network Setup
+
+How to install AsyncAnticheat on BungeeCord and Velocity networks.
+
+## Important
+
+AsyncAnticheat does **not** support proxy-only installation. You must install the plugin on **each backend server** individually.
+
+## Why install on backend servers?
+
+- **Full packet visibility**: Backend servers have access to all game packets, including position, combat, and interaction data
+- **Server-side context**: The plugin can access server-side player state (swimming, flying, game mode, etc.) which is essential for accurate detection
+- **Folia compatibility**: Backend Paper/Folia servers are fully supported
+
+## Installation Steps
+
+1. **Download** the plugin from [GitHub releases](https://github.com/oraxen/asyncanticheat/releases/latest/download/async-anticheat.jar)
+2. **Install on each backend server** (e.g., Survival, SkyBlock, Factions, etc.)
+3. **Link each server** to your dashboard using the console link
+4. Each server will appear as a **separate server** in the dashboard
+
+## Per-Server Configuration
+
+Each backend server can have its own configuration to match its specific needs:
+
+```yaml
+# Example: Creative server with relaxed detection
+capture:
+  sample_rate: 0.5  # Only capture 50% of packets
+
+# Example: Competitive PvP server with full capture
+capture:
+  sample_rate: 1.0  # Capture all packets
+```
+
+### Configuration Examples
+
+| Server Type | Recommended Sample Rate | Notes |
+|-------------|-------------------------|-------|
+| PvP / Competitive | 1.0 (100%) | Full detection accuracy |
+| Survival / SMP | 1.0 (100%) | Standard configuration |
+| Creative | 0.5 (50%) | Less critical, save bandwidth |
+| Minigames | 1.0 (100%) | Important for fairness |
+
+## Dashboard View
+
+In the dashboard, each backend server appears separately:
+
+- **Thomas' Survival**
+- **Thomas' SkyBlock**
+- **Thomas' Factions**
+
+You can switch between servers using the dropdown in the sidebar.
+
+## Cross-Server Detection
+
+Even though each server is linked separately, the AsyncAnticheat API can:
+
+- Track players across your entire network
+- Detect ban evaders using different accounts
+- Correlate patterns across servers

@@ -1,0 +1,74 @@
+{
+  "name": "AsyncAnticheat Dashboard",
+  "short_name": "AsyncAC",
+  "description": "Monitor and manage your Minecraft server's anticheat system",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#121214",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Findings",
+      "short_name": "Findings",
+      "description": "View detection findings",
+      "url": "/dashboard/findings",
+      "icons": [{ "src": "/icon-128.png", "sizes": "128x128" }]
+    },
+    {
+      "name": "Players",
+      "short_name": "Players",
+      "description": "Manage players",
+      "url": "/dashboard/players",
+      "icons": [{ "src": "/icon-128.png", "sizes": "128x128" }]
+    },
+    {
+      "name": "Documentation",
+      "short_name": "Docs",
+      "description": "Read documentation",
+      "url": "/docs",
+      "icons": [{ "src": "/icon-128.png", "sizes": "128x128" }]
+    }
+  ]
+}

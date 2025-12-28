@@ -1,0 +1,115 @@
+---
+description: How to install AsyncAnticheat on your Minecraft server
+title: Plugin Installation
+---
+
+# Plugin Installation
+
+Get AsyncAnticheat running on your server in under 2 minutes.
+
+## Requirements
+
+- **Java 21** or newer
+- **Paper 1.18+** or **Folia**
+
+## Platform Support
+
+| Platform | Support |
+|----------|---------|
+| Paper / Spigot | ✅ Full support |
+| Folia | ✅ Full support |
+| BungeeCord / Velocity | ❌ Install on backend servers ([see Network Setup](./network)) |
+
+## Step 1: Download
+
+**[⬇️ Download Latest Release](https://github.com/oraxen/asyncanticheat/releases/latest/download/async-anticheat.jar)**
+
+Or browse all versions on the [GitHub releases](https://github.com/oraxen/asyncanticheat/releases) page.
+
+## Step 2: Install and Start
+
+1. Drop the JAR file into your server's `/plugins/` folder
+2. Start (or restart) your server
+
+That's it! The plugin will automatically generate a default configuration.
+
+## Step 3: Link Your Server
+
+When your server starts, the plugin will display a link in the console:
+
+```
+[AsyncAnticheat] Link this server to your dashboard:
+[AsyncAnticheat] https://asyncanticheat.com/register-server?token=YOUR_TOKEN
+```
+
+Simply:
+1. **Click the link** (or copy-paste it into your browser)
+2. **Sign in** to your AsyncAnticheat account (or create one using GitHub/Discord/Email)
+3. **Done!** Your server is now linked and protected
+
+You can also run `/aac` in-game or from console to display the link again.
+
+## Verifying Installation
+
+Run `/aac` in-game or from console to verify:
+
+- Server linkage status
+- Connection to API
+- Packet capture is active
+
+## Configuration
+
+The plugin works out of the box, but you can customize it by editing `plugins/AsyncAnticheat/config.yml`:
+
+```yaml
+spool:
+  dir: "spool"
+  max_mb: 256
+  flush_interval_ms: 1000
+  drop_policy: "drop_oldest"  # drop_oldest | drop_newest
+
+capture:
+  enabled_packets: []   # Empty = use default allow-list
+  disabled_packets: []
+  sample_rate: 1.0      # 1.0 = capture all, 0.5 = 50%
+
+privacy:
+  redact_chat: true     # Redact chat message content
+```
+
+Changes require a server restart to take effect.
+
+## Folia Support
+
+AsyncAnticheat fully supports [Folia](https://github.com/PaperMC/Folia), Paper's multithreaded server fork. The plugin automatically detects Folia and uses the appropriate schedulers.
+
+No special configuration is required - just install the plugin as normal.
+
+## Troubleshooting
+
+### Server not linked
+
+If you lose the registration link:
+1. Run `/aac` in-game or from console
+2. The command will display the link again
+3. Click the link and sign in
+
+### Plugin not connecting to API
+
+1. Ensure firewall allows outbound connections to `api.asyncanticheat.com`
+2. Check server logs for connection errors
+3. Verify your server is linked (run `/aac`)
+
+### High spool directory usage
+
+If the spool directory grows large, the API may be unreachable:
+
+1. Check API connectivity in server logs
+2. Verify firewall rules allow outbound HTTPS
+3. Consider increasing `flush_interval_ms` or reducing `sample_rate` in config
+
+### Packets not being captured
+
+1. Verify Java 21 is being used
+2. Check server logs for PacketEvents errors
+3. Ensure `capture.enabled_packets` is empty (uses default allow-list) or correctly configured

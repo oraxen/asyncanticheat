@@ -1,0 +1,56 @@
+---
+description: AsyncAnticheat - Cloud-powered cheat detection for Minecraft servers
+title: Welcome to AsyncAnticheat
+---
+
+# Welcome to AsyncAnticheat
+
+AsyncAnticheat is a Minecraft plugin for Paper and Folia that captures high-signal packets and streams them to a cloud service for asynchronous analysis.
+
+## What Is AsyncAnticheat?
+
+Unlike traditional anticheats that run detection logic on your game server's main thread, AsyncAnticheat offloads all analysis to external **modules** running in the cloud. This approach provides:
+
+- **Zero server lag** - Packet capture is lightweight; all analysis happens off-server
+- **Flexible detection** - Modules can use machine learning, statistical analysis, or traditional rule-based checks
+- **Easy updates** - Update detection logic without restarting your Minecraft server
+- **Cross-server analysis** - Detect ban evaders and patterns across your entire network
+- **Folia support** - Full compatibility with Paper's multithreaded server fork
+
+## How Does It Work?
+
+1. **Capture** - The plugin intercepts game packets using [PacketEvents](https://docs.packetevents.com/)
+2. **Spool** - Packets are buffered locally and batched into compressed NDJSON files
+3. **Upload** - Batches are streamed to the AsyncAnticheat API
+4. **Analyze** - The API distributes batches to registered detection modules
+5. **Report** - Modules return findings (violations) which are stored and can trigger alerts
+
+## Quick Start
+
+Getting started takes less than 2 minutes:
+
+1. **[Download](https://github.com/oraxen/asyncanticheat/releases/latest/download/async-anticheat.jar)** the plugin
+2. **Drop** the JAR into your `/plugins/` folder
+3. **Start** your server
+4. **Click the link** that appears in console
+5. **Sign in** with GitHub, Discord, or Email
+
+That's it! Your server is now protected.
+
+See the [Installation](./installation) guide for detailed instructions.
+
+## Requirements
+
+- **Java 21** or newer
+- **Paper 1.18+** or **Folia**
+- An AsyncAnticheat API instance (self-hosted or managed)
+
+## Network Setup
+
+For networks using BungeeCord or Velocity, install the plugin on **each backend server** individually. The plugin does not support proxy-only installation - it needs to run on the game servers to access packet data and server-side player state.
+
+See the [Network Setup](./installation/network) guide for details.
+
+## License
+
+See the [LICENSE](https://github.com/oraxen/asyncanticheat/blob/master/LICENSE.md) file.

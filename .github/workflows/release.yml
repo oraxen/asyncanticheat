@@ -1,17 +1,23 @@
-name: Build & Release
+name: Plugin Build & Release
 
 on:
   release:
     types: [published]
   workflow_dispatch:
 
+defaults:
+  run:
+    working-directory: plugin
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: false
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -36,7 +42,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: async-anticheat-${{ steps.version.outputs.version }}
-          path: build/libs/async-anticheat-${{ steps.version.outputs.version }}.jar
+          path: plugin/build/libs/async-anticheat-${{ steps.version.outputs.version }}.jar
           if-no-files-found: error
 
       - name: Copy JAR with stable name
@@ -47,8 +53,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/libs/async-anticheat-${{ steps.version.outputs.version }}.jar
-            build/libs/async-anticheat.jar
+            plugin/build/libs/async-anticheat-${{ steps.version.outputs.version }}.jar
+            plugin/build/libs/async-anticheat.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -56,10 +62,10 @@ jobs:
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Successfully built AsyncAnticheat" >> $GITHUB_STEP_SUMMARY
+          echo "Successfully built AsyncAnticheat" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📦 **Artifact:** async-anticheat-${{ steps.version.outputs.version }}.jar" >> $GITHUB_STEP_SUMMARY
+          echo "**Artifact:** async-anticheat-${{ steps.version.outputs.version }}.jar" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            echo "🏷️ **Release:** ${{ github.event.release.tag_name }}" >> $GITHUB_STEP_SUMMARY
-            echo "📎 JAR attached to release" >> $GITHUB_STEP_SUMMARY
+            echo "**Release:** ${{ github.event.release.tag_name }}" >> $GITHUB_STEP_SUMMARY
+            echo "JAR attached to release" >> $GITHUB_STEP_SUMMARY
           fi

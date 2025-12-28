@@ -16,11 +16,14 @@ softdepend:
 
 commands:
   aac:
-    description: AsyncAnticheat main command - dashboard status and recording
-    usage: /aac [record|status]
+    description: AsyncAnticheat main command - dashboard status, token setup, and recording
+    usage: /aac [token|record|status]
     aliases: [asyncanticheat]
 
 permissions:
+  asyncanticheat.admin:
+    description: Allows managing AsyncAnticheat settings (/aac token)
+    default: op
   asyncanticheat.record:
     description: Allows using AsyncAnticheat in-game recording (/aac record)
     default: op

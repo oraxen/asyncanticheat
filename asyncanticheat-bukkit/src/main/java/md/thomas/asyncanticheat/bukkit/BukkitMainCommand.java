@@ -56,6 +56,9 @@ final class BukkitMainCommand implements CommandExecutor, TabCompleter {
             case "record", "rec" -> {
                 return handleRecord(sender, Arrays.copyOfRange(args, 1, args.length));
             }
+            case "token" -> {
+                return handleToken(sender, Arrays.copyOfRange(args, 1, args.length));
+            }
             default -> {
                 return showHelp(sender);
             }
@@ -72,6 +75,32 @@ final class BukkitMainCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§a[AsyncAnticheat] §fDashboard: §cnot configured");
             sender.sendMessage("§7Link this server: §f" + service.getClaimUrl());
         }
+        return true;
+    }
+
+    private boolean handleToken(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (!sender.hasPermission("asyncanticheat.admin")) {
+            sender.sendMessage("§c[AsyncAnticheat] Missing permission: asyncanticheat.admin");
+            return true;
+        }
+
+        if (args.length == 0) {
+            sender.sendMessage("§a[AsyncAnticheat] §fUsage: §f/aac token <token>");
+            sender.sendMessage("§7Use this to link to an existing server entry in the dashboard.");
+            sender.sendMessage("§7Get the token from your dashboard server settings.");
+            return true;
+        }
+
+        final String token = args[0];
+        if (token.length() < 10) {
+            sender.sendMessage("§c[AsyncAnticheat] Token appears invalid (too short). Please check and try again.");
+            return true;
+        }
+
+        service.updateToken(token);
+        sender.sendMessage("§a[AsyncAnticheat] §fToken updated successfully!");
+        sender.sendMessage("§7The server will now use the new token for API communication.");
+        sender.sendMessage("§7Check status with: §f/aac status");
         return true;
     }
 
@@ -210,6 +239,7 @@ final class BukkitMainCommand implements CommandExecutor, TabCompleter {
     private boolean showHelp(@NotNull CommandSender sender) {
         sender.sendMessage("§a[AsyncAnticheat] §fCommands:");
         sender.sendMessage("  §f/aac §7- Show dashboard status");
+        sender.sendMessage("  §f/aac token <token> §7- Set API token (link to existing server)");
         sender.sendMessage("  §f/aac record <player> <type> [label] §7- Start recording");
         sender.sendMessage("  §f/aac record stop [player] §7- Stop recording");
         sender.sendMessage("  §f/aac record status §7- Show active recordings");
@@ -222,7 +252,7 @@ final class BukkitMainCommand implements CommandExecutor, TabCompleter {
         final List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            completions.addAll(Arrays.asList("link", "record", "status"));
+            completions.addAll(Arrays.asList("link", "record", "status", "token"));
             return filter(completions, args[0]);
         }
 

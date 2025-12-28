@@ -56,6 +56,21 @@ final class HttpUploader {
         return registrationState.get();
     }
 
+    /**
+     * Called when the token is updated via command.
+     * Resets backoff state and triggers a handshake to verify the new token.
+     */
+    void updateToken(@NotNull String newToken) {
+        // Reset all backoff/degraded state
+        consecutiveFailures = 0;
+        backoffMs = 1_000L;
+        nextAttemptAtMs = 0L;
+        degradedUntilMs = 0L;
+        registrationState.set(REG_UNKNOWN);
+        // Trigger handshake to verify the new token
+        handshake();
+    }
+
     @NotNull
     String getClaimUrl() {
         final String base = normalizeBaseUrl(config.getDashboardUrl());

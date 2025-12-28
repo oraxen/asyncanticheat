@@ -30,6 +30,7 @@ public final class AsyncAnticheatService {
 
     private static final int DEFAULT_QUEUE_CAPACITY = 10_000;
 
+    private final File dataFolder;
     private final AcLogger logger;
     private final AsyncAnticheatConfig config;
     private final ServerIdentity serverIdentity;
@@ -92,6 +93,7 @@ public final class AsyncAnticheatService {
     private final HttpUploader uploader;
 
     public AsyncAnticheatService(@NotNull File dataFolder, @NotNull AcLogger logger) {
+        this.dataFolder = dataFolder;
         this.logger = logger;
         this.config = AsyncAnticheatConfig.load(dataFolder, logger);
         this.serverIdentity = ServerIdentity.loadOrCreate(dataFolder, logger);
@@ -225,5 +227,19 @@ public final class AsyncAnticheatService {
     @NotNull
     public String getServerId() {
         return serverIdentity.getServerId();
+    }
+
+    /**
+     * Updates the API token and saves the config.
+     * Use this to link the server to an existing dashboard entry.
+     *
+     * @param token The new API token from the dashboard
+     */
+    public void updateToken(@NotNull String token) {
+        config.setApiToken(token);
+        config.save(new File(dataFolder, "config.yml"), logger);
+        // Update the uploader's token so it takes effect immediately
+        uploader.updateToken(token);
+        logger.info("[AsyncAnticheat] Token updated. Server will use the new token for API communication.");
     }
 }

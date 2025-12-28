@@ -273,8 +273,15 @@ public final class AsyncAnticheatConfig {
     public int getDevDefaultDurationSeconds() { return devDefaultDurationSeconds; }
     public int getDevDefaultWarmupSeconds() { return devDefaultWarmupSeconds; }
     public int getDevDefaultToggleSeconds() { return devDefaultToggleSeconds; }
-    
+
     @NotNull public ExemptionConfig getExemptionConfig() { return exemptionConfig; }
+
+    /**
+     * Updates the API token. Call {@link #save(File, AcLogger)} afterwards to persist.
+     */
+    public void setApiToken(@NotNull String token) {
+        this.apiToken = token;
+    }
 
     @NotNull
     private static String generateToken() {

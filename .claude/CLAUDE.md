@@ -66,7 +66,26 @@ Player -> Plugin (captures packets)
 - **Secrets**: `~/minecraft/secrets.json` (jq-friendly JSON with all credentials)
 - **Plugin config**: Auto-generated `config.yml` in plugin data folder
 - **API env**: `api/.env` (copy from `api/env.example`)
-- **Web env**: `web/.env.local` (copy from `web/.env.example`)
+- **Web env**: `web/.env.local` - sync from Vercel (see below)
+
+### Vercel Environment Sync (Web)
+
+The `web/` app is linked to Vercel project `lfglabs/asyncanticheat.com`. To sync environment variables:
+
+```bash
+cd web
+
+# Link to project (if not already linked)
+vercel link --project asyncanticheat.com --yes
+
+# Pull development env vars
+vercel env pull .env.local
+
+# Pull production env vars
+vercel env pull .env.production.local --environment production --yes
+```
+
+Requires being logged in as `th0rgal` or having access to the `lfglabs` scope.
 
 ## Project-Specific Details
 

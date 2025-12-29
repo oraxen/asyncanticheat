@@ -66,8 +66,8 @@ project(":bukkit") {
         // PacketEvents (compileOnly - downloaded at runtime via Hopper)
         compileOnly("com.github.retrooper:packetevents-spigot:2.7.0")
 
-        // Hopper - runtime dependency downloader (paper module includes bukkit)
-        implementation("md.thomas.hopper:hopper-paper:1.4.1")
+        // Hopper - runtime dependency downloader
+        implementation("md.thomas.hopper:hopper-bukkit:1.4.1")
 
         // bStats - plugin metrics
         implementation("org.bstats:bstats-bukkit:3.0.2")

@@ -1,13 +1,13 @@
 <p align="center">
   <a href="https://asyncanticheat.com">
-    <img src="web/public/icon-512.png" alt="AsyncAnticheat Logo" width="200">
+    <img src="web/public/icon-512.png" alt="AsyncAnticheat" width="200">
   </a>
 </p>
 
 <h1 align="center">AsyncAnticheat</h1>
 
 <p align="center">
-  Cloud-based asynchronous anticheat for Minecraft servers
+  Cloud-based anticheat with zero server performance impact
 </p>
 
 <p align="center">
@@ -15,50 +15,99 @@
   •
   <a href="https://asyncanticheat.com/docs">Documentation</a>
   •
-  <a href="https://www.spigotmc.org/resources/asyncanticheat.123456/">Spigot</a>
+  <a href="https://github.com/oraxen/asyncanticheat/releases">Releases</a>
 </p>
 
 ---
 
-## About
+## Why Async?
 
-AsyncAnticheat uses **cloud-based packet analysis** to detect cheats and hacked clients on your Minecraft server. Unlike traditional anticheats, analysis happens asynchronously on external servers, meaning zero performance impact on your game server.
+Traditional anticheats run detection logic on your game server, consuming CPU cycles that should go to your players. Every tick spent on cheat detection is a tick not spent on gameplay.
 
-## Features
+AsyncAnticheat takes a different approach: the plugin captures packets and sends them to external infrastructure for analysis. Detection happens asynchronously in the cloud, returning findings to your dashboard without touching your server's TPS.
 
-- **Zero server impact** - All detection runs on external infrastructure
-- **Advanced detection** - Machine learning and statistical analysis
-- **Real-time dashboard** - Monitor detections across all your servers
-- **Multi-platform** - Paper, Spigot, Folia, and more
-- **Modular architecture** - Enable only the checks you need
+## Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Game Server    │     │   Ingestion     │     │   Detection     │
+│                 │     │   API (Rust)    │     │   Modules       │
+│  ┌───────────┐  │     │                 │     │                 │
+│  │ AsyncAC   │──┼────▶│  /ingest        │────▶│  Movement       │
+│  │ Plugin    │  │     │                 │     │  Combat         │
+│  └───────────┘  │     │  Object Store   │     │  Player         │
+│                 │     │  + PostgreSQL   │     │                 │
+└─────────────────┘     └────────┬────────┘     └────────┬────────┘
+                                 │                       │
+                                 │    ┌─────────────┐    │
+                                 └───▶│  Dashboard  │◀───┘
+                                      │  (Next.js)  │
+                                      └─────────────┘
+```
+
+**Plugin** captures packets using [PacketEvents](https://github.com/retrooper/packetevents) and batches them for transmission.
+
+**API** receives packet batches, stores them, and dispatches to detection modules.
+
+**Modules** analyze packets asynchronously and report findings back to the API.
+
+**Dashboard** displays detections, player history, and server analytics in real-time.
+
+## Tech Stack
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Plugin | Java 21, PacketEvents | Packet capture, minimal footprint |
+| API | Rust, Axum, PostgreSQL | High-throughput ingestion |
+| Dashboard | Next.js 15, React 19 | Real-time monitoring |
+| Modules | Rust | Detection algorithms |
 
 ## Supported Platforms
 
-| Platform | Version |
-|----------|---------|
-| Paper    | 1.8 - 1.21+ |
-| Spigot   | 1.8 - 1.21+ |
-| Folia    | 1.19.4+ |
+| Platform | Versions |
+|----------|----------|
+| Paper | 1.8 - 1.21+ |
+| Spigot | 1.8 - 1.21+ |
+| Folia | 1.19.4+ |
 
-## Requirements
+## Getting Started
 
-- Java 21 or higher
-- An AsyncAnticheat subscription
+1. Download the latest JAR from [Releases](https://github.com/oraxen/asyncanticheat/releases)
+2. Place in your server's `plugins/` folder
+3. Restart and configure `plugins/AsyncAnticheat/config.yml` with your API key
+4. View detections at [asyncanticheat.com/dashboard](https://asyncanticheat.com/dashboard)
 
-## Installation
+Full setup guide: [asyncanticheat.com/docs](https://asyncanticheat.com/docs)
 
-1. Download the latest release from [Spigot](https://www.spigotmc.org/resources/asyncanticheat.123456/) or [GitHub Releases](https://github.com/oraxen/asyncanticheat/releases)
-2. Place the JAR in your server's `plugins/` folder
-3. Restart your server
-4. Configure `plugins/AsyncAnticheat/config.yml` with your API key
+## Repository Structure
 
-## Documentation
+```
+├── plugin/     # Minecraft plugin (Java, Gradle)
+├── api/        # Ingestion API (Rust, Axum)
+├── web/        # Website & dashboard (Next.js)
+└── modules/    # Detection modules (Git submodule)
+```
 
-Full documentation available at [asyncanticheat.com/docs](https://asyncanticheat.com/docs)
+## Development
+
+```bash
+# Plugin
+cd plugin && ./gradlew build
+
+# API
+cd api && cargo build
+
+# Web
+cd web && bun install && bun dev
+```
+
+## Contributing
+
+Issues and pull requests welcome. See the documentation for module development guidelines.
 
 ## License
 
-Proprietary - See [LICENSE.md](LICENSE.md)
+[Async Anticheat License](LICENSE.md) - Source available, not open source.
 
 ---
 

@@ -6,7 +6,7 @@ Unified repository containing all AsyncAnticheat components:
 
 | Directory | Tech Stack | Purpose |
 |-----------|------------|---------|
-| `plugin/` | Java 21, Gradle, PacketEvents | Minecraft plugin - captures packets |
+| `plugin/` | Java 21, Gradle, PacketEvents, Hopper | Minecraft plugin - captures packets |
 | `api/` | Rust, Axum, PostgreSQL | Ingestion API - stores batches, dispatches to modules |
 | `web/` | Next.js 16, React 19, Bun | Website, dashboard, documentation |
 | `modules/` | Rust (submodule) | Detection modules - analyze packets |
@@ -93,7 +93,9 @@ Requires being logged in as `th0rgal` or having access to the `lfglabs` scope.
 - **Build**: `./gradlew build`
 - **Modules**: `core/` (shared logic), `bukkit/` (Paper/Spigot entry)
 - **Version**: Set in `plugin/gradle.properties`
-- **PacketEvents**: Shaded into JAR, no separate installation needed
+- **PacketEvents**: Downloaded automatically at runtime via [Hopper](https://github.com/oraxen/hopper)
+- **Hopper**: Runtime dependency downloader (shaded into JAR, relocated)
+- **Note**: First server start downloads PacketEvents and may require a restart
 
 ### API (`api/`)
 - **Database**: PostgreSQL (schema in `api/schema.sql`)

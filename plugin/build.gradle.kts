@@ -44,6 +44,8 @@ allprojects {
         // PacketEvents + bStats
         maven { url = uri("https://repo.codemc.io/repository/maven-releases/") }
         maven { url = uri("https://repo.codemc.io/repository/maven-snapshots/") }
+        // Hopper (runtime dependency downloader)
+        maven { url = uri("https://repo.oraxen.com/releases") }
     }
 }
 
@@ -61,8 +63,14 @@ project(":bukkit") {
         compileOnly("org.jetbrains:annotations:24.0.1")
         implementation(project(path = ":core", configuration = "shadow"))
 
-        // PacketEvents (Spigot/Paper)
-        implementation("com.github.retrooper:packetevents-spigot:2.11.0")
+        // PacketEvents (compileOnly - downloaded at runtime via Hopper)
+        compileOnly("com.github.retrooper:packetevents-spigot:2.7.0")
+
+        // Hopper - runtime dependency downloader (paper module includes bukkit)
+        implementation("md.thomas.hopper:hopper-paper:1.4.1")
+
+        // bStats - plugin metrics
+        implementation("org.bstats:bstats-bukkit:3.0.2")
     }
 }
 

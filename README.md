@@ -7,7 +7,7 @@
 <h1 align="center">AsyncAnticheat</h1>
 
 <p align="center">
-  Cloud-based anticheat with zero server performance impact
+  Cloud-based anticheat engineered for zero in-server performance impact
 </p>
 
 <p align="center">
@@ -22,9 +22,9 @@
 
 ## Why Async?
 
-Traditional anticheats run detection logic on your game server, consuming CPU cycles that should go to your players. Every tick spent on cheat detection is a tick not spent on gameplay.
+Traditional anticheats run on the game server and compete with gameplay for CPU time. Each tick spent on detection is a tick not spent on players.
 
-AsyncAnticheat takes a different approach: the plugin captures packets and sends them to external infrastructure for analysis. Detection happens asynchronously in the cloud, returning findings to your dashboard without touching your server's TPS.
+AsyncAnticheat keeps detection off-server: the plugin captures packets and streams them to the ingestion API for analysis. Detections run asynchronously in the cloud and feed results back to the dashboard without impacting TPS.
 
 ## Architecture
 
@@ -45,9 +45,9 @@ AsyncAnticheat takes a different approach: the plugin captures packets and sends
                                       └─────────────┘
 ```
 
-**Plugin** captures packets using [PacketEvents](https://github.com/retrooper/packetevents) and batches them for transmission.
+**Plugin** captures packets with [PacketEvents](https://github.com/retrooper/packetevents) and batches them for transmission.
 
-**API** receives packet batches, stores them, and dispatches to detection modules.
+**API** receives packet batches, stores them, and dispatches them to detection modules.
 
 **Modules** analyze packets asynchronously and report findings back to the API.
 
@@ -58,7 +58,7 @@ AsyncAnticheat takes a different approach: the plugin captures packets and sends
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | Plugin | Java 21, PacketEvents | Packet capture, minimal footprint |
-| API | Rust, Axum, PostgreSQL | High-throughput ingestion |
+| API | Rust, Axum, PostgreSQL | High-throughput ingestion and storage |
 | Dashboard | Next.js 15, React 19 | Real-time monitoring |
 | Modules | Rust | Detection algorithms |
 
@@ -116,9 +116,9 @@ Issues and pull requests welcome. See the documentation for module development g
   •
   <a href="https://github.com/oraxen/HackedServer">HackedServer</a>
   •
-  <a href="https://github.com/Th0rgal/hephaistos">Hephaistos</a>
+  <a href="https://mcserverjars.com/">Hephaistos</a>
   •
-  <a href="https://github.com/Th0rgal/sphinx">Sphinx</a>
+  <a href="https://mcserverjars.com/">Sphinx</a>
 </p>
 
 <p align="center">

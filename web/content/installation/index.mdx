@@ -18,7 +18,7 @@ Get AsyncAnticheat running on your server in under 2 minutes.
 |----------|---------|
 | Paper / Spigot | ✅ Full support |
 | Folia | ✅ Full support |
-| BungeeCord / Velocity | ❌ Install on backend servers ([see Network Setup](./network)) |
+| BungeeCord / Velocity | ❌ Install on backend servers ([see Network Setup](/docs/installation/network)) |
 
 ## Step 1: Download
 
@@ -29,7 +29,8 @@ Or browse all versions on the [GitHub releases](https://github.com/oraxen/asynca
 ## Step 2: Install and Start
 
 1. Drop the JAR file into your server's `/plugins/` folder
-2. Start (or restart) your server
+2. Start your server
+3. **First-time only:** The plugin will automatically download and load [PacketEvents](https://github.com/retrooper/packetevents) via [Hopper](https://github.com/oraxen/hopper). No restart required!
 
 That's it! The plugin will automatically generate a default configuration.
 
@@ -113,3 +114,12 @@ If the spool directory grows large, the API may be unreachable:
 1. Verify Java 21 is being used
 2. Check server logs for PacketEvents errors
 3. Ensure `capture.enabled_packets` is empty (uses default allow-list) or correctly configured
+
+### PacketEvents not downloading
+
+If PacketEvents fails to download automatically:
+
+1. Check your server has internet access to Modrinth (`modrinth.com`)
+2. Look for Hopper-related errors in the console
+3. You can manually download [PacketEvents](https://modrinth.com/plugin/packetevents) and place it in `/plugins/`
+4. To disable auto-download, add `-Dasyncanticheat.skipDependencyDownload=true` to your JVM flags

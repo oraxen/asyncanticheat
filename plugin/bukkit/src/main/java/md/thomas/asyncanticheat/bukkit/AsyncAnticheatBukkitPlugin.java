@@ -5,10 +5,11 @@ import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import md.thomas.asyncanticheat.core.AcLogger;
 import md.thomas.asyncanticheat.core.AsyncAnticheatService;
+import org.bstats.bukkit.Metrics;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -20,28 +21,43 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
     private SchedulerUtil.ScheduledTask stateTask;
     private boolean packetEventsInitialized = false;
 
+    public AsyncAnticheatBukkitPlugin() {
+        // Register dependencies with Hopper for auto-download
+        AacHopper.register(this);
+    }
+
     @Override
     public void onLoad() {
-        // PacketEvents must be loaded in onLoad() to ensure proper injection timing
+        // Download PacketEvents if needed (loads at runtime, no restart required)
+        AacHopper.download(this);
+
+        // Initialize PacketEvents
         try {
             PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
             PacketEvents.getAPI().load();
             packetEventsInitialized = true;
         } catch (Throwable t) {
-            getLogger().severe("[AsyncAnticheat] Failed to load PacketEvents (Bukkit): " + t.getMessage());
+            getLogger().severe("Failed to load PacketEvents: " + t.getMessage());
+            getLogger().severe("PacketEvents is required. Install it from https://modrinth.com/plugin/packetevents");
         }
     }
 
     @Override
     public void onEnable() {
+        if (!packetEventsInitialized) {
+            getLogger().severe("PacketEvents not available. Disabling plugin.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         final AcLogger logger = new BukkitLogger(getLogger());
         service = new AsyncAnticheatService(getDataFolder(), logger);
-        
+
         // Initialize exemption tracker with config
         // Tracks player states like creative mode, flying, dead, etc. based on NCP patterns
         exemptionTracker = new BukkitPlayerExemptionTracker(service.getConfig().getExemptionConfig());
         getServer().getPluginManager().registerEvents(exemptionTracker, this);
-        
+
         // Initialize PacketEvents (load was called in onLoad)
         if (packetEventsInitialized) {
             try {
@@ -51,14 +67,14 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
                         PacketListenerPriority.LOW
                 );
             } catch (Throwable t) {
-                logger.error("[AsyncAnticheat] Failed to initialize PacketEvents (Bukkit).", t);
+                logger.error("Failed to initialize PacketEvents.", t);
                 packetEventsInitialized = false;
             }
         }
 
         // Initialize recording manager for in-game cheat recording
         recordingManager = new RecordingManager(this, service.getConfig(), service.getServerId());
-        
+
         // Ensure recordings are stopped immediately on logout
         getServer().getPluginManager().registerEvents(new Listener() {
             @EventHandler
@@ -70,12 +86,10 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
         }, this);
 
         // Register main /aac command with subcommands
-        final PluginCommand aacCmd = getCommand("aac");
-        if (aacCmd != null) {
-            final BukkitMainCommand mainCmd = new BukkitMainCommand(service, recordingManager);
-            aacCmd.setExecutor(mainCmd);
-            aacCmd.setTabCompleter(mainCmd);
-        }
+        registerCommand();
+
+        // Initialize bStats metrics (plugin ID: 20187)
+        new Metrics(this, 20187);
 
         service.start();
         logger.info("[AsyncAnticheat] Player exemption tracking enabled (NCP-style)");
@@ -127,11 +141,20 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
     public AsyncAnticheatService getService() {
         return service;
     }
-    
+
     @NotNull
     public BukkitPlayerExemptionTracker getExemptionTracker() {
         return exemptionTracker;
     }
+
+    private void registerCommand() {
+        final BukkitMainCommand mainCmd = new BukkitMainCommand(service, recordingManager);
+
+        // Register command from plugin.yml
+        PluginCommand pluginCmd = getCommand("aac");
+        if (pluginCmd != null) {
+            pluginCmd.setExecutor(mainCmd);
+            pluginCmd.setTabCompleter(mainCmd);
+        }
+    }
 }
-
-

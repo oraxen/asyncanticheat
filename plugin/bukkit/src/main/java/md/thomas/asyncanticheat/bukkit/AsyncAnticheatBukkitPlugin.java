@@ -9,6 +9,7 @@ import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -154,7 +155,17 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
     private void registerCommand() {
         final BukkitMainCommand mainCmd = new BukkitMainCommand(service, recordingManager);
 
-        // Create a custom command that wraps our executor
+        // Try Spigot-style registration first (plugin.yml defines the command)
+        // This works on Spigot servers where getCommand() returns the registered command
+        PluginCommand pluginCmd = getCommand("aac");
+        if (pluginCmd != null) {
+            pluginCmd.setExecutor(mainCmd);
+            pluginCmd.setTabCompleter(mainCmd);
+            return;
+        }
+
+        // Fall back to CommandMap registration for Paper plugins
+        // Paper plugins use paper-plugin.yml which doesn't support getCommand()
         registeredCommand = new Command("aac", "AsyncAnticheat main command", "/aac [token|record|status]", List.of("asyncanticheat")) {
             @Override
             public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
@@ -168,7 +179,6 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
             }
         };
 
-        // Register with the server's command map
         Bukkit.getCommandMap().register("asyncanticheat", registeredCommand);
     }
 }

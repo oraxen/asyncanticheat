@@ -5,12 +5,17 @@ import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import md.thomas.asyncanticheat.core.AcLogger;
 import md.thomas.asyncanticheat.core.AsyncAnticheatService;
+import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
 
@@ -22,18 +27,26 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
 
     @Override
     public void onLoad() {
-        // PacketEvents must be loaded in onLoad() to ensure proper injection timing
+        // PacketEvents is downloaded by AacBootstrap before this class loads (Paper)
+        // or must be manually installed (Spigot)
         try {
             PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
             PacketEvents.getAPI().load();
             packetEventsInitialized = true;
         } catch (Throwable t) {
-            getLogger().severe("[AsyncAnticheat] Failed to load PacketEvents (Bukkit): " + t.getMessage());
+            getLogger().severe("[AsyncAnticheat] Failed to load PacketEvents: " + t.getMessage());
+            getLogger().severe("[AsyncAnticheat] PacketEvents is required. Install it from https://modrinth.com/plugin/packetevents");
         }
     }
 
     @Override
     public void onEnable() {
+        if (!packetEventsInitialized) {
+            getLogger().severe("[AsyncAnticheat] PacketEvents not available. Disabling plugin.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         final AcLogger logger = new BukkitLogger(getLogger());
         service = new AsyncAnticheatService(getDataFolder(), logger);
         
@@ -70,12 +83,8 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
         }, this);
 
         // Register main /aac command with subcommands
-        final PluginCommand aacCmd = getCommand("aac");
-        if (aacCmd != null) {
-            final BukkitMainCommand mainCmd = new BukkitMainCommand(service, recordingManager);
-            aacCmd.setExecutor(mainCmd);
-            aacCmd.setTabCompleter(mainCmd);
-        }
+        // Use CommandMap directly for Paper plugin compatibility
+        registerCommand();
 
         service.start();
         logger.info("[AsyncAnticheat] Player exemption tracking enabled (NCP-style)");
@@ -127,10 +136,31 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
     public AsyncAnticheatService getService() {
         return service;
     }
-    
+
     @NotNull
     public BukkitPlayerExemptionTracker getExemptionTracker() {
         return exemptionTracker;
+    }
+
+    private void registerCommand() {
+        final BukkitMainCommand mainCmd = new BukkitMainCommand(service, recordingManager);
+
+        // Create a custom command that wraps our executor
+        Command aacCommand = new Command("aac", "AsyncAnticheat main command", "/aac [token|record|status]", List.of("asyncanticheat")) {
+            @Override
+            public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
+                return mainCmd.onCommand(sender, this, commandLabel, args);
+            }
+
+            @Override
+            public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) {
+                List<String> result = mainCmd.onTabComplete(sender, this, alias, args);
+                return result != null ? result : List.of();
+            }
+        };
+
+        // Register with the server's command map
+        Bukkit.getCommandMap().register("asyncanticheat", aacCommand);
     }
 }
 

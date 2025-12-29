@@ -74,10 +74,9 @@ AsyncAnticheat keeps detection off-server: the plugin captures packets and strea
 
 1. Download the latest JAR from [Releases](https://github.com/oraxen/asyncanticheat/releases)
 2. Place in your server's `plugins/` folder
-3. Start the server - [PacketEvents](https://github.com/retrooper/packetevents) will be downloaded automatically via [Hopper](https://github.com/oraxen/hopper)
-4. Restart if prompted (only on first install when PacketEvents is downloaded)
-5. Configure `plugins/AsyncAnticheat/config.yml` with your API key
-6. View detections at [asyncanticheat.com/dashboard](https://asyncanticheat.com/dashboard)
+3. Start the server - [PacketEvents](https://github.com/retrooper/packetevents) will be downloaded and loaded automatically via [Hopper](https://github.com/oraxen/hopper) (no restart required!)
+4. Configure `plugins/AsyncAnticheat/config.yml` with your API key
+5. View detections at [asyncanticheat.com/dashboard](https://asyncanticheat.com/dashboard)
 
 Full setup guide: [asyncanticheat.com/docs](https://asyncanticheat.com/docs)
 

@@ -93,9 +93,8 @@ Requires being logged in as `th0rgal` or having access to the `lfglabs` scope.
 - **Build**: `./gradlew build`
 - **Modules**: `core/` (shared logic), `bukkit/` (Paper/Spigot entry)
 - **Version**: Set in `plugin/gradle.properties`
-- **PacketEvents**: Downloaded automatically at runtime via [Hopper](https://github.com/oraxen/hopper)
+- **PacketEvents**: Downloaded and loaded automatically at runtime via [Hopper](https://github.com/oraxen/hopper) - no restart required
 - **Hopper**: Runtime dependency downloader (shaded into JAR, relocated)
-- **Note**: First server start downloads PacketEvents and may require a restart
 
 ### API (`api/`)
 - **Database**: PostgreSQL (schema in `api/schema.sql`)

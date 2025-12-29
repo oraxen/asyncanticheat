@@ -11,7 +11,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -23,6 +22,7 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
     private RecordingManager recordingManager;
     private BukkitPlayerExemptionTracker exemptionTracker;
     private SchedulerUtil.ScheduledTask stateTask;
+    private Command registeredCommand;
     private boolean packetEventsInitialized = false;
 
     @Override
@@ -126,6 +126,11 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
             recordingManager.stopAll();
             recordingManager = null;
         }
+        // Unregister command to prevent leak on reload
+        if (registeredCommand != null) {
+            registeredCommand.unregister(Bukkit.getCommandMap());
+            registeredCommand = null;
+        }
         if (service != null) {
             service.stop();
             service = null;
@@ -146,7 +151,7 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
         final BukkitMainCommand mainCmd = new BukkitMainCommand(service, recordingManager);
 
         // Create a custom command that wraps our executor
-        Command aacCommand = new Command("aac", "AsyncAnticheat main command", "/aac [token|record|status]", List.of("asyncanticheat")) {
+        registeredCommand = new Command("aac", "AsyncAnticheat main command", "/aac [token|record|status]", List.of("asyncanticheat")) {
             @Override
             public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
                 return mainCmd.onCommand(sender, this, commandLabel, args);
@@ -160,7 +165,7 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
         };
 
         // Register with the server's command map
-        Bukkit.getCommandMap().register("asyncanticheat", aacCommand);
+        Bukkit.getCommandMap().register("asyncanticheat", registeredCommand);
     }
 }
 

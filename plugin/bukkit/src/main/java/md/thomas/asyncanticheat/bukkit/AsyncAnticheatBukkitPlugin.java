@@ -5,6 +5,7 @@ import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import md.thomas.asyncanticheat.core.AcLogger;
 import md.thomas.asyncanticheat.core.AsyncAnticheatService;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -85,6 +86,9 @@ public final class AsyncAnticheatBukkitPlugin extends JavaPlugin {
         // Register main /aac command with subcommands
         // Use CommandMap directly for Paper plugin compatibility
         registerCommand();
+
+        // Initialize bStats metrics (plugin ID: 20187)
+        new Metrics(this, 20187);
 
         service.start();
         logger.info("[AsyncAnticheat] Player exemption tracking enabled (NCP-style)");

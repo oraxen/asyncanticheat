@@ -68,6 +68,9 @@ project(":bukkit") {
 
         // Hopper - runtime dependency downloader (paper module includes bukkit)
         implementation("md.thomas.hopper:hopper-paper:1.4.1")
+
+        // bStats - plugin metrics
+        implementation("org.bstats:bstats-bukkit:3.0.2")
     }
 }
 

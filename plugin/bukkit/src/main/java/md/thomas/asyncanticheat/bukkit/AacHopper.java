@@ -53,20 +53,22 @@ public final class AacHopper {
 
             if (!hasPacketEvents) {
                 // Primary source: Modrinth (auto-detects platform)
+                // Use WARN_SKIP to allow fallback to GitHub if Modrinth fails
                 deps.require(Dependency.modrinth("packetevents")
                     .name("PacketEvents")
                     .minVersion("2.7.0")
                     .updatePolicy(UpdatePolicy.MINOR)
-                    .onFailure(FailurePolicy.FAIL)
+                    .onFailure(FailurePolicy.WARN_SKIP)
                     .build());
 
                 // Fallback source: GitHub releases
+                // Use FAIL since this is the last resort - PacketEvents is required
                 deps.require(Dependency.github("retrooper/packetevents")
                     .name("PacketEvents")
                     .minVersion("2.7.0")
                     .assetPattern("*-spigot-*.jar")
                     .updatePolicy(UpdatePolicy.MINOR)
-                    .onFailure(FailurePolicy.WARN_SKIP)
+                    .onFailure(FailurePolicy.FAIL)
                     .build());
             }
         });

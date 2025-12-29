@@ -116,9 +116,7 @@ Issues and pull requests welcome. See the documentation for module development g
   •
   <a href="https://github.com/oraxen/HackedServer">HackedServer</a>
   •
-  <a href="https://mcserverjars.com/">Hephaistos</a>
-  •
-  <a href="https://mcserverjars.com/">Sphinx</a>
+  <a href="https://mcserverjars.com/">MCServerJars</a>
 </p>
 
 <p align="center">

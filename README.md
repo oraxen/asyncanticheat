@@ -1,102 +1,77 @@
-# AsyncAnticheat
+<p align="center">
+  <a href="https://asyncanticheat.com">
+    <img src="web/public/icon-512.png" alt="AsyncAnticheat Logo" width="200">
+  </a>
+</p>
 
-Multi-platform Minecraft anticheat with cloud-based async analysis.
+<h1 align="center">AsyncAnticheat</h1>
 
-## Repository Structure
+<p align="center">
+  Cloud-based asynchronous anticheat for Minecraft servers
+</p>
 
-```
-asyncanticheat/
-├── plugin/     # Java Minecraft plugin (Paper/Spigot)
-├── api/        # Rust ingestion API (Axum)
-├── web/        # Next.js website/dashboard/docs
-└── modules/    # Detection modules (git submodule)
-```
+<p align="center">
+  <a href="https://asyncanticheat.com">Website</a>
+  •
+  <a href="https://asyncanticheat.com/docs">Documentation</a>
+  •
+  <a href="https://www.spigotmc.org/resources/asyncanticheat.123456/">Spigot</a>
+</p>
 
-## Quick Start
+---
 
-### Plugin Development
+## About
 
-```bash
-cd plugin
-./gradlew build
-# Output: plugin/build/libs/async-anticheat-<version>.jar
-```
+AsyncAnticheat uses **cloud-based packet analysis** to detect cheats and hacked clients on your Minecraft server. Unlike traditional anticheats, analysis happens asynchronously on external servers, meaning zero performance impact on your game server.
 
-**Requirements:** Java 21
+## Features
 
-### API Development
+- **Zero server impact** - All detection runs on external infrastructure
+- **Advanced detection** - Machine learning and statistical analysis
+- **Real-time dashboard** - Monitor detections across all your servers
+- **Multi-platform** - Paper, Spigot, Folia, and more
+- **Modular architecture** - Enable only the checks you need
 
-```bash
-cd api
-cp env.example .env
-# Configure DATABASE_URL in .env
-cargo run
-```
+## Supported Platforms
 
-**Requirements:** Rust toolchain, PostgreSQL
+| Platform | Version |
+|----------|---------|
+| Paper    | 1.8 - 1.21+ |
+| Spigot   | 1.8 - 1.21+ |
+| Folia    | 1.19.4+ |
 
-### Web Development
+## Requirements
 
-```bash
-cd web
-cp .env.example .env.local
-# Configure Supabase keys in .env.local
-bun install
-bun dev
-# Open http://localhost:3000
-```
+- Java 21 or higher
+- An AsyncAnticheat subscription
 
-**Requirements:** Bun
+## Installation
 
-### Detection Modules
-
-```bash
-# Initialize submodule
-git submodule update --init
-
-# Build a module
-cd modules/movement_core_module
-cargo build --release
-```
-
-## Configuration
-
-Copy `secrets.json.example` to `~/minecraft/secrets.json` and configure values.
-Each project has its own environment template - copy and configure as needed.
+1. Download the latest release from [Spigot](https://www.spigotmc.org/resources/asyncanticheat.123456/) or [GitHub Releases](https://github.com/oraxen/asyncanticheat/releases)
+2. Place the JAR in your server's `plugins/` folder
+3. Restart your server
+4. Configure `plugins/AsyncAnticheat/config.yml` with your API key
 
 ## Documentation
 
-- **User docs:** [asyncanticheat.com/docs](https://asyncanticheat.com/docs)
-- **API reference:** `api/docs/`
-- **Module development:** `modules/README.md`
-
-## Architecture
-
-```
-Player → Plugin (captures packets)
-           ↓
-       API /ingest
-           ↓
-    Object Store + batch_index
-           ↓
-    Dispatch to Detection Modules
-           ↓
-    Module analyzes packets
-           ↓
-    Module → API /callbacks/findings
-           ↓
-    Dashboard displays findings
-```
-
-## Deployment
-
-| Component | Method |
-|-----------|--------|
-| Plugin | GitHub Releases |
-| Web | Vercel (auto-deploy from main) |
-| API | Dedicated server |
-| Modules | Dedicated server |
+Full documentation available at [asyncanticheat.com/docs](https://asyncanticheat.com/docs)
 
 ## License
 
-Proprietary - See LICENSE.md
+Proprietary - See [LICENSE.md](LICENSE.md)
+
+---
+
+<p align="center">
+  <a href="https://github.com/oraxen/oraxen">Oraxen</a>
+  •
+  <a href="https://github.com/oraxen/HackedServer">HackedServer</a>
+  •
+  <a href="https://github.com/Th0rgal/hephaistos">Hephaistos</a>
+  •
+  <a href="https://github.com/Th0rgal/sphinx">Sphinx</a>
+</p>
+
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/Th0rgal">Th0rgal</a>
+</p>

@@ -107,7 +107,7 @@ Issues and pull requests welcome. See the documentation for module development g
 
 ## License
 
-[Async Anticheat License](LICENSE.md) - Source available, not open source.
+[Async Anticheat License](LICENSE.md) - Source-available under the Async Anticheat License.
 
 ---
 

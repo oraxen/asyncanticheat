@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Head } from "nextra/components";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PWAInstallBanner } from "@/components/pwa/install-banner";
+import { GoogleAnalytics } from "@/components/google-analytics";
 import { Cinzel, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 
@@ -68,6 +69,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
+      <GoogleAnalytics />
       <Head>
         <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />

@@ -114,10 +114,10 @@ export default function HomePage() {
               GitHub
             </Link>
             <Link
-              href="/docs"
+              href="https://discord.gg/2ng6q3JNQ7"
               className="text-xs font-medium text-[rgb(var(--foreground-secondary))] hover:text-[rgb(var(--foreground))] transition-colors"
             >
-              Documentation
+              Discord
             </Link>
             <Link
               href="/dashboard"
@@ -162,11 +162,11 @@ export default function HomePage() {
                 GitHub
               </Link>
               <Link
-                href="/docs"
+                href="https://discord.gg/2ng6q3JNQ7"
                 className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-[rgb(var(--foreground-secondary))] hover:text-[rgb(var(--foreground))] hover:bg-[rgb(var(--foreground))]/5 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Documentation
+                Discord
               </Link>
               <Link
                 href="/dashboard"
